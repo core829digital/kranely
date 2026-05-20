@@ -186,7 +186,7 @@ function App() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <ClerkProvider publishableKey={CLERK_PUBLISHABLE_KEY} localization={enUS}>
+      <ClerkProvider publishableKey={CLERK_PUBLISHABLE_KEY} proxyUrl="" localization={enUS}>
         <ConvexProviderWithClerk client={convex} useAuth={useClerkAuth}>
           <AuthProvider>
             <WhiteLabelProvider>
