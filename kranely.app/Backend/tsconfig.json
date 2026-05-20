@@ -9,11 +9,7 @@
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "noEmit": true,
-    "baseUrl": ".",
-    "paths": {
-      "@/*": ["./convex/*"]
-    }
+    "noEmit": true
   },
   "include": ["convex/**/*.ts"],
   "exclude": ["node_modules"]
