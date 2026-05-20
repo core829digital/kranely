@@ -186,7 +186,7 @@ function App() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <ClerkProvider publishableKey={CLERK_PUBLISHABLE_KEY} localization={enUS} clerkJSUrl="https://static.clerk.com/npm/@clerk/clerk-js@5/dist/clerk.browser.js">
+      <ClerkProvider publishableKey={CLERK_PUBLISHABLE_KEY} localization={enUS} clerkJSUrl="https://js.clerk.com/npm/@clerk/clerk-js@5/dist/clerk.browser.js">
         <ConvexProviderWithClerk client={convex} useAuth={useClerkAuth}>
           <AuthProvider>
             <WhiteLabelProvider>
