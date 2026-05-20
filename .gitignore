@@ -1,0 +1,5 @@
+﻿@(_extract/main)
+@(_extract2/docs)
+@(_extract2/frontend)
+@(_extract2/infrastructure)
+kranely.app/

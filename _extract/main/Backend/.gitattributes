@@ -1,0 +1,3 @@
+* text=auto
+*.d.ts text eol=lf
+convex/_generated/* linguist-generated=true

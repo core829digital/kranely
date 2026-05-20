@@ -1,0 +1,11 @@
+{
+    "name": "iwhome-app-root",
+    "private": true,
+    "scripts": {
+        "dev": "concurrently \"npm run dev --prefix Backend\" \"npm run dev --prefix Frontend/iwhome.app-base44sdk\"",
+        "install:all": "npm install && npm install --prefix Backend && npm install --prefix Frontend/iwhome.app-base44sdk"
+    },
+    "devDependencies": {
+        "concurrently": "^8.2.2"
+    }
+}
