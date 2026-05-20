@@ -47,18 +47,15 @@ export default function Layout({ children, currentPageName, isPrivate, sidebarWi
   // If starts with http, it's a full URL; otherwise it's a storage ID
   const isFullUrl = rawProfileImage && rawProfileImage.startsWith('http');
   
-  // Get the resolved URL from Convex storage
-  let profileImageUrl = null;
-  if (rawProfileImage) {
-    if (isFullUrl) {
-      // Already a full URL
-      profileImageUrl = rawProfileImage;
-    } else {
-      // It's a storage ID - resolve it
-      const resolvedUrl = useQuery(api.files.getFileUrl, { storageId: rawProfileImage });
-      profileImageUrl = resolvedUrl;
-    }
-  }
+  // Get the resolved URL from Convex storage - hook must be called unconditionally
+  const resolvedProfileUrl = useQuery(
+    api.files.getFileUrl,
+    rawProfileImage && !isFullUrl ? { storageId: rawProfileImage } : "skip"
+  );
+  
+  const profileImageUrl = rawProfileImage
+    ? (isFullUrl ? rawProfileImage : resolvedProfileUrl)
+    : null;
 
   const user = clerkUser ? {
     email: clerkUser.primaryEmailAddress?.emailAddress,
