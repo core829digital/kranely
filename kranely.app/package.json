@@ -1,0 +1,17 @@
+{
+  "name": "kranely-app-root",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Kranely - Window & Door Installer Management Platform",
+  "scripts": {
+    "dev": "concurrently \"npm run dev --prefix Backend\" \"npm run dev --prefix Frontend/kranely.app-frontend\"",
+    "dev:frontend": "npm run dev --prefix Frontend/kranely.app-frontend",
+    "dev:backend": "npm run dev --prefix Backend",
+    "install:all": "npm install && npm install --prefix Backend && npm install --prefix Frontend/kranely.app-frontend",
+    "build": "npm run build --prefix Frontend/kranely.app-frontend",
+    "lint": "npm run lint --prefix Frontend/kranely.app-frontend"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

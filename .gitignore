@@ -2,4 +2,9 @@
 @(_extract2/docs)
 @(_extract2/frontend)
 @(_extract2/infrastructure)
-kranely.app/
+**/node_modules/
+**/.env
+**/.env.local
+**/.env.example
+**/package-lock.json
+**/.agenthub/
