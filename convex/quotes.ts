@@ -1,0 +1,167 @@
+import { v } from "convex/values"
+import { mutation, query } from "./_generated/server"
+import { internal } from "./_generated/api"
+
+// ═══════════════════════════════════════════════════════
+// QUOTES (Preventivi)
+// ═══════════════════════════════════════════════════════
+
+export const list = query({
+  args: { organizationId: v.id("organizations"), clientId: v.optional(v.id("clients")), search: v.optional(v.string()), status: v.optional(v.string()), type: v.optional(v.string()) },
+  handler: async (ctx, args) => {
+    let q = ctx.db.query("quotes").withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId))
+    const quotes = await q.collect()
+
+    let filtered = quotes
+    if (args.clientId) filtered = filtered.filter((q) => q.clientId === args.clientId)
+    if (args.search) {
+      const s = args.search.toLowerCase()
+      filtered = filtered.filter((q) => (q.title || "").toLowerCase().includes(s) || (q.description && q.description.toLowerCase().includes(s)))
+    }
+    if (args.status && args.status !== "all") filtered = filtered.filter((q) => q.status === args.status)
+    if (args.type && args.type !== "all") filtered = filtered.filter((q) => q.quoteType === args.type)
+
+    return filtered.sort((a, b) => b._creationTime - a._creationTime)
+  },
+})
+
+export const get = query({
+  args: { id: v.id("quotes"), organizationId: v.id("organizations") },
+  handler: async (ctx, args) => {
+    const doc = await ctx.db.get(args.id)
+    if (!doc || doc.organizationId !== args.organizationId) throw new Error("Not found")
+    return doc
+  },
+})
+
+export const create = mutation({
+  args: {
+    organizationId: v.id("organizations"),
+    clientId: v.optional(v.id("clients")),
+    title: v.optional(v.string()),
+    description: v.optional(v.string()),
+    quoteType: v.optional(v.string()),
+    status: v.optional(v.union(v.literal("draft"), v.literal("sent"), v.literal("accepted"), v.literal("rejected"), v.literal("in_lavorazione"))),
+    estimatedPrice: v.optional(v.number()),
+    validUntil: v.optional(v.string()),
+    clientQuoteExpiresAt: v.optional(v.string()),
+    createdBy: v.optional(v.id("users")),
+    email: v.optional(v.string()),
+    userEmail: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const { createdBy, userEmail, ...rest } = args
+
+    if (userEmail) {
+      const user = await ctx.db
+        .query("users")
+        .withIndex("by_email", (q: any) => q.eq("email", userEmail))
+        .first()
+      if (!user || user.organizationId !== args.organizationId) {
+        throw new Error("Non autorizzato")
+      }
+    }
+
+    const id = await ctx.db.insert("quotes", { ...rest, status: args.status || "draft", quoteType: args.quoteType || "preventivo", createdBy })
+
+    await ctx.db.insert("activityLog", {
+      organizationId: args.organizationId,
+      userEmail: "system",
+      action: "created",
+      entityType: "quote",
+      entityId: id,
+      entityName: args.title,
+      details: `Preventivo "${args.title}" creato`,
+    })
+
+    return id
+  },
+})
+
+export const update = mutation({
+  args: {
+    id: v.id("quotes"),
+    organizationId: v.id("organizations"),
+    title: v.optional(v.string()),
+    description: v.optional(v.string()),
+    quoteType: v.optional(v.union(v.literal("preventivo"), v.literal("sopralluogo"), v.literal("assistenza"))),
+    status: v.optional(v.union(v.literal("draft"), v.literal("sent"), v.literal("accepted"), v.literal("rejected"), v.literal("in_lavorazione"))),
+    estimatedPrice: v.optional(v.number()),
+    validUntil: v.optional(v.string()),
+    clientQuoteExpiresAt: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const { id, organizationId, ...data } = args
+    const existing = await ctx.db.get(id)
+    if (!existing || existing.organizationId !== organizationId) throw new Error("Not found")
+    await ctx.db.patch(id, data)
+
+    if (existing && data.status && data.status !== existing.status) {
+      const statusLabels: Record<string, string> = {
+        draft: "Bozza", sent: "Inviato", accepted: "Accettato", rejected: "Rifiutato", in_lavorazione: "In lavorazione",
+      }
+      await ctx.scheduler.runAfter(0, internal.notifications.createNotification, {
+        organizationId: existing.organizationId,
+        userEmail: "admin@kranely.demo",
+        title: "Stato preventivo aggiornato",
+        message: `Il preventivo "${existing.title || "senza nome"}" è ora "${statusLabels[data.status] || data.status}"`,
+        type: "quote_status_change",
+        priority: data.status === "accepted" ? "high" : data.status === "rejected" ? "urgent" : "normal",
+        link: "/quotes",
+      })
+
+      if (data.status === "accepted" && existing.clientId) {
+        const existingCantieri = await ctx.db
+          .query("cantieri")
+          .withIndex("by_organization", (q) => q.eq("organizationId", existing.organizationId))
+          .collect()
+          .then((cs) => cs.filter((c) => c.quoteId === id))
+
+        if (!existingCantieri.length) {
+          const cantiereName = existing.title || `Cantiere da preventivo ${id.slice(0, 8)}`
+          await ctx.db.insert("cantieri", {
+            organizationId: existing.organizationId,
+            clientId: existing.clientId,
+            name: cantiereName,
+            quoteId: id,
+            totalBudget: existing.estimatedPrice || 0,
+            status: "pianificato",
+          })
+        }
+      }
+    }
+
+    return id
+  },
+})
+
+export const remove = mutation({
+  args: { id: v.id("quotes"), organizationId: v.id("organizations") },
+  handler: async (ctx, args) => {
+    const quote = await ctx.db.get(args.id)
+    if (!quote || quote.organizationId !== args.organizationId) throw new Error("Not found")
+    await ctx.db.delete(args.id)
+    return args.id
+  },
+})
+
+export const stats = query({
+  args: { organizationId: v.id("organizations") },
+  handler: async (ctx, args) => {
+    const quotes = await ctx.db
+      .query("quotes")
+      .withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId))
+      .collect()
+
+    return {
+      total: quotes.length,
+      draft: quotes.filter((q) => q.status === "draft").length,
+      sent: quotes.filter((q) => q.status === "sent").length,
+      accepted: quotes.filter((q) => q.status === "accepted").length,
+      rejected: quotes.filter((q) => q.status === "rejected").length,
+      inCorso: quotes.filter((q) => q.status === "in_lavorazione").length,
+      totalValue: quotes.reduce((sum, q) => sum + (q.estimatedPrice || 0), 0),
+      acceptedValue: quotes.filter((q) => q.status === "accepted").reduce((sum, q) => sum + (q.estimatedPrice || 0), 0),
+    }
+  },
+})

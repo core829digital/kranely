@@ -1,0 +1,1 @@
+﻿export default function Page() { return (<div className="min-h-screen bg-kranely-app-bg pt-24 pb-20"><div className="mx-auto max-w-7xl px-4"><h1 className="text-4xl font-bold text-white mb-8">Public Pricing</h1><p className="text-white/60">Pagina in costruzione</p></div></div>) }
