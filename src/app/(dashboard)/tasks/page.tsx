@@ -11,6 +11,7 @@ import { useQuery, useMutation } from "convex/react"
 import { api } from "../../../../convex/_generated/api"
 import { Id } from "../../../../convex/_generated/dataModel"
 import Link from "next/link"
+import { useAuth } from "@/lib/auth/auth-context"
 import { useOrgId } from "@/hooks/useOrgId"
 import { PageSkeleton } from "@/components/Skeletons"
 import { KanbanBoard } from "@/components/KanbanBoard"
@@ -35,6 +36,7 @@ const priorityConfig = {
 
 export default function TasksPage() {
   const orgId = useOrgId()
+  const { user } = useAuth()
   const [search, setSearch] = useState("")
   const [filterPhase, setFilterPhase] = useState<string>("all")
   const [filterStatus, setFilterStatus] = useState<string>("all")
@@ -48,10 +50,10 @@ export default function TasksPage() {
   const [formData, setFormData] = useState({ cantiereId: "", phase: "in_lavorazione", title: "", description: "", assignedTo: "", priority: "media", dueDate: "" })
   const [editFormData, setEditFormData] = useState({ title: "", description: "", status: "da_fare" as "da_fare" | "in_corso" | "completato", priority: "media" as "alta" | "media" | "bassa", dueDate: "", assignedTo: "" })
 
-  const tasks = useQuery(api.tasks.list, orgId ? { organizationId: orgId } : "skip")
-  const stats = useQuery(api.tasks.stats, orgId ? { organizationId: orgId } : "skip")
-  const cantieri = useQuery(api.cantieri.list, orgId ? { organizationId: orgId } : "skip")
-  const collaborators = useQuery(api.collaborators.list, orgId ? { organizationId: orgId } : "skip")
+  const tasks = useQuery(api.tasks.list, orgId ? { organizationId: orgId, userEmail: user?.email } : "skip")
+  const stats = useQuery(api.tasks.stats, orgId ? { organizationId: orgId, userEmail: user?.email } : "skip")
+  const cantieri = useQuery(api.cantieri.list, orgId ? { organizationId: orgId, userEmail: user?.email } : "skip")
+  const collaborators = useQuery(api.collaborators.list, orgId ? { organizationId: orgId, userEmail: user?.email } : "skip")
 
   const createTask = useMutation(api.tasks.create)
   const updateTask = useMutation(api.tasks.update)

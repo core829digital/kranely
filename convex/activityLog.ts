@@ -1,31 +1,28 @@
 import { v } from "convex/values"
 import { mutation, query } from "./_generated/server"
+import { assertOrgAccess } from "./auth"
 
 // ═══════════════════════════════════════════════════════
 // ACTIVITY LOG
 // ═══════════════════════════════════════════════════════
 
 export const list = query({
-  args: { organizationId: v.id("organizations"), entityType: v.optional(v.string()), userEmail: v.optional(v.string()), limit: v.optional(v.number()) },
+  args: { organizationId: v.id("organizations"), entityType: v.optional(v.string()), userEmail: v.optional(v.string()) },
   handler: async (ctx, args) => {
-    let q = ctx.db.query("activityLog").withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId))
-    const logs = await q.collect()
-
-    let filtered = logs
+    const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
+    let filtered = await ctx.db.query("activityLog").withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId)).collect()
+    filtered = filtered.sort((a, b) => b._creationTime - a._creationTime)
     if (args.entityType) filtered = filtered.filter((l) => l.entityType === args.entityType)
     if (args.userEmail) filtered = filtered.filter((l) => l.userEmail === args.userEmail)
 
-    const sorted = filtered.sort((a, b) => b._creationTime - a._creationTime)
-
-    if (args.limit) return sorted.slice(0, args.limit)
-    return sorted
+    return filtered
   },
 })
 
 export const create = mutation({
   args: {
     organizationId: v.id("organizations"),
-    userEmail: v.string(),
+    userEmail: v.optional(v.string()),
     action: v.string(),
     entityType: v.string(),
     entityId: v.string(),
@@ -33,9 +30,10 @@ export const create = mutation({
     details: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
     const id = await ctx.db.insert("activityLog", {
       organizationId: args.organizationId,
-      userEmail: args.userEmail,
+      userEmail: args.userEmail || "system",
       action: args.action,
       entityType: args.entityType,
       entityId: args.entityId,
@@ -47,8 +45,9 @@ export const create = mutation({
 })
 
 export const stats = query({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.id("organizations"), userEmail: v.optional(v.string()) },
   handler: async (ctx, args) => {
+    const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
     const logs = await ctx.db
       .query("activityLog")
       .withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId))

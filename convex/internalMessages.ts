@@ -1,26 +1,30 @@
 import { v } from "convex/values"
 import { mutation, query } from "./_generated/server"
+import { assertOrgAccess } from "./auth"
 
 export const list = query({
   args: {
     organizationId: v.id("organizations"),
+    userEmail: v.optional(v.string()),
     channelType: v.string(),
     channelId: v.string(),
   },
   handler: async (ctx, args) => {
-    const msgs = await ctx.db
+    const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
+    let filtered = await ctx.db
       .query("internalMessages")
       .withIndex("by_channel", (q) => q.eq("channelType", args.channelType).eq("channelId", args.channelId))
       .collect()
-    return msgs
-      .filter((m) => m.organizationId === args.organizationId)
-      .sort((a, b) => a._creationTime - b._creationTime)
+    filtered = filtered.sort((a, b) => b._creationTime - a._creationTime)
+    filtered = filtered.filter((m) => m.organizationId === args.organizationId)
+    return filtered
   },
 })
 
 export const send = mutation({
   args: {
     organizationId: v.id("organizations"),
+    userEmail: v.optional(v.string()),
     channelType: v.string(),
     channelId: v.string(),
     channelName: v.optional(v.string()),
@@ -36,6 +40,7 @@ export const send = mutation({
     fileSize: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
+    const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
     const id = await ctx.db.insert("internalMessages", {
       ...args,
       read: false,
@@ -52,6 +57,7 @@ export const markRead = mutation({
     userEmail: v.string(),
   },
   handler: async (ctx, args) => {
+    const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
     const msgs = await ctx.db
       .query("internalMessages")
       .withIndex("by_channel", (q) => q.eq("channelType", args.channelType).eq("channelId", args.channelId))
@@ -65,8 +71,9 @@ export const markRead = mutation({
 })
 
 export const remove = mutation({
-  args: { id: v.id("internalMessages"), organizationId: v.id("organizations") },
+  args: { id: v.id("internalMessages"), organizationId: v.id("organizations"), userEmail: v.optional(v.string()) },
   handler: async (ctx, args) => {
+    const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
     const doc = await ctx.db.get(args.id)
     if (!doc || doc.organizationId !== args.organizationId) throw new Error("Not found")
     await ctx.db.delete(args.id)

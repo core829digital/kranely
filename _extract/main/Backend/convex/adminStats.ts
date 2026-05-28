@@ -202,7 +202,7 @@ export const getStaffTasks = query({
         const caller = await getCallerInfo(ctx);
         if (!caller) return [];
         // Admin/superadmin can query any email; collaborators only their own
-        if (caller.role !== "admin" && caller.role !== "superadmin" && caller.email !== args.email) {
+        if (caller.role !== "admin" && caller.email !== args.email) {
             return [];
         }
         return await ctx.db

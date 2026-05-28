@@ -1,6 +1,7 @@
 import { v } from "convex/values"
 import { mutation, query } from "./_generated/server"
 import { internal } from "./_generated/api"
+import { assertOrgAccess } from "./auth"
 
 async function checkSupplierAccess(ctx: any, supplierId: any, userEmail: string) {
   const user = await ctx.db
@@ -29,20 +30,20 @@ async function checkSupplierAccess(ctx: any, supplierId: any, userEmail: string)
 // ═══════════════════════════════════════════════════════
 
 export const list = query({
-  args: { organizationId: v.id("organizations"), supplierId: v.optional(v.id("suppliers")), orderId: v.optional(v.id("supplierOrders")), status: v.optional(v.string()) },
+  args: { organizationId: v.id("organizations"), supplierId: v.optional(v.id("suppliers")), orderId: v.optional(v.id("supplierOrders")), status: v.optional(v.string()), userEmail: v.optional(v.string()) },
   handler: async (ctx, args) => {
-    let production
+    const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
+    let items
     if (args.supplierId) {
-      production = await ctx.db.query("supplierProduction").withIndex("by_supplier", (q) => q.eq("supplierId", args.supplierId!)).collect()
+      items = await ctx.db.query("supplierProduction").withIndex("by_supplier", (q) => q.eq("supplierId", args.supplierId!)).collect()
     } else {
-      production = await ctx.db.query("supplierProduction").withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId)).collect()
+      items = await ctx.db.query("supplierProduction").withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId)).collect()
     }
-
-    let filtered = production
+    let filtered = items.sort((a, b) => b._creationTime - a._creationTime)
     if (args.orderId) filtered = filtered.filter((p) => p.orderId === args.orderId)
     if (args.status && args.status !== "all") filtered = filtered.filter((p) => p.status === args.status)
 
-    return filtered.sort((a, b) => b._creationTime - a._creationTime)
+    return filtered
   },
 })
 
@@ -70,9 +71,11 @@ export const create = mutation({
     estimatedCompletion: v.optional(v.string()),
     notes: v.optional(v.string()),
     progressPercentage: v.optional(v.number()),
+    userEmail: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const { ...rest } = args
+    const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
+    const { userEmail, ...rest } = args
     const id = await ctx.db.insert("supplierProduction", { ...rest, status: args.status || "pending", completed: args.completed || 0 })
 
     await ctx.db.insert("activityLog", {
@@ -161,8 +164,9 @@ export const remove = mutation({
 })
 
 export const stats = query({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.id("organizations"), userEmail: v.optional(v.string()) },
   handler: async (ctx, args) => {
+    const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
     const production = await ctx.db
       .query("supplierProduction")
       .collect()

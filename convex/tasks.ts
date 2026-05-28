@@ -1,31 +1,32 @@
 import { v } from "convex/values"
 import { mutation, query } from "./_generated/server"
 import { internal } from "./_generated/api"
+import { resolveNotifTarget } from "./lib/helpers"
+import { assertOrgAccess } from "./auth"
 
 export const list = query({
-  args: { organizationId: v.id("organizations"), cantiereId: v.optional(v.id("cantieri")), assignedTo: v.optional(v.string()), phase: v.optional(v.union(v.literal("in_lavorazione"), v.literal("posa_in_opera"), v.literal("completato"))) },
+  args: { organizationId: v.id("organizations"), cantiereId: v.optional(v.id("cantieri")), assignedTo: v.optional(v.string()), phase: v.optional(v.union(v.literal("in_lavorazione"), v.literal("posa_in_opera"), v.literal("completato"))), userEmail: v.optional(v.string()) },
   handler: async (ctx, args) => {
-    let tasks
+    const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
+    let items
     const cantiereId = args.cantiereId
     if (cantiereId) {
-      tasks = await ctx.db
+      items = await ctx.db
         .query("phaseTasks")
         .withIndex("by_cantiere", (q) => q.eq("cantiereId", cantiereId))
         .collect()
     } else {
-      tasks = await ctx.db
+      items = await ctx.db
         .query("phaseTasks")
         .collect()
-      tasks = tasks.filter((t) => t.organizationId === args.organizationId)
+      items = items.filter((t) => t.organizationId === args.organizationId)
     }
 
-    if (args.assignedTo) tasks = tasks.filter((t) => t.assignedTo === args.assignedTo)
-    if (args.phase) tasks = tasks.filter((t) => t.phase === args.phase)
+    let filtered = items.sort((a, b) => b._creationTime - a._creationTime)
+    if (args.assignedTo) filtered = filtered.filter((t) => t.assignedTo === args.assignedTo)
+    if (args.phase) filtered = filtered.filter((t) => t.phase === args.phase)
 
-    return tasks.sort((a, b) => {
-      const priorityOrder = { alta: 0, media: 1, bassa: 2 }
-      return (priorityOrder[a.priority as keyof typeof priorityOrder] ?? 1) - (priorityOrder[b.priority as keyof typeof priorityOrder] ?? 1)
-    })
+    return filtered
   },
 })
 
@@ -46,10 +47,13 @@ export const create = mutation({
     assignedTo: v.optional(v.string()),
     priority: v.optional(v.union(v.literal("alta"), v.literal("media"), v.literal("bassa"))),
     dueDate: v.optional(v.string()),
+    userEmail: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    const { userEmail, ...rest } = args
+    const user = await assertOrgAccess(ctx, userEmail, rest.organizationId)
     const id = await ctx.db.insert("phaseTasks", {
-      organizationId: args.organizationId,
+      organizationId: rest.organizationId,
       cantiereId: args.cantiereId,
       phase: args.phase,
       title: args.title,
@@ -92,11 +96,23 @@ export const update = mutation({
     const existing = await ctx.db.get(id)
     await ctx.db.patch(id, data)
 
+    if (existing) {
+      await ctx.db.insert("activityLog", {
+        organizationId: existing.organizationId,
+        userEmail: "system",
+        action: "updated",
+        entityType: "task",
+        entityId: id,
+        entityName: existing.title,
+        details: `Attività "${existing.title}" aggiornata`,
+      })
+    }
+
     if (existing && data.status && data.status !== existing.status) {
       const statusLabels: Record<string, string> = { da_fare: "Da fare", in_corso: "In corso", completato: "Completato" }
       await ctx.scheduler.runAfter(0, internal.notifications.createNotification, {
         organizationId: existing.organizationId,
-        userEmail: existing.assignedTo || "admin@kranely.demo",
+        userEmail: existing.assignedTo || await resolveNotifTarget(ctx, existing.organizationId),
         title: "Attività aggiornata",
         message: `L'attività "${existing.title}" è passata a "${statusLabels[data.status] || data.status}"`,
         type: "task_updated",
@@ -112,14 +128,29 @@ export const update = mutation({
 export const remove = mutation({
   args: { id: v.id("phaseTasks") },
   handler: async (ctx, args) => {
+    const existing = await ctx.db.get(args.id)
     await ctx.db.delete(args.id)
+
+    if (existing) {
+      await ctx.db.insert("activityLog", {
+        organizationId: existing.organizationId,
+        userEmail: "system",
+        action: "deleted",
+        entityType: "task",
+        entityId: args.id,
+        entityName: existing.title,
+        details: `Attività "${existing.title}" eliminata`,
+      })
+    }
+
     return args.id
   },
 })
 
 export const stats = query({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.id("organizations"), userEmail: v.optional(v.string()) },
   handler: async (ctx, args) => {
+    const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
     const tasks = await ctx.db
       .query("phaseTasks")
       .collect()

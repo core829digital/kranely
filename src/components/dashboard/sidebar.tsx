@@ -57,7 +57,7 @@ export function Sidebar() {
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({})
   const { user } = useAuth()
   const orgId = useOrgId()
-  const whitelabel = useQuery(api.whitelabel.get, orgId ? { organizationId: orgId } : "skip")
+  const whitelabel = useQuery(api.whitelabel.get, orgId ? { organizationId: orgId, userEmail: user?.email } : "skip")
 
   const role = user?.role || "client"
   const isAdmin = role === "admin" || role === "superadmin"

@@ -1,25 +1,30 @@
 import { v } from "convex/values"
 import { mutation, query } from "./_generated/server"
+import { assertOrgAccess } from "./auth"
 
 export const list = query({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.id("organizations"), userEmail: v.optional(v.string()) },
   handler: async (ctx, args) => {
+    const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
     return await ctx.db
       .query("referralCodes")
       .withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId))
       .collect()
+      .then((items) => items.sort((a, b) => b._creationTime - a._creationTime))
   },
 })
 
 export const create = mutation({
   args: {
     organizationId: v.id("organizations"),
+    userEmail: v.optional(v.string()),
     code: v.string(),
     discountPercent: v.number(),
     description: v.optional(v.string()),
     maxUses: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
+    const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
     const id = await ctx.db.insert("referralCodes", {
       organizationId: args.organizationId,
       code: args.code,
@@ -44,7 +49,21 @@ export const update = mutation({
   },
   handler: async (ctx, args) => {
     const { id, ...data } = args
+    const prev = await ctx.db.get(id)
     await ctx.db.patch(id, data)
+
+    if (prev) {
+      await ctx.db.insert("activityLog", {
+        organizationId: prev.organizationId,
+        userEmail: "system",
+        action: "updated",
+        entityType: "referralCode",
+        entityId: id,
+        entityName: prev.code,
+        details: `Codice referral "${prev.code}" aggiornato`,
+      })
+    }
+
     return id
   },
 })
@@ -52,14 +71,29 @@ export const update = mutation({
 export const remove = mutation({
   args: { id: v.id("referralCodes") },
   handler: async (ctx, args) => {
+    const prev = await ctx.db.get(args.id)
     await ctx.db.delete(args.id)
+
+    if (prev) {
+      await ctx.db.insert("activityLog", {
+        organizationId: prev.organizationId,
+        userEmail: "system",
+        action: "deleted",
+        entityType: "referralCode",
+        entityId: args.id,
+        entityName: prev.code,
+        details: `Codice referral "${prev.code}" rimosso`,
+      })
+    }
+
     return args.id
   },
 })
 
 export const stats = query({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.id("organizations"), userEmail: v.optional(v.string()) },
   handler: async (ctx, args) => {
+    const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
     const codes = await ctx.db
       .query("referralCodes")
       .withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId))

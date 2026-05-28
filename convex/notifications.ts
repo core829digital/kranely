@@ -1,5 +1,6 @@
 import { internalMutation, mutation, query } from "./_generated/server"
 import { v } from "convex/values"
+import { assertOrgAccess } from "./auth"
 
 export const checkCertificateExpiry = internalMutation({
   args: {},
@@ -119,6 +120,7 @@ export const list = query({
     isRead: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
+    const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
     let q = ctx.db.query("notifications")
       .filter((q) => q.eq(q.field("organizationId"), args.organizationId))
 
@@ -129,16 +131,17 @@ export const list = query({
       q = q.filter((q) => q.eq(q.field("isRead"), args.isRead!))
     }
 
-    return await q.order("desc").take(50)
+    return await q.collect().then((items) => items.sort((a, b) => b._creationTime - a._creationTime))
   },
 })
 
 export const getUnreadCount = query({
   args: {
     organizationId: v.id("organizations"),
-    userEmail: v.string(),
+    userEmail: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
     const notifications = await ctx.db.query("notifications")
       .filter((q) => q.and(
         q.eq(q.field("organizationId"), args.organizationId),
@@ -160,9 +163,10 @@ export const markAsRead = mutation({
 export const markAllAsRead = mutation({
   args: {
     organizationId: v.id("organizations"),
-    userEmail: v.string(),
+    userEmail: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
     const notifications = await ctx.db.query("notifications")
       .filter((q) => q.and(
         q.eq(q.field("organizationId"), args.organizationId),
@@ -187,9 +191,10 @@ export const remove = mutation({
 export const stats = query({
   args: {
     organizationId: v.id("organizations"),
-    userEmail: v.string(),
+    userEmail: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
     const all = await ctx.db.query("notifications")
       .filter((q) => q.eq(q.field("organizationId"), args.organizationId))
       .collect()

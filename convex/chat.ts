@@ -1,6 +1,7 @@
 import { v } from "convex/values"
 import { mutation, query } from "./_generated/server"
 import { internal } from "./_generated/api"
+import { assertOrgAccess } from "./auth"
 
 // ═══════════════════════════════════════════════════════
 // CHAT - Internal Messages
@@ -9,19 +10,17 @@ import { internal } from "./_generated/api"
 export const listChannels = query({
   args: { organizationId: v.id("organizations"), userEmail: v.optional(v.string()) },
   handler: async (ctx, args) => {
-    const channels = await ctx.db
+    const userAuth = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
+
+    const isAdmin = userAuth && (userAuth.role === "admin" || userAuth.role === "superadmin")
+    const isCollaborator = userAuth?.role === "collaborator"
+
+    const items = await ctx.db
       .query("chatChannels")
       .withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId))
       .collect()
 
-    const user = args.userEmail
-      ? await ctx.db.query("users").withIndex("by_email", (q: any) => q.eq("email", args.userEmail!)).first()
-      : null
-
-    const isAdmin = user && (user.role === "admin" || user.role === "superadmin")
-    const isCollaborator = user?.role === "collaborator"
-
-    const filtered = channels.filter((ch) => {
+    const filtered = items.filter((ch) => {
       if (isAdmin) return true
       if (isCollaborator) return ch.type === "general" || ch.type === "project" || ch.type === "announcement"
       if (ch.type === "general" || ch.type === "announcement") return true
@@ -49,8 +48,10 @@ export const createChannel = mutation({
     linkedId: v.optional(v.string()),
     members: v.optional(v.array(v.string())),
     createdById: v.optional(v.id("users")),
+    userEmail: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
     const { createdById, ...rest } = args
     const id = await ctx.db.insert("chatChannels", { ...rest, createdById })
     return id
@@ -58,17 +59,13 @@ export const createChannel = mutation({
 })
 
 export const listMessages = query({
-  args: { channelId: v.id("chatChannels"), limit: v.optional(v.number()) },
+  args: { channelId: v.id("chatChannels") },
   handler: async (ctx, args) => {
-    let q = ctx.db
+    return await ctx.db
       .query("channelMessages")
       .withIndex("by_channel", (q) => q.eq("channelId", args.channelId))
-
-    const messages = await q.collect()
-    const sorted = messages.sort((a, b) => a._creationTime - b._creationTime)
-
-    if (args.limit) return sorted.slice(-args.limit)
-    return sorted
+      .collect()
+      .then((items) => items.sort((a, b) => b._creationTime - a._creationTime))
   },
 })
 
@@ -80,8 +77,10 @@ export const sendMessage = mutation({
     content: v.string(),
     replyTo: v.optional(v.id("channelMessages")),
     attachments: v.optional(v.array(v.string())),
+    userEmail: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
     const { replyTo, ...rest } = args
     const id = await ctx.db.insert("channelMessages", {
       ...rest,
@@ -134,8 +133,9 @@ export const markRead = mutation({
 })
 
 export const stats = query({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.id("organizations"), userEmail: v.optional(v.string()) },
   handler: async (ctx, args) => {
+    const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
     const channels = await ctx.db
       .query("chatChannels")
       .withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId))

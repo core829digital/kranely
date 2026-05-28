@@ -1,13 +1,15 @@
 import { v } from "convex/values"
 import { query } from "./_generated/server"
+import { assertOrgAccess } from "./auth"
 
 // ═══════════════════════════════════════════════════════
 // DASHBOARD STATS
 // ═══════════════════════════════════════════════════════
 
 export const overview = query({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.id("organizations"), userEmail: v.optional(v.string()) },
   handler: async (ctx, args) => {
+    const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
     const clients = await ctx.db
       .query("clients")
       .withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId))
@@ -90,8 +92,9 @@ export const overview = query({
 })
 
 export const revenueTrend = query({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.id("organizations"), userEmail: v.optional(v.string()) },
   handler: async (ctx, args) => {
+    const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
     const payments = await ctx.db
       .query("payments")
       .withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId))
@@ -122,8 +125,9 @@ export const revenueTrend = query({
 })
 
 export const clientDistribution = query({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.id("organizations"), userEmail: v.optional(v.string()) },
   handler: async (ctx, args) => {
+    const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
     const clients = await ctx.db
       .query("clients")
       .withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId))
@@ -137,8 +141,9 @@ export const clientDistribution = query({
 })
 
 export const cantiereStatus = query({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.id("organizations"), userEmail: v.optional(v.string()) },
   handler: async (ctx, args) => {
+    const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
     const cantieri = await ctx.db
       .query("cantieri")
       .withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId))
@@ -154,8 +159,9 @@ export const cantiereStatus = query({
 })
 
 export const quoteStatus = query({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.id("organizations"), userEmail: v.optional(v.string()) },
   handler: async (ctx, args) => {
+    const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
     const quotes = await ctx.db
       .query("quotes")
       .withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId))
@@ -171,8 +177,9 @@ export const quoteStatus = query({
 })
 
 export const recentActivity = query({
-  args: { organizationId: v.id("organizations"), limit: v.optional(v.number()) },
+  args: { organizationId: v.id("organizations"), limit: v.optional(v.number()), userEmail: v.optional(v.string()) },
   handler: async (ctx, args) => {
+    const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
     const logs = await ctx.db
       .query("activityLog")
       .withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId))

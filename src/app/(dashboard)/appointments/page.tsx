@@ -11,6 +11,7 @@ import { useQuery, useMutation } from "convex/react"
 import { api } from "../../../../convex/_generated/api"
 import { Id } from "../../../../convex/_generated/dataModel"
 import Link from "next/link"
+import { useAuth } from "@/lib/auth/auth-context"
 import { useOrgId } from "@/hooks/useOrgId"
 import { PageSkeleton } from "@/components/Skeletons"
 import { CalendarView } from "@/components/CalendarView"
@@ -18,31 +19,36 @@ import { cn } from "@/lib/utils"
 
 export default function AppointmentsPage() {
   const orgId = useOrgId()
+  const { user } = useAuth()
   const [search, setSearch] = useState("")
-  const [filterStatus, setFilterStatus] = useState<"all" | "scheduled" | "confirmed" | "completed" | "cancelled" | "no_show">("all")
+  const [view, setView] = useState<"list" | "day" | "week" | "month">("month")
+  const [currentDate, setCurrentDate] = useState(new Date())
+  const [viewMode, setViewMode] = useState<"calendar" | "list">("calendar")
+  const [selectedDate, setSelectedDate] = useState<string | null>(null)
+  const [statusFilter, setStatusFilter] = useState("all")
   const [showCreateDialog, setShowCreateDialog] = useState(false)
   const [showEditDialog, setShowEditDialog] = useState(false)
-  const [viewMode, setViewMode] = useState<"calendar" | "list">("calendar")
-  const [editingId, setEditingId] = useState<Id<"appointments"> | null>(null)
   const [showDetailDialog, setShowDetailDialog] = useState(false)
   const [selectedAppointmentId, setSelectedAppointmentId] = useState<Id<"appointments"> | null>(null)
-  const [formData, setFormData] = useState({ title: "", email: "", appointmentDate: "", appointmentTime: "", location: "", description: "", status: "scheduled" as "scheduled" | "confirmed" | "completed" | "cancelled" | "no_show", clientId: "", cantiereId: "", collaboratorId: "" })
+  const [formData, setFormData] = useState({ title: "", email: "", date: "", time: "", duration: "60", cantiereId: "", clientId: "", description: "", location: "", appointmentDate: "", appointmentTime: "", type: "sopralluogo" as "sopralluogo" | "riunione" | "colloquio" | "altro", status: "scheduled", notes: "" })
+  const statusMap: Record<string, "scheduled" | "confirmed" | "completed" | "cancelled"> = { scheduled: "scheduled", confirmed: "confirmed", completed: "completed", cancelled: "cancelled" }
 
-  const appointments = useQuery(api.appointments.list, orgId ? { organizationId: orgId! } : "skip")
-  const stats = useQuery(api.appointments.stats, orgId ? { organizationId: orgId! } : "skip")
-  const clients = useQuery(api.clients.list, orgId ? { organizationId: orgId! } : "skip")
-  const cantieri = useQuery(api.cantieri.list, orgId ? { organizationId: orgId! } : "skip")
+  const openCreate = () => { setFormData({ title: "", email: "", date: "", time: "", duration: "60", cantiereId: "", clientId: "", description: "", location: "", appointmentDate: "", appointmentTime: "", type: "sopralluogo", status: "scheduled", notes: "" }); setShowCreateDialog(true) }
+  const openEdit = (apt: any) => { setFormData({ title: apt.title || "", email: apt.email || "", date: apt.appointmentDate || "", time: apt.appointmentTime || "", duration: "60", cantiereId: apt.cantiereId || "", clientId: apt.clientId || "", description: apt.description || "", location: apt.location || "", appointmentDate: apt.appointmentDate || "", appointmentTime: apt.appointmentTime || "", type: "sopralluogo", status: apt.status || "scheduled", notes: apt.notes || "" }); setEditingId(apt._id); setShowEditDialog(true) }
+  const openDetail = (apt: any) => { setSelectedAppointmentId(apt._id); setShowDetailDialog(true) }
+
+  const appointments = useQuery(api.appointments.list, orgId ? { organizationId: orgId!, userEmail: user?.email } : "skip")
+  const stats = useQuery(api.appointments.stats, orgId ? { organizationId: orgId!, userEmail: user?.email } : "skip")
+  const clients = useQuery(api.clients.list, orgId ? { organizationId: orgId!, userEmail: user?.email } : "skip")
+  const cantieri = useQuery(api.cantieri.list, orgId ? { organizationId: orgId!, userEmail: user?.email } : "skip")
   const createAppointment = useMutation(api.appointments.create)
   const updateAppointment = useMutation(api.appointments.update)
   const deleteAppointment = useMutation(api.appointments.remove)
-
-  const openCreate = () => { setFormData({ title: "", email: "", appointmentDate: "", appointmentTime: "", location: "", description: "", status: "scheduled", clientId: "", cantiereId: "", collaboratorId: "" }); setShowCreateDialog(true) }
-  const openEdit = (a: any) => { setFormData({ title: a.title, email: a.email, appointmentDate: a.appointmentDate, appointmentTime: a.appointmentTime || "", location: a.location || "", description: a.description || "", status: a.status, clientId: a.clientId || "", cantiereId: a.cantiereId || "", collaboratorId: a.collaboratorId || "" }); setEditingId(a._id); setShowEditDialog(true) }
-  const openDetail = (a: any) => { setSelectedAppointmentId(a._id); setShowDetailDialog(true) }
+  const [editingId, setEditingId] = useState<Id<"appointments"> | null>(null)
   const selectedAppointment = useQuery(api.appointments.get, selectedAppointmentId ? { id: selectedAppointmentId, organizationId: orgId! } : "skip")
 
-  const handleCreate = async () => { if (!formData.title || !formData.email || !formData.appointmentDate || !orgId) { toast.error("Compila i campi obbligatori"); return } try { await createAppointment({ organizationId: orgId!, title: formData.title, email: formData.email, appointmentDate: formData.appointmentDate, appointmentTime: formData.appointmentTime || undefined, location: formData.location || undefined, description: formData.description || undefined, status: formData.status, clientId: formData.clientId ? formData.clientId as Id<"clients"> : undefined, cantiereId: formData.cantiereId ? formData.cantiereId as Id<"cantieri"> : undefined, collaboratorId: formData.collaboratorId ? formData.collaboratorId as Id<"collaborators"> : undefined }); setShowCreateDialog(false); toast.success("Appuntamento fissato") } catch (e) { toast.error("Errore") } }
-  const handleUpdate = async () => { if (!editingId) return; try { await updateAppointment({ id: editingId, organizationId: orgId!, title: formData.title, appointmentDate: formData.appointmentDate, appointmentTime: formData.appointmentTime || undefined, location: formData.location || undefined, description: formData.description || undefined, status: formData.status as any }); setShowEditDialog(false); toast.success("Appuntamento aggiornato") } catch (e) { toast.error("Errore") } }
+  const handleCreate = async () => { if (!formData.title || !formData.appointmentDate || !orgId) { toast.error("Compila i campi obbligatori"); return } try { await createAppointment({ organizationId: orgId!, title: formData.title, email: user?.email ?? "", appointmentDate: formData.appointmentDate, appointmentTime: formData.appointmentTime || undefined, location: formData.location || undefined, description: formData.description || undefined, status: statusMap[formData.status], clientId: formData.clientId ? formData.clientId as Id<"clients"> : undefined, cantiereId: formData.cantiereId ? formData.cantiereId as Id<"cantieri"> : undefined }); setShowCreateDialog(false); toast.success("Appuntamento fissato") } catch (e) { toast.error("Errore") } }
+  const handleUpdate = async () => { if (!editingId) return; try { await updateAppointment({ id: editingId, organizationId: orgId!, title: formData.title, appointmentDate: formData.appointmentDate, appointmentTime: formData.appointmentTime || undefined, location: formData.location || undefined, description: formData.description || undefined, status: statusMap[formData.status] }); setShowEditDialog(false); toast.success("Appuntamento aggiornato") } catch (e) { toast.error("Errore") } }
   const handleDelete = async (id: Id<"appointments">) => {
     if (!confirm("Eliminare questo appuntamento?")) return
     try { await deleteAppointment({ id, organizationId: orgId! }); toast.success("Appuntamento eliminato") } catch (e) { toast.error("Errore") }
@@ -52,7 +58,7 @@ export default function AppointmentsPage() {
   const getClientName = (id: string) => clients?.find((c) => c._id === id)?.fullName
   const getCantiereName = (id: string) => cantieri?.find((c) => c._id === id)?.name
 
-  const filteredAppointments = appointments?.filter((a) => { if (filterStatus !== "all" && a.status !== filterStatus) return false; if (search) { const s = search.toLowerCase(); return a.title.toLowerCase().includes(s) || a.email.toLowerCase().includes(s) } return true }) || []
+  const filteredAppointments = appointments?.filter((a) => { if (statusFilter !== "all" && a.status !== statusFilter) return false; if (search) { const s = search.toLowerCase(); return a.title.toLowerCase().includes(s) || a.email.toLowerCase().includes(s) } return true }) || []
   const today = new Date().toISOString().split("T")[0]
   const todayAppointments = filteredAppointments.filter((a) => a.appointmentDate === today)
   const upcomingAppointments = filteredAppointments.filter((a) => a.appointmentDate > today && a.status === "scheduled")
@@ -83,7 +89,7 @@ export default function AppointmentsPage() {
       </div>
       <div className="flex flex-wrap items-center gap-3">
         <div className="relative flex-1 min-w-[200px] max-w-md"><Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" /><Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Cerca appuntamenti..." className="pl-10" /></div>
-        <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value as any)} className="h-10 rounded-lg border border-white/10 bg-white/5 px-3 text-sm text-white"><option value="all">Tutti gli stati</option><option value="scheduled">Fissato</option><option value="confirmed">Confermato</option><option value="completed">Completato</option><option value="cancelled">Annullato</option><option value="no_show">No Show</option></select>
+        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as any)} className="h-10 rounded-lg border border-white/10 bg-white/5 px-3 text-sm text-white"><option value="all">Tutti gli stati</option><option value="scheduled">Fissato</option><option value="confirmed">Confermato</option><option value="completed">Completato</option><option value="cancelled">Annullato</option><option value="no_show">No Show</option></select>
       </div>
       {todayAppointments.length > 0 && (
         <div><h2 className="text-lg font-semibold text-white mb-3 flex items-center gap-2"><Calendar className="w-5 h-5 text-kranely-accent" /> Oggi</h2>

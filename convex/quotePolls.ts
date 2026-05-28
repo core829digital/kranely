@@ -1,15 +1,16 @@
 import { v } from "convex/values"
 import { mutation, query } from "./_generated/server"
+import { assertOrgAccess } from "./auth"
 
 export const list = query({
-  args: { organizationId: v.id("organizations"), conversationId: v.optional(v.string()), quoteId: v.optional(v.id("quotes")) },
+  args: { organizationId: v.id("organizations"), conversationId: v.optional(v.string()), quoteId: v.optional(v.id("quotes")), userEmail: v.optional(v.string()) },
   handler: async (ctx, args) => {
-    let q = ctx.db.query("quotePolls").withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId))
-    const polls = await q.collect()
-    let filtered = polls
+    const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
+    let filtered = await ctx.db.query("quotePolls").withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId)).collect()
+    filtered = filtered.sort((a, b) => b._creationTime - a._creationTime)
     if (args.conversationId) filtered = filtered.filter((p) => p.conversationId === args.conversationId)
     if (args.quoteId) filtered = filtered.filter((p) => p.quoteId === args.quoteId)
-    return filtered.sort((a, b) => b._creationTime - a._creationTime)
+    return filtered
   },
 })
 
@@ -32,9 +33,11 @@ export const create = mutation({
     description: v.optional(v.string()),
     options: v.array(v.string()),
     status: v.optional(v.union(v.literal("active"), v.literal("completed"))),
+    userEmail: v.optional(v.string()),
     createdById: v.optional(v.id("users")),
   },
   handler: async (ctx, args) => {
+    const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
     const { createdById, ...rest } = args
     const id = await ctx.db.insert("quotePolls", { ...rest, status: args.status || "active", createdById })
     return id
@@ -45,6 +48,7 @@ export const update = mutation({
   args: {
     id: v.id("quotePolls"),
     organizationId: v.id("organizations"),
+    userEmail: v.optional(v.string()),
     title: v.optional(v.string()),
     description: v.optional(v.string()),
     options: v.optional(v.array(v.string())),
@@ -52,20 +56,44 @@ export const update = mutation({
     status: v.optional(v.union(v.literal("active"), v.literal("completed"))),
   },
   handler: async (ctx, args) => {
+    const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
     const { id, organizationId, ...data } = args
     const prev = await ctx.db.get(id)
     if (!prev || prev.organizationId !== organizationId) throw new Error("Not found")
     await ctx.db.patch(id, data)
+
+    await ctx.db.insert("activityLog", {
+      organizationId,
+      userEmail: "system",
+      action: "updated",
+      entityType: "quotePoll",
+      entityId: id,
+      entityName: prev.title,
+      details: `Sondaggio preventivo "${prev.title}" aggiornato`,
+    })
+
     return id
   },
 })
 
 export const remove = mutation({
-  args: { id: v.id("quotePolls"), organizationId: v.id("organizations") },
+  args: { id: v.id("quotePolls"), organizationId: v.id("organizations"), userEmail: v.optional(v.string()) },
   handler: async (ctx, args) => {
+    const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
     const doc = await ctx.db.get(args.id)
     if (!doc || doc.organizationId !== args.organizationId) throw new Error("Not found")
     await ctx.db.delete(args.id)
+
+    await ctx.db.insert("activityLog", {
+      organizationId: args.organizationId,
+      userEmail: "system",
+      action: "deleted",
+      entityType: "quotePoll",
+      entityId: args.id,
+      entityName: doc.title,
+      details: `Sondaggio preventivo "${doc.title}" eliminato`,
+    })
+
     return args.id
   },
 })

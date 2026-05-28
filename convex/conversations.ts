@@ -1,16 +1,17 @@
 import { v } from "convex/values"
 import { mutation, query } from "./_generated/server"
 import { internal } from "./_generated/api"
+import { assertOrgAccess } from "./auth"
 
 export const list = query({
-  args: { organizationId: v.id("organizations"), clientEmail: v.optional(v.string()), adminEmail: v.optional(v.string()) },
+  args: { organizationId: v.id("organizations"), clientEmail: v.optional(v.string()), adminEmail: v.optional(v.string()), userEmail: v.optional(v.string()) },
   handler: async (ctx, args) => {
-    let q = ctx.db.query("conversations").withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId))
-    const convs = await q.collect()
-    let filtered = convs
+    const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
+    let filtered = await ctx.db.query("conversations").withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId)).collect()
+    filtered = filtered.sort((a, b) => b._creationTime - a._creationTime)
     if (args.clientEmail) filtered = filtered.filter((c) => c.clientEmail === args.clientEmail)
     if (args.adminEmail) filtered = filtered.filter((c) => c.adminEmail === args.adminEmail)
-    return filtered.sort((a, b) => (b.lastMessageDate || "") > (a.lastMessageDate || "") ? 1 : -1)
+    return filtered
   },
 })
 
@@ -24,8 +25,9 @@ export const get = query({
 })
 
 export const findByParticipants = query({
-  args: { organizationId: v.id("organizations"), clientEmail: v.string(), adminEmail: v.string() },
+  args: { organizationId: v.id("organizations"), clientEmail: v.string(), adminEmail: v.string(), userEmail: v.optional(v.string()) },
   handler: async (ctx, args) => {
+    const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
     const doc = await ctx.db
       .query("conversations")
       .withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId))
@@ -43,8 +45,10 @@ export const create = mutation({
     adminEmail: v.string(),
     clientName: v.optional(v.string()),
     adminName: v.optional(v.string()),
+    userEmail: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
     const existing = await ctx.db
       .query("conversations")
       .withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId))
@@ -71,19 +75,32 @@ export const update = mutation({
     lastMessageDate: v.optional(v.string()),
     unreadClient: v.optional(v.number()),
     unreadAdmin: v.optional(v.number()),
+    userEmail: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
     const { id, organizationId, ...data } = args
     const prev = await ctx.db.get(id)
     if (!prev || prev.organizationId !== organizationId) throw new Error("Not found")
     await ctx.db.patch(id, data)
+
+    await ctx.db.insert("activityLog", {
+      organizationId,
+      userEmail: "system",
+      action: "updated",
+      entityType: "conversation",
+      entityId: id,
+      details: `Conversazione cliente aggiornata`,
+    })
+
     return id
   },
 })
 
 export const remove = mutation({
-  args: { id: v.id("conversations"), organizationId: v.id("organizations") },
+  args: { id: v.id("conversations"), organizationId: v.id("organizations"), userEmail: v.optional(v.string()) },
   handler: async (ctx, args) => {
+    const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
     const doc = await ctx.db.get(args.id)
     if (!doc || doc.organizationId !== args.organizationId) throw new Error("Not found")
     const messages = await ctx.db
@@ -94,6 +111,16 @@ export const remove = mutation({
       await ctx.db.delete(msg._id)
     }
     await ctx.db.delete(args.id)
+
+    await ctx.db.insert("activityLog", {
+      organizationId: args.organizationId,
+      userEmail: "system",
+      action: "deleted",
+      entityType: "conversation",
+      entityId: args.id,
+      details: `Conversazione eliminata`,
+    })
+
     return args.id
   },
 })

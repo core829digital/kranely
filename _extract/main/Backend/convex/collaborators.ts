@@ -34,7 +34,7 @@ export const getById = query({
         const collab = await ctx.db.get(args.id);
         if (!collab) return null;
         // Admin sees any; collaborator sees only their own profile
-        if (caller.role !== "admin" && caller.role !== "superadmin" && collab.email !== caller.email) return null;
+        if (caller.role !== "admin"  && collab.email !== caller.email) return null;
         return collab;
     },
 });
@@ -45,7 +45,7 @@ export const getByEmail = query({
         const caller = await getCallerInfo(ctx);
         if (!caller) return null;
         // Admin sees any; collaborator only their own
-        if (caller.role !== "admin" && caller.role !== "superadmin" && caller.email !== args.email) return null;
+        if (caller.role !== "admin"  && caller.email !== args.email) return null;
         return await ctx.db
             .query("collaborators")
             .withIndex("by_email", (q: any) => q.eq("email", args.email))
@@ -61,7 +61,7 @@ export const getDetailed = query({
         const collab = await ctx.db.get(args.id);
         if (!collab) return null;
         // Admin sees any; collaborator only their own record
-        if (caller.role !== "admin" && caller.role !== "superadmin" && collab.email !== caller.email) return null;
+        if (caller.role !== "admin"  && collab.email !== caller.email) return null;
 
         const cantieri = [];
         if (collab.assigned_cantieri) {
@@ -214,7 +214,7 @@ export const logHours = mutation({
         const caller = await requireAnyAuth(ctx);
 
         // Collaborators can only log hours for themselves; admins can log for anyone
-        if (caller.role !== "admin" && caller.role !== "superadmin") {
+        if (caller.role !== "admin" ) {
             const collab = await ctx.db.get(args.collaborator_id);
             if (!collab || collab.email !== caller.email) {
                 throw new Error("Non puoi registrare ore per un altro collaboratore.");

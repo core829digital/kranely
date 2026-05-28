@@ -6,7 +6,7 @@ export const getStats = query({
   handler: async (ctx) => {
     const caller = await getCallerInfo(ctx);
     // Return null silently when unauthenticated or not admin — avoids Server Error on reconnect
-    if (!caller || (caller.role !== "admin" && caller.role !== "superadmin")) {
+    if (!caller || (caller.role !== "admin" )) {
       return null;
     }
 

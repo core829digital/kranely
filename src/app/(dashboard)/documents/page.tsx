@@ -11,26 +11,32 @@ import { useQuery, useMutation } from "convex/react"
 import { api } from "../../../../convex/_generated/api"
 import { Id } from "../../../../convex/_generated/dataModel"
 import Link from "next/link"
+import { useAuth } from "@/lib/auth/auth-context"
 import { useOrgId } from "@/hooks/useOrgId"
 import { PageSkeleton } from "@/components/Skeletons"
 
 export default function DocumentsPage() {
   const orgId = useOrgId()
+  const { user } = useAuth()
   const [search, setSearch] = useState("")
-  const [filterType, setFilterType] = useState<"all" | "contract" | "quote" | "invoice" | "technical" | "certificate" | "photo" | "other">("all")
-  const [filterStatus, setFilterStatus] = useState<"all" | "draft" | "final" | "archived">("all")
+  const [filterStatus, setFilterStatus] = useState("all")
+  const [filterType, setFilterType] = useState("all")
+  const [showUploadDialog, setShowUploadDialog] = useState(false)
   const [showCreateDialog, setShowCreateDialog] = useState(false)
   const [showEditDialog, setShowEditDialog] = useState(false)
   const [showDetailDialog, setShowDetailDialog] = useState(false)
-  const [editingDocId, setEditingDocId] = useState<Id<"documents"> | null>(null)
+  const [showShareDialog, setShowShareDialog] = useState(false)
   const [selectedDocId, setSelectedDocId] = useState<Id<"documents"> | null>(null)
-  const [formData, setFormData] = useState({ title: "", type: "other" as "contract" | "quote" | "invoice" | "technical" | "certificate" | "photo" | "other", fileUrl: "", fileName: "", status: "draft" as "draft" | "final" | "archived", description: "", clientId: "", cantiereId: "", quoteId: "" })
-  const [editFormData, setEditFormData] = useState({ title: "", description: "", status: "draft" as "draft" | "final" | "archived" })
+  const [editingDocId, setEditingDocId] = useState<Id<"documents"> | null>(null)
+  const [formData, setFormData] = useState({ title: "", type: "other" as string, fileUrl: "", fileName: "", status: "draft" as string, description: "", clientId: "", cantiereId: "", quoteId: "" })
+  const [editFormData, setEditFormData] = useState({ title: "", description: "", status: "draft" })
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [uploading, setUploading] = useState(false)
 
-  const documents = useQuery(api.documents.list, orgId ? { organizationId: orgId!, status: filterStatus !== "all" ? filterStatus : undefined } : "skip")
-  const stats = useQuery(api.documents.stats, orgId ? { organizationId: orgId! } : "skip")
-  const clients = useQuery(api.clients.list, orgId ? { organizationId: orgId! } : "skip")
-  const cantieri = useQuery(api.cantieri.list, orgId ? { organizationId: orgId! } : "skip")
+  const documents = useQuery(api.documents.list, orgId ? { organizationId: orgId!, status: filterStatus !== "all" ? filterStatus : undefined, userEmail: user?.email } : "skip")
+  const stats = useQuery(api.documents.stats, orgId ? { organizationId: orgId!, userEmail: user?.email } : "skip")
+  const clients = useQuery(api.clients.list, orgId ? { organizationId: orgId!, userEmail: user?.email } : "skip")
+  const cantieri = useQuery(api.cantieri.list, orgId ? { organizationId: orgId!, userEmail: user?.email } : "skip")
   const selectedDoc = useQuery(api.documents.get, selectedDocId ? { id: selectedDocId, organizationId: orgId! } : "skip")
 
   const createDocument = useMutation(api.documents.create)
@@ -49,12 +55,12 @@ export default function DocumentsPage() {
 
   const handleCreate = async () => {
     if (!formData.title || !orgId) { toast.error("Compila i campi obbligatori"); return }
-    try { await createDocument({ organizationId: orgId!, title: formData.title, type: formData.type, fileUrl: formData.fileUrl || "/docs/placeholder.pdf", fileName: formData.fileName || formData.title, status: formData.status, description: formData.description || undefined, clientId: formData.clientId ? formData.clientId as Id<"clients"> : undefined, cantiereId: formData.cantiereId ? formData.cantiereId as Id<"cantieri"> : undefined, quoteId: formData.quoteId ? formData.quoteId as Id<"quotes"> : undefined }); setShowCreateDialog(false); toast.success("Documento caricato") } catch (e) { toast.error("Errore") }
+    try { await createDocument({ organizationId: orgId!, title: formData.title, type: formData.type as any, fileUrl: formData.fileUrl || "/docs/placeholder.pdf", fileName: formData.fileName || formData.title, status: formData.status as any, description: formData.description || undefined, clientId: formData.clientId ? formData.clientId as Id<"clients"> : undefined, cantiereId: formData.cantiereId ? formData.cantiereId as Id<"cantieri"> : undefined, quoteId: formData.quoteId ? formData.quoteId as Id<"quotes"> : undefined }); setShowCreateDialog(false); toast.success("Documento caricato") } catch (e) { toast.error("Errore") }
   }
 
   const handleEdit = async () => {
     if (!editingDocId) return
-    try { await updateDocument({ id: editingDocId, organizationId: orgId!, title: editFormData.title, description: editFormData.description || undefined, status: editFormData.status }); setShowEditDialog(false); toast.success("Documento aggiornato") } catch (e) { toast.error("Errore") }
+    try { await updateDocument({ id: editingDocId, organizationId: orgId!, title: editFormData.title, description: editFormData.description || undefined, status: editFormData.status as any }); setShowEditDialog(false); toast.success("Documento aggiornato") } catch (e) { toast.error("Errore") }
   }
 
   const handleDelete = async (id: Id<"documents">) => {

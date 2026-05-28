@@ -29,7 +29,7 @@ export default function ActivityLogPage() {
   const [search, setSearch] = useState("")
   const [entityFilter, setEntityFilter] = useState("all")
 
-  const activities = useQuery(api.activityLog.list, orgId ? { organizationId: orgId } : "skip")
+  const activities = useQuery(api.activityLog.list, orgId ? { organizationId: orgId, userEmail: user?.email } : "skip")
 
   if (user?.role !== "admin" && user?.role !== "superadmin") {
     return <div className="p-12 text-center text-white/40"><Activity className="w-12 h-12 mx-auto mb-4 opacity-50" /><p>Accesso non autorizzato</p></div>

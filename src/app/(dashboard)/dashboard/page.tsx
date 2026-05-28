@@ -1,5 +1,6 @@
 "use client"
 
+import { useEffect, useRef } from "react"
 import { useAuth } from "@/lib/auth/auth-context"
 import { Users, FileText, Building2, CreditCard, ArrowUpRight, ArrowDownRight, Plus, Clock, CheckCircle2, AlertCircle, Truck } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -11,6 +12,7 @@ import { api } from "../../../../convex/_generated/api"
 import Link from "next/link"
 import { useOrgId } from "@/hooks/useOrgId"
 import { PageSkeleton } from "@/components/Skeletons"
+import { toast } from "sonner"
 
 const COLORS = ["#FFC703", "#3B82F6", "#10B981", "#EF4444", "#8B5CF6", "#F59E0B"]
 
@@ -37,12 +39,26 @@ export default function DashboardPage() {
   const { user } = useAuth()
   const orgId = useOrgId()
 
-  const overview = useQuery(api.dashboard.overview, orgId ? { organizationId: orgId } : "skip")
-  const revenueTrend = useQuery(api.dashboard.revenueTrend, orgId ? { organizationId: orgId } : "skip")
-  const clientDistribution = useQuery(api.dashboard.clientDistribution, orgId ? { organizationId: orgId } : "skip")
-  const cantiereStatus = useQuery(api.dashboard.cantiereStatus, orgId ? { organizationId: orgId } : "skip")
-  const quoteStatus = useQuery(api.dashboard.quoteStatus, orgId ? { organizationId: orgId } : "skip")
-  const recentActivity = useQuery(api.dashboard.recentActivity, orgId ? { organizationId: orgId, limit: 10 } : "skip")
+  const overview = useQuery(api.dashboard.overview, orgId ? { organizationId: orgId, userEmail: user?.email } : "skip")
+  const revenueTrend = useQuery(api.dashboard.revenueTrend, orgId ? { organizationId: orgId, userEmail: user?.email } : "skip")
+  const clientDistribution = useQuery(api.dashboard.clientDistribution, orgId ? { organizationId: orgId, userEmail: user?.email } : "skip")
+  const cantiereStatus = useQuery(api.dashboard.cantiereStatus, orgId ? { organizationId: orgId, userEmail: user?.email } : "skip")
+  const quoteStatus = useQuery(api.dashboard.quoteStatus, orgId ? { organizationId: orgId, userEmail: user?.email } : "skip")
+  const recentActivity = useQuery(api.dashboard.recentActivity, orgId ? { organizationId: orgId, limit: 10, userEmail: user?.email } : "skip")
+
+  const hasError = useRef(false)
+
+  useEffect(() => {
+    if (orgId && overview === undefined && !hasError.current) {
+      const timeout = setTimeout(() => {
+        if (overview === undefined && !hasError.current) {
+          hasError.current = true
+          toast.error("Errore nel caricamento")
+        }
+      }, 15000)
+      return () => clearTimeout(timeout)
+    }
+  }, [orgId, overview])
 
   if (!orgId || !overview) return <PageSkeleton />
 
@@ -53,8 +69,20 @@ export default function DashboardPage() {
     { label: "Pagamenti in Attesa", value: `EUR${overview.payments.pending.toLocaleString("it-IT")}`, change: overview.payments.overdue > 0 ? `EUR${overview.payments.overdue.toLocaleString("it-IT")} scaduti` : "Nessun scaduto", trend: overview.payments.overdue > 0 ? "down" : "up", icon: CreditCard, href: "/payments" },
   ]
 
-  const revenueChartData = revenueTrend?.map((item) => ({ month: item.month.slice(5), revenue: item.incoming, expenses: item.outgoing })) || []
-  const quoteChartData = quoteStatus?.map((item, i) => ({ name: item.name, value: item.value, color: COLORS[i % COLORS.length] })) || []
+  let revenueChartData: { month: string; revenue: number; expenses: number }[] = []
+  let quoteChartData: { name: string; value: number; color: string }[] = []
+
+  try {
+    revenueChartData = revenueTrend?.map((item) => ({ month: item.month.slice(5), revenue: item.incoming, expenses: item.outgoing })) || []
+  } catch {
+    toast.error("Errore nel caricamento")
+  }
+
+  try {
+    quoteChartData = quoteStatus?.map((item, i) => ({ name: item.name, value: item.value, color: COLORS[i % COLORS.length] })) || []
+  } catch {
+    toast.error("Errore nel caricamento")
+  }
 
   const activityIcons: Record<string, React.ReactNode> = {
     quote: <FileText className="w-3.5 h-3.5 text-blue-400" />,

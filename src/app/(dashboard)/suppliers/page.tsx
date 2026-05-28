@@ -9,6 +9,7 @@ import { toast } from "sonner"
 import { useQuery, useMutation } from "convex/react"
 import { api } from "../../../../convex/_generated/api"
 import { Id } from "../../../../convex/_generated/dataModel"
+import { useAuth } from "@/lib/auth/auth-context"
 import { useOrgId } from "@/hooks/useOrgId"
 import { PageSkeleton } from "@/components/Skeletons"
 import {
@@ -73,11 +74,12 @@ function BadgeStatus({ status }: { status: string }) {
 
 export default function SuppliersPage() {
   const orgId = useOrgId()
+  const { user } = useAuth()
   const [activeTab, setActiveTab] = useState("anagrafica")
   const [selectedSupplierId, setSelectedSupplierId] = useState<Id<"suppliers"> | null>(null)
   const [search, setSearch] = useState("")
 
-  const suppliers = useQuery(api.suppliers.list, orgId ? { organizationId: orgId, search: search || undefined } : "skip")
+  const suppliers = useQuery(api.suppliers.list, orgId ? { organizationId: orgId, search: search || undefined, userEmail: user?.email } : "skip")
   const selectedSupplier = useQuery(api.suppliers.get, selectedSupplierId ? { id: selectedSupplierId, organizationId: orgId! } : "skip")
 
   if (!orgId || !suppliers) return <PageSkeleton />
@@ -136,25 +138,26 @@ export default function SuppliersPage() {
           orgId={orgId}
           selectedSupplierId={selectedSupplierId}
           setSelectedSupplierId={setSelectedSupplierId}
+          userEmail={user?.email}
         />
       )}
       {activeTab === "richieste" && (
-        <RichiesteTab orgId={orgId} selectedSupplierId={selectedSupplierId} />
+        <RichiesteTab orgId={orgId} selectedSupplierId={selectedSupplierId} userEmail={user?.email} />
       )}
       {activeTab === "ordini" && (
-        <OrdiniTab orgId={orgId} selectedSupplierId={selectedSupplierId} />
+        <OrdiniTab orgId={orgId} selectedSupplierId={selectedSupplierId} userEmail={user?.email} />
       )}
       {activeTab === "produzione" && (
-        <ProduzioneTab orgId={orgId} selectedSupplierId={selectedSupplierId} />
+        <ProduzioneTab orgId={orgId} selectedSupplierId={selectedSupplierId} userEmail={user?.email} />
       )}
       {activeTab === "consegna" && (
-        <ConsegnaTab orgId={orgId} selectedSupplierId={selectedSupplierId} />
+        <ConsegnaTab orgId={orgId} selectedSupplierId={selectedSupplierId} userEmail={user?.email} />
       )}
       {activeTab === "chat" && (
-        <ChatTab orgId={orgId} selectedSupplierId={selectedSupplierId} />
+        <ChatTab orgId={orgId} selectedSupplierId={selectedSupplierId} userEmail={user?.email} />
       )}
       {activeTab === "calendario" && (
-        <CalendarioTab orgId={orgId} selectedSupplierId={selectedSupplierId} />
+        <CalendarioTab orgId={orgId} selectedSupplierId={selectedSupplierId} userEmail={user?.email} />
       )}
     </div>
   )
@@ -164,10 +167,12 @@ function AnagraficaTab({
   orgId,
   selectedSupplierId,
   setSelectedSupplierId,
+  userEmail,
 }: {
   orgId: Id<"organizations">
   selectedSupplierId: Id<"suppliers"> | null
   setSelectedSupplierId: (id: Id<"suppliers"> | null) => void
+  userEmail?: string
 }) {
   const [search, setSearch] = useState("")
   const [filterType, setFilterType] = useState<string>("all")
@@ -183,7 +188,7 @@ function AnagraficaTab({
     supplierCode: "", whatsappLink: "",
   })
 
-  const suppliers = useQuery(api.suppliers.list, { organizationId: orgId, search: search || undefined, type: filterType !== "all" ? filterType : undefined, status: filterStatus !== "all" ? filterStatus : undefined })
+  const suppliers = useQuery(api.suppliers.list, { organizationId: orgId, search: search || undefined, type: filterType !== "all" ? filterType : undefined, status: filterStatus !== "all" ? filterStatus : undefined, userEmail })
   const detail = useQuery(api.suppliers.get, detailId ? { id: detailId, organizationId: orgId } : "skip")
   const createSupplier = useMutation(api.suppliers.create)
   const updateSupplier = useMutation(api.suppliers.update)
@@ -381,7 +386,7 @@ function AnagraficaTab({
   )
 }
 
-function RichiesteTab({ orgId, selectedSupplierId }: { orgId: Id<"organizations">; selectedSupplierId: Id<"suppliers"> | null }) {
+function RichiesteTab({ orgId, selectedSupplierId, userEmail }: { orgId: Id<"organizations">; selectedSupplierId: Id<"suppliers"> | null; userEmail?: string }) {
   const [statusFilter, setStatusFilter] = useState("all")
   const [showCreate, setShowCreate] = useState(false)
   const [showConvert, setShowConvert] = useState<Id<"supplierRequests"> | null>(null)
@@ -389,7 +394,7 @@ function RichiesteTab({ orgId, selectedSupplierId }: { orgId: Id<"organizations"
   const [convertDelivery, setConvertDelivery] = useState("")
   const [form, setForm] = useState({ title: "", description: "", quantity: "", urgency: "normal", material: "", notes: "" })
 
-  const requests = useQuery(api.supplierRequests.list, { organizationId: orgId, supplierId: selectedSupplierId || undefined, status: statusFilter !== "all" ? statusFilter : undefined })
+  const requests = useQuery(api.supplierRequests.list, { organizationId: orgId, supplierId: selectedSupplierId || undefined, status: statusFilter !== "all" ? statusFilter : undefined, userEmail })
   const createRequest = useMutation(api.supplierRequests.create)
   const convertToOrder = useMutation(api.supplierRequests.convertToOrder)
 
@@ -507,12 +512,12 @@ function RichiesteTab({ orgId, selectedSupplierId }: { orgId: Id<"organizations"
   )
 }
 
-function OrdiniTab({ orgId, selectedSupplierId }: { orgId: Id<"organizations">; selectedSupplierId: Id<"suppliers"> | null }) {
+function OrdiniTab({ orgId, selectedSupplierId, userEmail }: { orgId: Id<"organizations">; selectedSupplierId: Id<"suppliers"> | null; userEmail?: string }) {
   const [statusFilter, setStatusFilter] = useState("all")
   const [showEditPricing, setShowEditPricing] = useState<Id<"supplierOrders"> | null>(null)
   const [pricingAmount, setPricingAmount] = useState("")
 
-  const orders = useQuery(api.supplierOrders.list, { organizationId: orgId, supplierId: selectedSupplierId || undefined, status: statusFilter !== "all" ? statusFilter : undefined })
+  const orders = useQuery(api.supplierOrders.list, { organizationId: orgId, supplierId: selectedSupplierId || undefined, status: statusFilter !== "all" ? statusFilter : undefined, userEmail })
   const updateOrder = useMutation(api.supplierOrders.update)
 
   const handleUpdatePricing = async () => {
@@ -596,12 +601,12 @@ function OrdiniTab({ orgId, selectedSupplierId }: { orgId: Id<"organizations">; 
   )
 }
 
-function ProduzioneTab({ orgId, selectedSupplierId }: { orgId: Id<"organizations">; selectedSupplierId: Id<"suppliers"> | null }) {
+function ProduzioneTab({ orgId, selectedSupplierId, userEmail }: { orgId: Id<"organizations">; selectedSupplierId: Id<"suppliers"> | null; userEmail?: string }) {
   const [selectedOrderId, setSelectedOrderId] = useState<Id<"supplierOrders"> | null>(null)
-  const [adminEmail] = useState("admin@kranely.demo")
+  const [adminEmail] = useState(() => { if (typeof window !== "undefined") return localStorage.getItem("kranely_user_email") || ""; return "" })
 
-  const orders = useQuery(api.supplierOrders.list, { organizationId: orgId, supplierId: selectedSupplierId || undefined })
-  const production = useQuery(api.supplierProduction.list, { organizationId: orgId, supplierId: selectedSupplierId || undefined, orderId: selectedOrderId || undefined })
+  const orders = useQuery(api.supplierOrders.list, { organizationId: orgId, supplierId: selectedSupplierId || undefined, userEmail })
+  const production = useQuery(api.supplierProduction.list, { organizationId: orgId, supplierId: selectedSupplierId || undefined, orderId: selectedOrderId || undefined, userEmail })
 
   const updateProduction = useMutation(api.supplierProduction.update)
   const createProduction = useMutation(api.supplierProduction.create)
@@ -646,8 +651,8 @@ function ProduzioneTab({ orgId, selectedSupplierId }: { orgId: Id<"organizations
 
   const updateOrderStatus = async (id: Id<"supplierOrders">, status: string) => {
     try {
-      const mod = await import("../../../../convex/_generated/api")
-    } catch {}
+      toast.error("Funzione non ancora implementata")
+    } catch { toast.error("Errore aggiornamento ordine") }
   }
 
   return (
@@ -762,7 +767,7 @@ function ProduzioneTab({ orgId, selectedSupplierId }: { orgId: Id<"organizations
   )
 }
 
-function ConsegnaTab({ orgId, selectedSupplierId }: { orgId: Id<"organizations">; selectedSupplierId: Id<"suppliers"> | null }) {
+function ConsegnaTab({ orgId, selectedSupplierId, userEmail }: { orgId: Id<"organizations">; selectedSupplierId: Id<"suppliers"> | null; userEmail?: string }) {
   const [showCreate, setShowCreate] = useState(false)
   const [statusFilter, setStatusFilter] = useState("all")
   const [form, setForm] = useState({
@@ -770,7 +775,7 @@ function ConsegnaTab({ orgId, selectedSupplierId }: { orgId: Id<"organizations">
     driverVehicle: "", driverLicensePlate: "", notes: "",
   })
 
-  const deliveries = useQuery(api.supplierDeliveries.list, { organizationId: orgId, supplierId: selectedSupplierId || undefined, status: statusFilter !== "all" ? statusFilter : undefined })
+  const deliveries = useQuery(api.supplierDeliveries.list, { organizationId: orgId, supplierId: selectedSupplierId || undefined, status: statusFilter !== "all" ? statusFilter : undefined, userEmail })
   const createDelivery = useMutation(api.supplierDeliveries.create)
   const updateDelivery = useMutation(api.supplierDeliveries.update)
 
@@ -929,11 +934,11 @@ function ConsegnaTab({ orgId, selectedSupplierId }: { orgId: Id<"organizations">
   )
 }
 
-function ChatTab({ orgId, selectedSupplierId }: { orgId: Id<"organizations">; selectedSupplierId: Id<"suppliers"> | null }) {
+function ChatTab({ orgId, selectedSupplierId, userEmail }: { orgId: Id<"organizations">; selectedSupplierId: Id<"suppliers"> | null; userEmail?: string }) {
   const [message, setMessage] = useState("")
-  const adminEmail = "admin@kranely.demo"
+  const adminEmail = typeof window !== "undefined" ? localStorage.getItem("kranely_user_email") || "" : ""
 
-  const channels = useQuery(api.chat.listChannels, orgId ? { organizationId: orgId } : "skip")
+  const channels = useQuery(api.chat.listChannels, orgId && userEmail ? { organizationId: orgId, userEmail } : "skip")
   const supplierChannel = channels?.find((ch) =>
     ch.type === "private" && ch.linkedId === selectedSupplierId
   )
@@ -955,7 +960,7 @@ function ChatTab({ orgId, selectedSupplierId }: { orgId: Id<"organizations">; se
           linkedId: selectedSupplierId,
           members: [adminEmail],
         })
-      } catch {}
+      } catch { toast.error("Errore creazione canale chat") }
     }
   }
 
@@ -1033,11 +1038,11 @@ function ChatTab({ orgId, selectedSupplierId }: { orgId: Id<"organizations">; se
   )
 }
 
-function CalendarioTab({ orgId, selectedSupplierId }: { orgId: Id<"organizations">; selectedSupplierId: Id<"suppliers"> | null }) {
+function CalendarioTab({ orgId, selectedSupplierId, userEmail }: { orgId: Id<"organizations">; selectedSupplierId: Id<"suppliers"> | null; userEmail?: string }) {
   const [viewMode, setViewMode] = useState<"day" | "week" | "month" | "quarter">("month")
   const [currentDate, setCurrentDate] = useState(new Date())
 
-  const deliveries = useQuery(api.supplierDeliveries.list, { organizationId: orgId, supplierId: selectedSupplierId || undefined })
+  const deliveries = useQuery(api.supplierDeliveries.list, { organizationId: orgId, supplierId: selectedSupplierId || undefined, userEmail })
 
   const monthStart = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1)
   const monthEnd = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0)

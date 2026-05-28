@@ -27,6 +27,7 @@ export default function SignUpPage() {
   const [phone, setPhone] = useState("")
   const [role, setRole] = useState<UserRole>("client")
   const [subrole, setSubrole] = useState<UserSubrole>(null)
+  const [acceptedTerms, setAcceptedTerms] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -91,7 +92,22 @@ export default function SignUpPage() {
 
           {error && <p className="text-red-400 text-sm text-center">{error}</p>}
 
-          <Button type="submit" disabled={isLoading} className="w-full bg-kranely-accent text-kranely-app-bg hover:bg-kranely-accent/90 font-semibold">
+          <label className="flex items-start gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={acceptedTerms}
+              onChange={(e) => setAcceptedTerms(e.target.checked)}
+              className="mt-0.5 w-4 h-4 rounded border-white/20 bg-white/5 text-kranely-accent focus:ring-kranely-accent/50 focus:outline-none accent-kranely-accent"
+            />
+            <span className="text-sm text-white/60">
+              Accetto i{" "}
+              <a href="/terms" className="text-kranely-accent hover:underline">Termini e Servizio</a>
+              {" "}e la{" "}
+              <a href="/privacy" className="text-kranely-accent hover:underline">Privacy Policy</a>
+            </span>
+          </label>
+
+          <Button type="submit" disabled={isLoading || !acceptedTerms} className="w-full bg-kranely-accent text-kranely-app-bg hover:bg-kranely-accent/90 font-semibold disabled:opacity-50 disabled:cursor-not-allowed">
             {isLoading ? "Registrazione in corso..." : "Crea account"}
           </Button>
         </form>

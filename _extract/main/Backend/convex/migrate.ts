@@ -43,7 +43,7 @@ export const runMigration = mutation({
             .query("users")
             .withIndex("by_token", (q) => q.eq("tokenIdentifier", identity.tokenIdentifier))
             .first();
-        if (!caller || (caller.role !== "admin" && caller.role !== "superadmin")) {
+        if (!caller || (caller.role !== "admin" )) {
             throw new Error("Accesso negato. Solo gli amministratori possono eseguire la migrazione.");
         }
 

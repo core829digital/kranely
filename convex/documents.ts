@@ -1,24 +1,24 @@
 import { v } from "convex/values"
 import { mutation, query } from "./_generated/server"
 import { internal } from "./_generated/api"
+import { assertOrgAccess } from "./auth"
 
 // ═══════════════════════════════════════════════════════
 // DOCUMENTS
 // ═══════════════════════════════════════════════════════
 
 export const list = query({
-  args: { organizationId: v.id("organizations"), cantiereId: v.optional(v.id("cantieri")), clientId: v.optional(v.id("clients")), quoteId: v.optional(v.id("quotes")), status: v.optional(v.string()) },
+  args: { organizationId: v.id("organizations"), cantiereId: v.optional(v.id("cantieri")), clientId: v.optional(v.id("clients")), quoteId: v.optional(v.id("quotes")), status: v.optional(v.string()), userEmail: v.optional(v.string()) },
   handler: async (ctx, args) => {
-    let q = ctx.db.query("documents").withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId))
-    const docs = await q.collect()
-
-    let filtered = docs
+    const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
+    let filtered = await ctx.db.query("documents").withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId)).collect()
+    filtered = filtered.sort((a, b) => b._creationTime - a._creationTime)
     if (args.cantiereId) filtered = filtered.filter((d) => d.cantiereId === args.cantiereId)
     if (args.clientId) filtered = filtered.filter((d) => d.clientId === args.clientId)
     if (args.quoteId) filtered = filtered.filter((d) => d.quoteId === args.quoteId)
     if (args.status && args.status !== "all") filtered = filtered.filter((d) => d.status === args.status)
 
-    return filtered.sort((a, b) => b._creationTime - a._creationTime)
+    return filtered
   },
 })
 
@@ -49,6 +49,7 @@ export const create = mutation({
     userEmail: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
     const { createdById, userEmail, ...rest } = args
     const id = await ctx.db.insert("documents", { ...rest, status: args.status || "draft", createdById })
 
@@ -83,29 +84,55 @@ export const update = mutation({
     title: v.optional(v.string()),
     status: v.optional(v.union(v.literal("draft"), v.literal("final"), v.literal("archived"))),
     description: v.optional(v.string()),
+    userEmail: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
     const { id, organizationId, ...data } = args
     const doc = await ctx.db.get(id)
     if (!doc || doc.organizationId !== organizationId) throw new Error("Not found")
     await ctx.db.patch(id, data)
+
+    await ctx.db.insert("activityLog", {
+      organizationId,
+      userEmail: "system",
+      action: "updated",
+      entityType: "document",
+      entityId: id,
+      entityName: doc.title,
+      details: `Documento "${doc.title}" aggiornato`,
+    })
+
     return id
   },
 })
 
 export const remove = mutation({
-  args: { id: v.id("documents"), organizationId: v.id("organizations") },
+  args: { id: v.id("documents"), organizationId: v.id("organizations"), userEmail: v.optional(v.string()) },
   handler: async (ctx, args) => {
+    const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
     const doc = await ctx.db.get(args.id)
     if (!doc || doc.organizationId !== args.organizationId) throw new Error("Not found")
     await ctx.db.delete(args.id)
+
+    await ctx.db.insert("activityLog", {
+      organizationId: args.organizationId,
+      userEmail: "system",
+      action: "deleted",
+      entityType: "document",
+      entityId: args.id,
+      entityName: doc.title,
+      details: `Documento "${doc.title}" eliminato`,
+    })
+
     return args.id
   },
 })
 
 export const stats = query({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.id("organizations"), userEmail: v.optional(v.string()) },
   handler: async (ctx, args) => {
+    const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
     const docs = await ctx.db
       .query("documents")
       .withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId))

@@ -1,24 +1,25 @@
 import { v } from "convex/values"
 import { mutation, query } from "./_generated/server"
 import { internal } from "./_generated/api"
+import { resolveNotifTarget } from "./lib/helpers"
+import { assertOrgAccess } from "./auth"
 
 // ═══════════════════════════════════════════════════════
 // CERTIFICATES (Certificazioni)
 // ═══════════════════════════════════════════════════════
 
 export const list = query({
-  args: { organizationId: v.id("organizations"), cantiereId: v.optional(v.id("cantieri")), collaboratorId: v.optional(v.id("collaborators")), category: v.optional(v.string()), status: v.optional(v.string()) },
+  args: { organizationId: v.id("organizations"), cantiereId: v.optional(v.id("cantieri")), collaboratorId: v.optional(v.id("collaborators")), category: v.optional(v.string()), status: v.optional(v.string()), userEmail: v.optional(v.string()) },
   handler: async (ctx, args) => {
-    let q = ctx.db.query("certificates").withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId))
-    const certs = await q.collect()
-
-    let filtered = certs
+    const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
+    let filtered = await ctx.db.query("certificates").withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId)).collect()
+    filtered = filtered.sort((a, b) => b._creationTime - a._creationTime)
     if (args.cantiereId) filtered = filtered.filter((c) => c.cantiereId === args.cantiereId)
     if (args.collaboratorId) filtered = filtered.filter((c) => c.collaboratorId === args.collaboratorId)
     if (args.category && args.category !== "all") filtered = filtered.filter((c) => c.category === args.category)
     if (args.status && args.status !== "all") filtered = filtered.filter((c) => c.status === args.status)
 
-    return filtered.sort((a, b) => (b.expiryDate || "").localeCompare(a.expiryDate || ""))
+    return filtered
   },
 })
 
@@ -44,8 +45,10 @@ export const create = mutation({
     collaboratorId: v.optional(v.id("collaborators")),
     cantiereId: v.optional(v.id("cantieri")),
     documentUrl: v.optional(v.string()),
+    userEmail: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
     const { ...rest } = args
     const id = await ctx.db.insert("certificates", { ...rest, status: args.status || "valido" })
 
@@ -61,7 +64,7 @@ export const create = mutation({
 
     await ctx.scheduler.runAfter(0, internal.notifications.createNotification, {
       organizationId: args.organizationId,
-      userEmail: "admin@kranely.demo",
+      userEmail: await resolveNotifTarget(ctx, args.organizationId),
       title: "Nuovo certificato",
       message: `Certificato "${args.name}" aggiunto (${args.expiryDate ? "scade: " + new Date(args.expiryDate).toLocaleDateString("it-IT") : "nessuna scadenza"})`,
       type: "certificate_created",
@@ -88,15 +91,26 @@ export const update = mutation({
     userEmail: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
     const { id, organizationId, userEmail, ...data } = args
     const prev = await ctx.db.get(id)
     if (!prev || prev.organizationId !== organizationId) throw new Error("Not found")
     await ctx.db.patch(id, data)
 
+    await ctx.db.insert("activityLog", {
+      organizationId,
+      userEmail: "system",
+      action: "updated",
+      entityType: "certificate",
+      entityId: id,
+      entityName: prev.name,
+      details: `Certificato "${prev.name}" aggiornato`,
+    })
+
     if (data.status && data.status !== prev.status) {
       await ctx.scheduler.runAfter(0, internal.notifications.createNotification, {
         organizationId: prev.organizationId,
-        userEmail: userEmail || "admin@kranely.demo",
+        userEmail: await resolveNotifTarget(ctx, prev.organizationId, userEmail),
         title: `Certificato ${data.status === "scaduto" ? "scaduto" : "aggiornato"}`,
         message: `Il certificato "${prev.name}" è ora "${data.status}"`,
         type: "certificate_status_change",
@@ -110,18 +124,31 @@ export const update = mutation({
 })
 
 export const remove = mutation({
-  args: { id: v.id("certificates"), organizationId: v.id("organizations") },
+  args: { id: v.id("certificates"), organizationId: v.id("organizations"), userEmail: v.optional(v.string()) },
   handler: async (ctx, args) => {
+    const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
     const cert = await ctx.db.get(args.id)
     if (!cert || cert.organizationId !== args.organizationId) throw new Error("Not found")
     await ctx.db.delete(args.id)
+
+    await ctx.db.insert("activityLog", {
+      organizationId: args.organizationId,
+      userEmail: "system",
+      action: "deleted",
+      entityType: "certificate",
+      entityId: args.id,
+      entityName: cert.name,
+      details: `Certificato "${cert.name}" eliminato`,
+    })
+
     return args.id
   },
 })
 
 export const stats = query({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.id("organizations"), userEmail: v.optional(v.string()) },
   handler: async (ctx, args) => {
+    const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
     const certs = await ctx.db
       .query("certificates")
       .withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId))

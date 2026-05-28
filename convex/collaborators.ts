@@ -1,15 +1,14 @@
 import { v } from "convex/values"
 import { mutation, query } from "./_generated/server"
 import { internal } from "./_generated/api"
-import { hashPassword } from "./auth"
+import { hashPassword, assertOrgAccess } from "./auth"
 
 export const list = query({
-  args: { organizationId: v.id("organizations"), search: v.optional(v.string()), type: v.optional(v.string()), status: v.optional(v.string()) },
+  args: { organizationId: v.id("organizations"), search: v.optional(v.string()), type: v.optional(v.string()), status: v.optional(v.string()), userEmail: v.optional(v.string()) },
   handler: async (ctx, args) => {
-    let q = ctx.db.query("collaborators").withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId))
-    const collabs = await q.collect()
-
-    let filtered = collabs
+    const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
+    let filtered = await ctx.db.query("collaborators").withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId)).collect()
+    filtered = filtered.sort((a, b) => b._creationTime - a._creationTime)
     if (args.search) {
       const s = args.search.toLowerCase()
       filtered = filtered.filter((c) => c.fullName.toLowerCase().includes(s) || c.email.toLowerCase().includes(s) || (c.specialization && c.specialization.toLowerCase().includes(s)))
@@ -17,7 +16,7 @@ export const list = query({
     if (args.type && args.type !== "all") filtered = filtered.filter((c) => c.type === args.type)
     if (args.status && args.status !== "all") filtered = filtered.filter((c) => c.status === args.status)
 
-    return filtered.sort((a, b) => b._creationTime - a._creationTime)
+    return filtered
   },
 })
 
@@ -52,6 +51,7 @@ export const create = mutation({
     userEmail: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
     const { userEmail, ...rest } = args
     const id = await ctx.db.insert("collaborators", { ...rest, status: args.status || "active", liveStatus: args.liveStatus || "disponibile", type: args.type || "employee" })
 
@@ -103,10 +103,21 @@ export const update = mutation({
     userEmail: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
     const { id, organizationId, userEmail, ...data } = args
     const prev = await ctx.db.get(id)
     if (!prev || prev.organizationId !== organizationId) throw new Error("Not found")
     await ctx.db.patch(id, data)
+
+    await ctx.db.insert("activityLog", {
+      organizationId,
+      userEmail: "system",
+      action: "updated",
+      entityType: "collaborator",
+      entityId: id,
+      entityName: prev.fullName,
+      details: `Collaboratore "${prev.fullName}" aggiornato`,
+    })
 
     if (data.status && data.status !== prev.status) {
       await ctx.scheduler.runAfter(0, internal.notifications.createNotification, {
@@ -125,11 +136,23 @@ export const update = mutation({
 })
 
 export const remove = mutation({
-  args: { id: v.id("collaborators"), organizationId: v.id("organizations") },
+  args: { id: v.id("collaborators"), organizationId: v.id("organizations"), userEmail: v.optional(v.string()) },
   handler: async (ctx, args) => {
+    const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
     const collab = await ctx.db.get(args.id)
     if (!collab || collab.organizationId !== args.organizationId) throw new Error("Not found")
     await ctx.db.delete(args.id)
+
+    await ctx.db.insert("activityLog", {
+      organizationId: args.organizationId,
+      userEmail: "system",
+      action: "deleted",
+      entityType: "collaborator",
+      entityId: args.id,
+      entityName: collab.fullName,
+      details: `Collaboratore "${collab.fullName}" rimosso`,
+    })
+
     return args.id
   },
 })
@@ -145,6 +168,7 @@ export const addHours = mutation({
     userEmail: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
     const { userEmail, ...rest } = args
     const id = await ctx.db.insert("collaboratorHours", { ...rest, approved: false })
 
@@ -163,8 +187,9 @@ export const addHours = mutation({
 })
 
 export const stats = query({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.id("organizations"), userEmail: v.optional(v.string()) },
   handler: async (ctx, args) => {
+    const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
     const collabs = await ctx.db
       .query("collaborators")
       .withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId))
@@ -187,14 +212,14 @@ export const stats = query({
 })
 
 export const listHours = query({
-  args: { organizationId: v.id("organizations"), collaboratorId: v.optional(v.id("collaborators")), cantiereId: v.optional(v.id("cantieri")) },
+  args: { organizationId: v.id("organizations"), collaboratorId: v.optional(v.id("collaborators")), cantiereId: v.optional(v.id("cantieri")), userEmail: v.optional(v.string()) },
   handler: async (ctx, args) => {
-    let q = ctx.db.query("collaboratorHours").withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId))
-    const hours = await q.collect()
-    let filtered = hours
+    const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
+    let filtered = await ctx.db.query("collaboratorHours").withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId)).collect()
+    filtered = filtered.sort((a, b) => b._creationTime - a._creationTime)
     if (args.collaboratorId) filtered = filtered.filter((h) => h.collaboratorId === args.collaboratorId)
     if (args.cantiereId) filtered = filtered.filter((h) => h.cantiereId === args.cantiereId)
-    return filtered.sort((a, b) => b._creationTime - a._creationTime)
+    return filtered
   },
 })
 
@@ -205,22 +230,45 @@ export const updateHours = mutation({
     hours: v.optional(v.number()),
     description: v.optional(v.string()),
     approved: v.optional(v.boolean()),
+    userEmail: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
     const { id, organizationId, ...data } = args
     const prev = await ctx.db.get(id)
     if (!prev || prev.organizationId !== organizationId) throw new Error("Not found")
     await ctx.db.patch(id, data)
+
+    await ctx.db.insert("activityLog", {
+      organizationId,
+      userEmail: "system",
+      action: "updated",
+      entityType: "collaboratorHours",
+      entityId: id,
+      details: `Ore collaboratore aggiornate`,
+    })
+
     return id
   },
 })
 
 export const removeHours = mutation({
-  args: { id: v.id("collaboratorHours"), organizationId: v.id("organizations") },
+  args: { id: v.id("collaboratorHours"), organizationId: v.id("organizations"), userEmail: v.optional(v.string()) },
   handler: async (ctx, args) => {
+    const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
     const doc = await ctx.db.get(args.id)
     if (!doc || doc.organizationId !== args.organizationId) throw new Error("Not found")
     await ctx.db.delete(args.id)
+
+    await ctx.db.insert("activityLog", {
+      organizationId: args.organizationId,
+      userEmail: "system",
+      action: "deleted",
+      entityType: "collaboratorHours",
+      entityId: args.id,
+      details: `Ore collaboratore rimosse`,
+    })
+
     return args.id
   },
 })
@@ -229,22 +277,22 @@ export const generateOnboardingLink = mutation({
   args: {
     collaboratorId: v.id("collaborators"),
     organizationId: v.id("organizations"),
+    userEmail: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
     const collab = await ctx.db.get(args.collaboratorId)
     if (!collab) throw new Error("Collaboratore non trovato")
 
-    const token = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15)
+    const tokenBytes = crypto.getRandomValues(new Uint8Array(24))
+    const token = Array.from(tokenBytes).map((b) => b.toString(16).padStart(2, "0")).join("")
     const expires = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
-    const tempPassword = Math.random().toString(36).substring(2, 10)
-
     await ctx.db.patch(args.collaboratorId, {
       onboardingToken: token,
       onboardingExpires: expires,
-      temporaryPassword: tempPassword,
     })
 
-    return { token, tempPassword, expires }
+    return { token, expires }
   },
 })
 
@@ -282,7 +330,7 @@ export const completeOnboarding = mutation({
     if (collab.onboardingExpires && new Date(collab.onboardingExpires) < new Date()) {
       throw new Error("Token scaduto")
     }
-    if (args.newPassword.length < 6) throw new Error("Password troppo corta (min 6 caratteri)")
+    if (args.newPassword.length < 8) throw new Error("Password troppo corta (min 8 caratteri)")
 
     let userId = collab.userId
 

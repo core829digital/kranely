@@ -1,18 +1,19 @@
 import { v } from "convex/values"
 import { mutation, query } from "./_generated/server"
 import { internal } from "./_generated/api"
+import { resolveNotifTarget } from "./lib/helpers"
+import { assertOrgAccess } from "./auth"
 
 // ═══════════════════════════════════════════════════════
 // SUPPLIERS
 // ═══════════════════════════════════════════════════════
 
 export const list = query({
-  args: { organizationId: v.id("organizations"), search: v.optional(v.string()), type: v.optional(v.string()), status: v.optional(v.string()) },
+  args: { organizationId: v.id("organizations"), search: v.optional(v.string()), type: v.optional(v.string()), status: v.optional(v.string()), userEmail: v.optional(v.string()) },
   handler: async (ctx, args) => {
-    let q = ctx.db.query("suppliers").withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId))
-    const suppliers = await q.collect()
-
-    let filtered = suppliers
+    const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
+    let filtered = await ctx.db.query("suppliers").withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId)).collect()
+    filtered = filtered.sort((a, b) => b._creationTime - a._creationTime)
     if (args.search) {
       const s = args.search.toLowerCase()
       filtered = filtered.filter((sp) => (sp.companyName || sp.name || "").toLowerCase().includes(s) || sp.email.toLowerCase().includes(s))
@@ -20,7 +21,7 @@ export const list = query({
     if (args.type && args.type !== "all") filtered = filtered.filter((sp) => sp.type === args.type)
     if (args.status && args.status !== "all") filtered = filtered.filter((sp) => sp.status === args.status)
 
-    return filtered.sort((a, b) => b._creationTime - a._creationTime)
+    return filtered
   },
 })
 
@@ -49,9 +50,11 @@ export const create = mutation({
     supplierCode: v.optional(v.string()),
     invitationCode: v.optional(v.string()),
     whatsappLink: v.optional(v.string()),
+    userEmail: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const { ...rest } = args
+    const { userEmail, ...rest } = args
+    const user = await assertOrgAccess(ctx, userEmail, rest.organizationId)
     const id = await ctx.db.insert("suppliers", { ...rest, status: args.status || "pending" })
 
     await ctx.db.insert("activityLog", {
@@ -87,14 +90,25 @@ export const update = mutation({
   },
   handler: async (ctx, args) => {
     const { id, organizationId, userEmail, ...data } = args
+    const user = await assertOrgAccess(ctx, userEmail, organizationId)
     const prev = await ctx.db.get(id)
     if (!prev || prev.organizationId !== organizationId) throw new Error("Not found")
     await ctx.db.patch(id, data)
 
+    await ctx.db.insert("activityLog", {
+      organizationId,
+      userEmail: "system",
+      action: "updated",
+      entityType: "supplier",
+      entityId: id,
+      entityName: prev.companyName,
+      details: `Fornitore "${prev.companyName}" aggiornato`,
+    })
+
     if (data.status && data.status !== prev.status) {
       await ctx.scheduler.runAfter(0, internal.notifications.createNotification, {
         organizationId: prev.organizationId,
-        userEmail: userEmail || "admin@kranely.demo",
+        userEmail: await resolveNotifTarget(ctx, prev.organizationId, userEmail),
         title: "Stato fornitore aggiornato",
         message: `Il fornitore "${prev.companyName}" è ora "${data.status === "active" ? "Attivo" : data.status === "inactive" ? "Inattivo" : "In attesa"}"`,
         type: "supplier_status_change",
@@ -108,11 +122,23 @@ export const update = mutation({
 })
 
 export const remove = mutation({
-  args: { id: v.id("suppliers"), organizationId: v.id("organizations") },
+  args: { id: v.id("suppliers"), organizationId: v.id("organizations"), userEmail: v.optional(v.string()) },
   handler: async (ctx, args) => {
+    const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
     const supplier = await ctx.db.get(args.id)
     if (!supplier || supplier.organizationId !== args.organizationId) throw new Error("Not found")
     await ctx.db.delete(args.id)
+
+    await ctx.db.insert("activityLog", {
+      organizationId: args.organizationId,
+      userEmail: "system",
+      action: "deleted",
+      entityType: "supplier",
+      entityId: args.id,
+      entityName: supplier.companyName,
+      details: `Fornitore "${supplier.companyName}" rimosso`,
+    })
+
     return args.id
   },
 })
@@ -121,8 +147,10 @@ export const generateInvite = mutation({
   args: {
     supplierId: v.id("suppliers"),
     organizationId: v.id("organizations"),
+    userEmail: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
     const supplier = await ctx.db.get(args.supplierId)
     if (!supplier) throw new Error("Fornitore non trovato")
 
@@ -135,7 +163,7 @@ export const generateInvite = mutation({
 
     await ctx.scheduler.runAfter(0, internal.notifications.createNotification, {
       organizationId: args.organizationId,
-      userEmail: "admin@kranely.demo",
+      userEmail: await resolveNotifTarget(ctx, args.organizationId),
       title: "Invito fornitore generato",
       message: `Codice invito per ${supplier.companyName}: ${code}`,
       type: "supplier_invite",
@@ -180,8 +208,9 @@ export const acceptInvite = mutation({
 })
 
 export const stats = query({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.id("organizations"), userEmail: v.optional(v.string()) },
   handler: async (ctx, args) => {
+    const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
     const suppliers = await ctx.db
       .query("suppliers")
       .withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId))

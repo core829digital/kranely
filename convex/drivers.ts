@@ -1,11 +1,13 @@
 import { v } from "convex/values"
 import { mutation, query } from "./_generated/server"
 import { internal } from "./_generated/api"
+import { assertOrgAccess } from "./auth"
 
 export const list = query({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.id("organizations"), userEmail: v.optional(v.string()) },
   handler: async (ctx, args) => {
-    const drivers = await ctx.db
+    const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
+    const items = await ctx.db
       .query("users")
       .filter((q) => q.and(
         q.eq(q.field("organizationId"), args.organizationId),
@@ -13,7 +15,7 @@ export const list = query({
       ))
       .collect()
 
-    return drivers.map((d) => ({
+    return items.sort((a, b) => b._creationTime - a._creationTime).map((d) => ({
       _id: d._id,
       email: d.email,
       fullName: d.fullName || "",
@@ -29,6 +31,7 @@ export const list = query({
 export const create = mutation({
   args: {
     organizationId: v.id("organizations"),
+    userEmail: v.optional(v.string()),
     email: v.string(),
     fullName: v.string(),
     phone: v.optional(v.string()),
@@ -36,6 +39,7 @@ export const create = mutation({
     licensePlate: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
     const existing = await ctx.db
       .query("users")
       .withIndex("by_email", (q) => q.eq("email", args.email))

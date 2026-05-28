@@ -2,16 +2,13 @@
   "name": "kranely",
   "version": "0.1.0",
   "private": true,
+  "engines": { "node": ">=20" },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate",
-    "db:push": "drizzle-kit push",
-    "db:studio": "drizzle-kit studio",
-    "db:seed": "tsx scripts/seed.ts"
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

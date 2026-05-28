@@ -29,7 +29,7 @@ export const list = query({
             return all.filter(s => s.email.toLowerCase() === caller.email.toLowerCase());
         }
         // Admin/CEO see all
-        if (caller.role === "admin" || caller.role === "superadmin") {
+        if (caller.role === "admin" ) {
             return await ctx.db.query("suppliers").collect();
         }
         return [];
@@ -44,7 +44,7 @@ export const getById = query({
         const supplier = await ctx.db.get(args.id);
         if (!supplier) return null;
         // Suppliers can only see themselves; admin sees all
-        if (caller.role === "admin" || caller.role === "superadmin") return supplier;
+        if (caller.role === "admin" ) return supplier;
         if (caller.role === "supplier" && supplier.email === caller.email) return supplier;
         return null;
     },
@@ -73,7 +73,7 @@ export const getByUserId = query({
         }
         if (!supplier) return null;
         // Only admin or the supplier themselves can see this record
-        if (caller.role === "admin" || caller.role === "superadmin") return supplier;
+        if (caller.role === "admin" ) return supplier;
         if (caller.role === "supplier" && supplier.email.toLowerCase() === caller.email.toLowerCase()) return supplier;
         return null;
     },
@@ -315,7 +315,7 @@ export const listRequests = query({
             return await ctx.db.query("supplier_requests").withIndex("by_supplier", (q: any) => q.eq("supplier_id", args.supplier_id)).collect();
         }
 
-        if (caller.role === "admin" || caller.role === "superadmin") {
+        if (caller.role === "admin" ) {
             return await ctx.db.query("supplier_requests").collect();
         }
 
@@ -471,7 +471,7 @@ export const listOrders = query({
             return await ctx.db.query("supplier_orders").withIndex("by_supplier", (q: any) => q.eq("supplier_id", args.supplier_id)).collect();
         }
 
-        if (caller.role === "admin" || caller.role === "superadmin") {
+        if (caller.role === "admin" ) {
             return await ctx.db.query("supplier_orders").collect();
         }
 
@@ -824,7 +824,7 @@ export const listDeliveries = query({
             return await ctx.db.query("supplier_deliveries").withIndex("by_supplier", (q: any) => q.eq("supplier_id", args.supplier_id)).collect();
         }
 
-        if (caller.role === "admin" || caller.role === "superadmin") {
+        if (caller.role === "admin" ) {
             return await ctx.db.query("supplier_deliveries").collect();
         }
 
@@ -1406,7 +1406,7 @@ export const syncSupplierRole = mutation({
         const caller = await getCallerInfo(ctx);
         if (!caller || !caller.email) return false;
         // Already supplier/admin — nothing to do
-        if (caller.role === "supplier" || caller.role === "admin" || caller.role === "superadmin") return false;
+        if (caller.role === "supplier" || caller.role === "admin" ) return false;
         // Only upgrade from client/user
         if (caller.role !== "client" && caller.role !== "user") return false;
 
@@ -1499,7 +1499,7 @@ export const advanceWorkflow = mutation({
         if (!order) throw new Error("Ordine non trovato");
 
         const targetStep = args.target_step;
-        const isAdmin = caller.role === "admin" || caller.role === "superadmin";
+        const isAdmin = caller.role === "admin" ;
         const isSupplier = caller.role === "supplier";
 
         // Enforce LOCK: once in production (step 10), no changes allowed

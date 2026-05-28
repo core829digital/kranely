@@ -40,7 +40,7 @@ export default function DriverDashboardPage() {
   const orgId = useOrgId()
   const [updatingId, setUpdatingId] = useState<string | null>(null)
 
-  const deliveries = useQuery(api.supplierDeliveries.list, orgId ? { organizationId: orgId } : "skip")
+  const deliveries = useQuery(api.supplierDeliveries.list, orgId ? { organizationId: orgId, userEmail: user?.email } : "skip")
   const updateDelivery = useMutation(api.supplierDeliveries.update)
 
   if (!orgId || !user) return <PageSkeleton />

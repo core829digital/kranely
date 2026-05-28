@@ -11,18 +11,20 @@ import { toast } from "sonner"
 import { useQuery, useMutation } from "convex/react"
 import { api } from "../../../../convex/_generated/api"
 import { Id } from "../../../../convex/_generated/dataModel"
+import { useAuth } from "@/lib/auth/auth-context"
 import { useOrgId } from "@/hooks/useOrgId"
 import { PageSkeleton } from "@/components/Skeletons"
 
 export default function ReferralPage() {
   const orgId = useOrgId()
+  const { user } = useAuth()
   const [search, setSearch] = useState("")
   const [showCreateDialog, setShowCreateDialog] = useState(false)
   const [formData, setFormData] = useState({ code: "", discountPercent: "10", description: "", maxUses: "" })
   const [copiedId, setCopiedId] = useState<string | null>(null)
 
-  const codes = useQuery(api.referral.list, orgId ? { organizationId: orgId } : "skip")
-  const stats = useQuery(api.referral.stats, orgId ? { organizationId: orgId } : "skip")
+  const codes = useQuery(api.referral.list, orgId ? { organizationId: orgId, userEmail: user?.email } : "skip")
+  const stats = useQuery(api.referral.stats, orgId ? { organizationId: orgId, userEmail: user?.email } : "skip")
 
   const createCode = useMutation(api.referral.create)
   const updateCode = useMutation(api.referral.update)

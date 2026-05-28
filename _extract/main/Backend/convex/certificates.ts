@@ -180,7 +180,7 @@ export const getStats = query({
     args: {},
     handler: async (ctx) => {
         const caller = await getCallerInfo(ctx);
-        if (!caller || (caller.role !== "admin" && caller.role !== "superadmin")) return null;
+        if (!caller || (caller.role !== "admin" )) return null;
         const all = await ctx.db.query("certificates").collect();
         return {
             total: all.length,

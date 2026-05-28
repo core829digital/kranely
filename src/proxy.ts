@@ -4,7 +4,8 @@ import type { NextRequest } from "next/server"
 const publicPaths = [
   "/sign-in", "/sign-up", "/forgot-password", "/reset-password",
   "/onboarding", "/onboarding-staff",
-  "/", "/blog", "/pricing", "/privacy", "/terms", "/cookies",
+  "/", "/about", "/services", "/contact",
+  "/blog", "/pricing", "/privacy", "/terms", "/cookies", "/reviews", "/calculator",
   "/api", "/_next",
 ]
 

@@ -1,16 +1,18 @@
 import { v } from "convex/values"
 import { mutation, query } from "./_generated/server"
+import { assertOrgAccess } from "./auth"
 
 export const list = query({
-  args: { conversationId: v.id("conversations"), organizationId: v.id("organizations") },
+  args: { conversationId: v.id("conversations"), organizationId: v.id("organizations"), userEmail: v.optional(v.string()) },
   handler: async (ctx, args) => {
+    const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
     const conv = await ctx.db.get(args.conversationId)
     if (!conv || conv.organizationId !== args.organizationId) throw new Error("Not found")
-    const messages = await ctx.db
+    return await ctx.db
       .query("conversationMessages")
       .withIndex("by_conversation", (q) => q.eq("conversationId", args.conversationId))
       .collect()
-    return messages.sort((a, b) => a._creationTime - b._creationTime)
+      .then((items) => items.sort((a, b) => b._creationTime - a._creationTime))
   },
 })
 
@@ -23,9 +25,11 @@ export const send = mutation({
     content: v.string(),
     attachments: v.optional(v.any()),
     pollId: v.optional(v.id("quotePolls")),
+    userEmail: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const { conversationId, organizationId, ...rest } = args
+    const { conversationId, organizationId, userEmail, ...rest } = args
+    const user = await assertOrgAccess(ctx, userEmail, organizationId)
     const conv = await ctx.db.get(conversationId)
     if (!conv || conv.organizationId !== organizationId) throw new Error("Not found")
     const id = await ctx.db.insert("conversationMessages", {
@@ -47,8 +51,10 @@ export const markRead = mutation({
     conversationId: v.id("conversations"),
     organizationId: v.id("organizations"),
     readerEmail: v.string(),
+    userEmail: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
     const conv = await ctx.db.get(args.conversationId)
     if (!conv || conv.organizationId !== args.organizationId) throw new Error("Not found")
     const messages = await ctx.db
@@ -68,8 +74,9 @@ export const markRead = mutation({
 })
 
 export const remove = mutation({
-  args: { id: v.id("conversationMessages"), organizationId: v.id("organizations") },
+  args: { id: v.id("conversationMessages"), organizationId: v.id("organizations"), userEmail: v.optional(v.string()) },
   handler: async (ctx, args) => {
+    const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
     const doc = await ctx.db.get(args.id)
     if (!doc || doc.organizationId !== args.organizationId) throw new Error("Not found")
     await ctx.db.delete(args.id)

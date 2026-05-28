@@ -11,28 +11,29 @@ import { useQuery, useMutation } from "convex/react"
 import { api } from "../../../../convex/_generated/api"
 import { Id } from "../../../../convex/_generated/dataModel"
 import Link from "next/link"
+import { useAuth } from "@/lib/auth/auth-context"
 import { useOrgId } from "@/hooks/useOrgId"
 import { PageSkeleton } from "@/components/Skeletons"
 
 export default function PaymentsPage() {
   const orgId = useOrgId()
+  const { user } = useAuth()
   const [search, setSearch] = useState("")
-  const [filterType, setFilterType] = useState<"all" | "incoming" | "outgoing">("all")
-  const [filterStatus, setFilterStatus] = useState<"all" | "pending" | "paid" | "overdue" | "cancelled">("all")
+  const [filterStatus, setFilterStatus] = useState<"all" | "pending" | "pagato" | "in_ritardo" | "in_verifica" | "cancellato">("all")
+  const [filterType, setFilterType] = useState<"all" | "acconto" | "saldo" | "rata" | "acconto_materiali" | "acconto_lavorazione" | "commissione_agente">("all")
   const [showCreateDialog, setShowCreateDialog] = useState(false)
   const [showEditDialog, setShowEditDialog] = useState(false)
   const [showDetailDialog, setShowDetailDialog] = useState(false)
-  const [editingPaymentId, setEditingPaymentId] = useState<Id<"payments"> | null>(null)
+  const [editingId, setEditingId] = useState<Id<"payments"> | null>(null)
   const [selectedPaymentId, setSelectedPaymentId] = useState<Id<"payments"> | null>(null)
-  const [formData, setFormData] = useState({
-    type: "client" as "supplier" | "collaborator" | "client", description: "", amount: "", status: "in_attesa" as "in_attesa" | "in_verifica" | "pagato" | "in_ritardo" | "parziale", dueDate: "", clientId: "", cantiereId: "", supplierId: "",     method: "bonifico" as "bonifico" | "carta" | "paypal" | "altro", notes: ""
-  })
+  const [showPayment, setShowPayment] = useState(false)
+  const [formData, setFormData] = useState<any>({ clientId: "", cantiereId: "", amount: "", description: "", dueDate: "", type: "acconto", status: "pending", paymentMethod: "", notes: "", quoteId: "", invoiceNumber: "" })
 
-  const payments = useQuery(api.payments.list, orgId ? { organizationId: orgId!, status: filterStatus !== "all" ? filterStatus : undefined, type: filterType !== "all" ? filterType : undefined } : "skip")
-  const stats = useQuery(api.payments.stats, orgId ? { organizationId: orgId! } : "skip")
-  const clients = useQuery(api.clients.list, orgId ? { organizationId: orgId! } : "skip")
-  const cantieri = useQuery(api.cantieri.list, orgId ? { organizationId: orgId! } : "skip")
-  const suppliers = useQuery(api.suppliers.list, orgId ? { organizationId: orgId! } : "skip")
+  const payments = useQuery(api.payments.list, orgId ? { organizationId: orgId!, status: filterStatus !== "all" ? filterStatus : undefined, type: filterType !== "all" ? filterType : undefined, userEmail: user?.email } : "skip")
+  const stats = useQuery(api.payments.stats, orgId ? { organizationId: orgId!, userEmail: user?.email } : "skip")
+  const clients = useQuery(api.clients.list, orgId ? { organizationId: orgId!, userEmail: user?.email } : "skip")
+  const cantieri = useQuery(api.cantieri.list, orgId ? { organizationId: orgId!, userEmail: user?.email } : "skip")
+  const suppliers = useQuery(api.suppliers.list, orgId ? { organizationId: orgId!, userEmail: user?.email } : "skip")
 
   const createPayment = useMutation(api.payments.create)
   const updatePayment = useMutation(api.payments.update)
@@ -51,7 +52,7 @@ export default function PaymentsPage() {
 
   const openEdit = (p: any) => {
     setFormData({ type: p.type, description: p.description, amount: p.amount.toString(), status: p.status, dueDate: p.dueDate || "", clientId: p.clientId || "", cantiereId: p.cantiereId || "", supplierId: p.supplierId || "", method: p.method || "bonifico", notes: p.notes || "" })
-    setEditingPaymentId(p._id)
+    setEditingId(p._id)
     setShowEditDialog(true)
   }
 
@@ -64,9 +65,9 @@ export default function PaymentsPage() {
   }
 
   const handleUpdate = async () => {
-    if (!editingPaymentId) return
+    if (!editingId) return
     try {
-      await updatePayment({ id: editingPaymentId, organizationId: orgId!, description: formData.description, amount: parseFloat(formData.amount), status: formData.status, dueDate: formData.dueDate || undefined, method: formData.method, notes: formData.notes || undefined })
+      await updatePayment({ id: editingId, organizationId: orgId!, description: formData.description, amount: parseFloat(formData.amount), status: formData.status, dueDate: formData.dueDate || undefined, method: formData.method, notes: formData.notes || undefined })
       setShowEditDialog(false); toast.success("Pagamento aggiornato")
     } catch (e) { toast.error("Errore") }
   }

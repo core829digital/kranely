@@ -1,24 +1,25 @@
 import { v } from "convex/values"
 import { mutation, query } from "./_generated/server"
 import { internal } from "./_generated/api"
+import { resolveNotifTarget } from "./lib/helpers"
+import { assertOrgAccess } from "./auth"
 
 // ═══════════════════════════════════════════════════════
 // SUPPLIER ORDERS (Ordini Fornitori)
 // ═══════════════════════════════════════════════════════
 
 export const list = query({
-  args: { organizationId: v.id("organizations"), supplierId: v.optional(v.id("suppliers")), cantiereId: v.optional(v.id("cantieri")), quoteId: v.optional(v.id("quotes")), status: v.optional(v.string()) },
+  args: { organizationId: v.id("organizations"), supplierId: v.optional(v.id("suppliers")), cantiereId: v.optional(v.id("cantieri")), quoteId: v.optional(v.id("quotes")), status: v.optional(v.string()), userEmail: v.optional(v.string()) },
   handler: async (ctx, args) => {
-    let q = ctx.db.query("supplierOrders").withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId))
-    const orders = await q.collect()
-
-    let filtered = orders
+    const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
+    let filtered = await ctx.db.query("supplierOrders").withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId)).collect()
+    filtered = filtered.sort((a, b) => b._creationTime - a._creationTime)
     if (args.supplierId) filtered = filtered.filter((o) => o.supplierId === args.supplierId)
     if (args.cantiereId) filtered = filtered.filter((o) => o.cantiereId === args.cantiereId)
     if (args.quoteId) filtered = filtered.filter((o) => o.quoteId === args.quoteId)
     if (args.status && args.status !== "all") filtered = filtered.filter((o) => o.status === args.status)
 
-    return filtered.sort((a, b) => b._creationTime - a._creationTime)
+    return filtered
   },
 })
 
@@ -42,9 +43,11 @@ export const create = mutation({
     status: v.optional(v.union(v.literal("pending"), v.literal("confirmed"), v.literal("in_production"), v.literal("shipped"), v.literal("delivered"), v.literal("cancelled"))),
     expectedDelivery: v.optional(v.string()),
     notes: v.optional(v.string()),
+    userEmail: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const { ...rest } = args
+    const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
+    const { userEmail, ...rest } = args
     const id = await ctx.db.insert("supplierOrders", { ...rest, status: args.status || "pending" })
 
     await ctx.db.insert("activityLog", {
@@ -86,7 +89,7 @@ export const update = mutation({
 
       await ctx.scheduler.runAfter(0, internal.notifications.createNotification, {
         organizationId: prev.organizationId,
-        userEmail: userEmail || "admin@kranely.demo",
+        userEmail: await resolveNotifTarget(ctx, prev.organizationId, userEmail),
         title: `Ordine ${statusLabels[data.status] || data.status}`,
         message: `L'ordine "${prev.orderNumber || prev.description}" è ora "${statusLabels[data.status] || data.status}"`,
         type: "order_status_change",
@@ -139,8 +142,9 @@ export const remove = mutation({
 })
 
 export const stats = query({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.id("organizations"), userEmail: v.optional(v.string()) },
   handler: async (ctx, args) => {
+    const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
     const orders = await ctx.db
       .query("supplierOrders")
       .withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId))

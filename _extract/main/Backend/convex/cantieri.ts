@@ -11,7 +11,7 @@ export const listCantieri = query({
         if (!caller) return [];
 
         // Only admin/superadmin may query arbitrary company emails
-        if (caller.role !== "admin" && caller.role !== "superadmin" && caller.email !== args.company_email) {
+        if (caller.role !== "admin"  && caller.email !== args.company_email) {
             return [];
         }
 
@@ -78,7 +78,7 @@ export const getById = query({
         if (!cantiere) return null;
 
         // Non-admin users can only see cantieri they're associated with
-        if (caller.role !== "admin" && caller.role !== "superadmin") {
+        if (caller.role !== "admin" ) {
             if (caller.role === "client") {
                 const clientRecord = await ctx.db.query("clients").withIndex("by_email", (q: any) => q.eq("email", caller.email)).first();
                 if (!clientRecord || cantiere.client_id !== clientRecord._id) return null;
@@ -325,7 +325,7 @@ export const inviteTeamMember = mutation({
         }
 
         const invitedUser = await ctx.db.query("users").withIndex("by_email", (q: any) => q.eq("email", args.email)).first();
-        const isInternal = invitedUser && ["superadmin", "admin", "collaborator_internal"].includes(invitedUser.role);
+        const isInternal = invitedUser?.role && ["admin", "collaborator_internal"].includes(invitedUser.role);
 
         return await ctx.db.insert("cantiere_team_members", {
             cantiere_id: args.cantiere_id,

@@ -9,16 +9,20 @@ import { FileText, Download, Upload, Eye, Settings, Type, Image, Palette, Save, 
 import { toast } from "sonner"
 import { useQuery } from "convex/react"
 import { api } from "../../../../convex/_generated/api"
+import { Id } from "../../../../convex/_generated/dataModel"
+import { useAuth } from "@/lib/auth/auth-context"
 import { useOrgId } from "@/hooks/useOrgId"
 import { PageSkeleton } from "@/components/Skeletons"
 
 export default function PdfEditorPage() {
   const orgId = useOrgId()
-  const [templateName, setTemplateName] = useState("Preventivo Standard")
+  const { user } = useAuth()
+  const [selectedQuoteId, setSelectedQuoteId] = useState<Id<"quotes"> | null>(null)
+  const [templateName, setTemplateName] = useState("")
   const [selectedTemplate, setSelectedTemplate] = useState("preventivo")
 
-  const quotes = useQuery(api.quotes.list, orgId ? { organizationId: orgId } : "skip")
-  const documents = useQuery(api.documents.list, orgId ? { organizationId: orgId } : "skip")
+  const quotes = useQuery(api.quotes.list, orgId ? { organizationId: orgId, userEmail: user?.email } : "skip")
+  const documents = useQuery(api.documents.list, orgId ? { organizationId: orgId, userEmail: user?.email } : "skip")
 
   const templates = [
     { id: "preventivo", name: "Preventivo", icon: FileText },

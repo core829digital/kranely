@@ -11,6 +11,7 @@ import { toast } from "sonner"
 import { useQuery, useMutation } from "convex/react"
 import { api } from "../../../../convex/_generated/api"
 import { Id } from "../../../../convex/_generated/dataModel"
+import { useAuth } from "@/lib/auth/auth-context"
 import { useOrgId } from "@/hooks/useOrgId"
 import { PageSkeleton } from "@/components/Skeletons"
 
@@ -18,6 +19,7 @@ const roleLabels: Record<string, string> = { superadmin: "Super Admin", admin: "
 
 export default function AdminPage() {
   const orgId = useOrgId()
+  const { user } = useAuth()
   const [search, setSearch] = useState("")
   const [filterRole, setFilterRole] = useState<string>("all")
   const [showCreateDialog, setShowCreateDialog] = useState(false)
@@ -30,8 +32,8 @@ export default function AdminPage() {
   const [editFormData, setEditFormData] = useState({ fullName: "", role: "collaborator" as string, subrole: "" as string, companyRole: "", workSector: "", blocked: false, phone: "" })
 
   const org = useQuery(api.organizations.get, orgId ? { id: orgId } : "skip")
-  const users = useQuery(api.organizations.listUsers, orgId ? { organizationId: orgId } : "skip")
-  const selectedUser = useQuery(api.organizations.listUsers, orgId && selectedUserId ? { organizationId: orgId } : "skip")
+  const users = useQuery(api.organizations.listUsers, orgId ? { organizationId: orgId, userEmail: user?.email } : "skip")
+  const selectedUser = useQuery(api.organizations.listUsers, orgId && selectedUserId ? { organizationId: orgId, userEmail: user?.email } : "skip")
 
   const createUser = useMutation(api.clients.createOrUpdateUser)
   const updateUser = useMutation(api.organizations.updateUser)

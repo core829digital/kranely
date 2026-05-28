@@ -27,7 +27,7 @@ export default function MessagesPage() {
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   const channels = useQuery(api.chat.listChannels, orgId && user?.email ? { organizationId: orgId, userEmail: user.email } : "skip")
-  const messages = useQuery(api.chat.listMessages, selectedChannelId ? { channelId: selectedChannelId, limit: 50 } : "skip")
+  const messages = useQuery(api.chat.listMessages, selectedChannelId ? { channelId: selectedChannelId } : "skip")
 
   const createChannel = useMutation(api.chat.createChannel)
   const sendMessage = useMutation(api.chat.sendMessage)

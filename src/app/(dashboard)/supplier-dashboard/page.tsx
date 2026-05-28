@@ -22,10 +22,10 @@ export default function SupplierDashboardPage() {
   const [showQuoteRequest, setShowQuoteRequest] = useState(false)
   const [quoteMessage, setQuoteMessage] = useState("")
 
-  const suppliers = useQuery(api.suppliers.list, orgId ? { organizationId: orgId } : "skip")
-  const supplierOrders = useQuery(api.supplierOrders.list, orgId ? { organizationId: orgId } : "skip")
-  const supplierProduction = useQuery(api.supplierProduction.list, orgId ? { organizationId: orgId } : "skip")
-  const supplierDeliveries = useQuery(api.supplierDeliveries.list, orgId ? { organizationId: orgId } : "skip")
+  const suppliers = useQuery(api.suppliers.list, orgId ? { organizationId: orgId, userEmail: user?.email } : "skip")
+  const supplierOrders = useQuery(api.supplierOrders.list, orgId ? { organizationId: orgId, userEmail: user?.email } : "skip")
+  const supplierProduction = useQuery(api.supplierProduction.list, orgId ? { organizationId: orgId, userEmail: user?.email } : "skip")
+  const supplierDeliveries = useQuery(api.supplierDeliveries.list, orgId ? { organizationId: orgId, userEmail: user?.email } : "skip")
   const createRequest = useMutation(api.supplierRequests.create)
 
   if (!orgId || !user) return <PageSkeleton />

@@ -15,9 +15,9 @@ export default function ClientDashboardPage() {
   const { user } = useAuth()
   const orgId = useOrgId()
 
-  const clients = useQuery(api.clients.list, orgId ? { organizationId: orgId } : "skip")
-  const cantieri = useQuery(api.cantieri.list, orgId ? { organizationId: orgId } : "skip")
-  const quotes = useQuery(api.quotes.list, orgId ? { organizationId: orgId } : "skip")
+  const clients = useQuery(api.clients.list, orgId ? { organizationId: orgId, userEmail: user?.email } : "skip")
+  const cantieri = useQuery(api.cantieri.list, orgId ? { organizationId: orgId, userEmail: user?.email } : "skip")
+  const quotes = useQuery(api.quotes.list, orgId ? { organizationId: orgId, userEmail: user?.email } : "skip")
 
   if (!orgId || !user) return <PageSkeleton />
 

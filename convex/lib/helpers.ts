@@ -60,6 +60,16 @@ export const createNotification = internalMutation({
   },
 })
 
+export async function resolveNotifTarget(
+  ctx: MutationCtx,
+  organizationId: Id<"organizations">,
+  userEmail?: string,
+): Promise<string> {
+  if (userEmail) return userEmail
+  const org = await ctx.db.get(organizationId)
+  return org?.ownerEmail || "system"
+}
+
 export async function notifyAndLog(
   ctx: any,
   orgId: string,

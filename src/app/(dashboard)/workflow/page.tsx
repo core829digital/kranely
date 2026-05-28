@@ -11,6 +11,7 @@ import { useQuery, useMutation } from "convex/react"
 import { api } from "../../../../convex/_generated/api"
 import { Id } from "../../../../convex/_generated/dataModel"
 import Link from "next/link"
+import { useAuth } from "@/lib/auth/auth-context"
 import { useOrgId } from "@/hooks/useOrgId"
 import { PageSkeleton } from "@/components/Skeletons"
 
@@ -28,17 +29,20 @@ const workflowSteps = [
 
 export default function WorkflowPage() {
   const orgId = useOrgId()
+  const { user } = useAuth()
   const [search, setSearch] = useState("")
+  const [statusFilter, setStatusFilter] = useState("all")
   const [showCreateDialog, setShowCreateDialog] = useState(false)
   const [showEditDialog, setShowEditDialog] = useState(false)
+  const [expandedOrderId, setExpandedOrderId] = useState<Id<"supplierOrders"> | null>(null)
   const [editingOrderId, setEditingOrderId] = useState<Id<"supplierOrders"> | null>(null)
-  const [formData, setFormData] = useState({ supplierId: "", cantiereId: "", quoteId: "", orderNumber: "", description: "", totalAmount: "", expectedDelivery: "", notes: "" })
+  const [formData, setFormData] = useState<any>({ supplierId: "", orderDate: "", expectedDelivery: "", totalAmount: "", status: "new", notes: "", items: [] })
   const [editFormData, setEditFormData] = useState({ orderNumber: "", description: "", totalAmount: "", expectedDelivery: "", notes: "" })
 
-  const orders = useQuery(api.supplierOrders.list, orgId ? { organizationId: orgId } : "skip")
-  const suppliers = useQuery(api.suppliers.list, orgId ? { organizationId: orgId } : "skip")
-  const cantieri = useQuery(api.cantieri.list, orgId ? { organizationId: orgId } : "skip")
-  const deliveries = useQuery(api.supplierDeliveries.list, orgId ? { organizationId: orgId } : "skip")
+  const orders = useQuery(api.supplierOrders.list, orgId ? { organizationId: orgId, userEmail: user?.email } : "skip")
+  const suppliers = useQuery(api.suppliers.list, orgId ? { organizationId: orgId, userEmail: user?.email } : "skip")
+  const cantieri = useQuery(api.cantieri.list, orgId ? { organizationId: orgId, userEmail: user?.email } : "skip")
+  const deliveries = useQuery(api.supplierDeliveries.list, orgId ? { organizationId: orgId, userEmail: user?.email } : "skip")
 
   const createOrder = useMutation(api.supplierOrders.create)
   const updateOrder = useMutation(api.supplierOrders.update)

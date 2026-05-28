@@ -11,11 +11,13 @@ import { toast } from "sonner"
 import { useQuery, useMutation } from "convex/react"
 import { api } from "../../../../convex/_generated/api"
 import { Id } from "../../../../convex/_generated/dataModel"
+import { useAuth } from "@/lib/auth/auth-context"
 import { useOrgId } from "@/hooks/useOrgId"
 import { PageSkeleton } from "@/components/Skeletons"
 
 export default function CollaboratorsPage() {
   const orgId = useOrgId()
+  const { user } = useAuth()
   const [search, setSearch] = useState("")
   const [filterType, setFilterType] = useState<"all" | "employee" | "contractor" | "subcontractor" | "freelancer">("all")
   const [filterStatus, setFilterStatus] = useState<"all" | "active" | "inactive" | "on_leave">("all")
@@ -26,15 +28,15 @@ export default function CollaboratorsPage() {
   const [selectedCollabId, setSelectedCollabId] = useState<Id<"collaborators"> | null>(null)
 
   const selectedCollab = useQuery(api.collaborators.get, selectedCollabId ? { id: selectedCollabId, organizationId: orgId! } : "skip")
-  const collabTasks = useQuery(api.tasks.list, selectedCollabId && selectedCollab ? { organizationId: orgId!!, assignedTo: selectedCollab.email } : "skip")
-  const collabCertificates = useQuery(api.certificates.list, selectedCollabId && selectedCollab ? { organizationId: orgId!!, collaboratorId: selectedCollabId } : "skip")
-  const collabAppointments = useQuery(api.appointments.list, selectedCollabId && selectedCollab ? { organizationId: orgId!!, email: selectedCollab.email } : "skip")
+  const collabTasks = useQuery(api.tasks.list, selectedCollabId && selectedCollab ? { organizationId: orgId!!, assignedTo: selectedCollab.email, userEmail: user?.email } : "skip")
+  const collabCertificates = useQuery(api.certificates.list, selectedCollabId && selectedCollab ? { organizationId: orgId!!, collaboratorId: selectedCollabId, userEmail: user?.email } : "skip")
+  const collabAppointments = useQuery(api.appointments.list, selectedCollabId && selectedCollab ? { organizationId: orgId!!, email: selectedCollab.email, userEmail: user?.email } : "skip")
   const [formData, setFormData] = useState({
     fullName: "", email: "", phone: "", type: "employee" as "employee" | "contractor" | "subcontractor" | "freelancer", specialization: "", status: "active" as "active" | "inactive" | "on_leave", hourlyRate: "", dailyRate: "", notes: ""
   })
 
-  const collaborators = useQuery(api.collaborators.list, orgId ? { organizationId: orgId!, search: search || undefined, type: filterType !== "all" ? filterType : undefined, status: filterStatus !== "all" ? filterStatus : undefined } : "skip")
-  const stats = useQuery(api.collaborators.stats, orgId ? { organizationId: orgId! } : "skip")
+  const collaborators = useQuery(api.collaborators.list, orgId ? { organizationId: orgId!, search: search || undefined, type: filterType !== "all" ? filterType : undefined, status: filterStatus !== "all" ? filterStatus : undefined, userEmail: user?.email } : "skip")
+  const stats = useQuery(api.collaborators.stats, orgId ? { organizationId: orgId!, userEmail: user?.email } : "skip")
 
   const createCollaborator = useMutation(api.collaborators.create)
   const updateCollaborator = useMutation(api.collaborators.update)

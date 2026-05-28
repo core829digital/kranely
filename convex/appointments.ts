@@ -1,22 +1,23 @@
 import { v } from "convex/values"
 import { mutation, query } from "./_generated/server"
 import { internal } from "./_generated/api"
+import { resolveNotifTarget } from "./lib/helpers"
+import { assertOrgAccess } from "./auth"
 
 // ═══════════════════════════════════════════════════════
 // APPOINTMENTS (Appuntamenti)
 // ═══════════════════════════════════════════════════════
 
 export const list = query({
-  args: { organizationId: v.id("organizations"), date: v.optional(v.string()), email: v.optional(v.string()) },
+  args: { organizationId: v.id("organizations"), date: v.optional(v.string()), email: v.optional(v.string()), userEmail: v.optional(v.string()) },
   handler: async (ctx, args) => {
-    let q = ctx.db.query("appointments").withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId))
-    const appts = await q.collect()
-
-    let filtered = appts
+    const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
+    let filtered = await ctx.db.query("appointments").withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId)).collect()
+    filtered = filtered.sort((a, b) => b._creationTime - a._creationTime)
     if (args.date) filtered = filtered.filter((a) => a.appointmentDate === args.date)
     if (args.email) filtered = filtered.filter((a) => a.email === args.email)
 
-    return filtered.sort((a, b) => (a.appointmentDate + (a.appointmentTime || "")).localeCompare(b.appointmentDate + (b.appointmentTime || "")))
+    return filtered
   },
 })
 
@@ -42,8 +43,10 @@ export const create = mutation({
     clientId: v.optional(v.id("clients")),
     cantiereId: v.optional(v.id("cantieri")),
     collaboratorId: v.optional(v.id("collaborators")),
+    userEmail: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
     const { ...rest } = args
     const id = await ctx.db.insert("appointments", { ...rest, status: args.status || "scheduled" })
 
@@ -59,7 +62,7 @@ export const create = mutation({
 
     await ctx.scheduler.runAfter(0, internal.notifications.createNotification, {
       organizationId: args.organizationId,
-      userEmail: "admin@kranely.demo",
+      userEmail: await resolveNotifTarget(ctx, args.organizationId),
       title: "Nuovo appuntamento",
       message: `Appuntamento "${args.title}" il ${new Date(args.appointmentDate).toLocaleDateString("it-IT")}${args.appointmentTime ? " alle " + args.appointmentTime : ""}`,
       type: "appointment_created",
@@ -84,6 +87,7 @@ export const update = mutation({
     userEmail: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
     const { id, organizationId, userEmail, ...data } = args
     const prev = await ctx.db.get(id)
     if (!prev || prev.organizationId !== organizationId) throw new Error("Not found")
@@ -92,7 +96,7 @@ export const update = mutation({
     if (data.status && data.status !== prev.status) {
       await ctx.scheduler.runAfter(0, internal.notifications.createNotification, {
         organizationId: prev.organizationId,
-        userEmail: userEmail || "admin@kranely.demo",
+        userEmail: await resolveNotifTarget(ctx, prev.organizationId, userEmail),
         title: `Appuntamento ${data.status === "confirmed" ? "confermato" : data.status === "completed" ? "completato" : data.status === "cancelled" ? "cancellato" : "aggiornato"}`,
         message: `Appuntamento "${prev.title}" del ${new Date(prev.appointmentDate).toLocaleDateString("it-IT")} è ora ${data.status}`,
         type: "appointment_status_change",
@@ -106,8 +110,9 @@ export const update = mutation({
 })
 
 export const remove = mutation({
-  args: { id: v.id("appointments"), organizationId: v.id("organizations") },
+  args: { id: v.id("appointments"), organizationId: v.id("organizations"), userEmail: v.optional(v.string()) },
   handler: async (ctx, args) => {
+    const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
     const appt = await ctx.db.get(args.id)
     if (!appt || appt.organizationId !== args.organizationId) throw new Error("Not found")
     await ctx.db.delete(args.id)
@@ -116,8 +121,9 @@ export const remove = mutation({
 })
 
 export const stats = query({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.id("organizations"), userEmail: v.optional(v.string()) },
   handler: async (ctx, args) => {
+    const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
     const appts = await ctx.db
       .query("appointments")
       .withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId))

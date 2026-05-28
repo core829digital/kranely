@@ -1,18 +1,19 @@
 import { v } from "convex/values"
 import { mutation, query } from "./_generated/server"
 import { internal } from "./_generated/api"
+import { resolveNotifTarget } from "./lib/helpers"
+import { assertOrgAccess } from "./auth"
 
 export const list = query({
-  args: { organizationId: v.id("organizations"), supplierId: v.optional(v.id("suppliers")), status: v.optional(v.string()) },
+  args: { organizationId: v.id("organizations"), supplierId: v.optional(v.id("suppliers")), status: v.optional(v.string()), userEmail: v.optional(v.string()) },
   handler: async (ctx, args) => {
-    let q = ctx.db.query("supplierRequests").withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId))
-    const requests = await q.collect()
-
-    let filtered = requests
+    const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
+    let filtered = await ctx.db.query("supplierRequests").withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId)).collect()
+    filtered = filtered.sort((a, b) => b._creationTime - a._creationTime)
     if (args.supplierId) filtered = filtered.filter((r) => r.supplierId === args.supplierId)
     if (args.status && args.status !== "all") filtered = filtered.filter((r) => r.status === args.status)
 
-    return filtered.sort((a, b) => b._creationTime - a._creationTime)
+    return filtered
   },
 })
 
@@ -43,9 +44,11 @@ export const create = mutation({
     glassType: v.optional(v.string()),
     budgetEstimate: v.optional(v.number()),
     neededBy: v.optional(v.string()),
+    userEmail: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const { ...rest } = args
+    const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
+    const { userEmail, ...rest } = args
     const id = await ctx.db.insert("supplierRequests", { ...rest, status: "draft", depositPaid: false })
 
     await ctx.db.insert("activityLog", {
@@ -89,8 +92,10 @@ export const convertToOrder = mutation({
     totalAmount: v.number(),
     expectedDelivery: v.optional(v.string()),
     notes: v.optional(v.string()),
+    userEmail: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
     const request = await ctx.db.get(args.requestId)
     if (!request) throw new Error("Richiesta non trovata")
     if (!request.depositPaid) throw new Error("L'acconto deve essere pagato prima di convertire in ordine")
@@ -130,7 +135,7 @@ export const convertToOrder = mutation({
 
     await ctx.scheduler.runAfter(0, internal.notifications.createNotification, {
       organizationId: args.organizationId,
-      userEmail: "admin@kranely.demo",
+      userEmail: await resolveNotifTarget(ctx, args.organizationId),
       title: "Nuovo ordine generato",
       message: `La richiesta "${request.title}" è stata convertita in ordine con importo EUR${args.totalAmount.toLocaleString("it-IT")}`,
       type: "order_created",
@@ -143,8 +148,9 @@ export const convertToOrder = mutation({
 })
 
 export const stats = query({
-  args: { organizationId: v.id("organizations"), supplierId: v.optional(v.id("suppliers")) },
+  args: { organizationId: v.id("organizations"), supplierId: v.optional(v.id("suppliers")), userEmail: v.optional(v.string()) },
   handler: async (ctx, args) => {
+    const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
     let q = ctx.db.query("supplierRequests").withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId))
     const requests = await q.collect()
 

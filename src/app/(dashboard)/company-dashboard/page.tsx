@@ -11,21 +11,23 @@ import { toast } from "sonner"
 import { useQuery, useMutation } from "convex/react"
 import { api } from "../../../../convex/_generated/api"
 import { Id } from "../../../../convex/_generated/dataModel"
+import { useAuth } from "@/lib/auth/auth-context"
 import { useOrgId } from "@/hooks/useOrgId"
 import { PageSkeleton } from "@/components/Skeletons"
 
 export default function CompanyDashboardPage() {
   const orgId = useOrgId()
+  const { user } = useAuth()
   const [search, setSearch] = useState("")
   const [showCreateDialog, setShowCreateDialog] = useState(false)
   const [formData, setFormData] = useState({ companyEmail: "", teamName: "", companyName: "", members: "" })
 
-  const teams = useQuery(api.companyTeams.list, orgId ? { organizationId: orgId } : "skip")
+  const teams = useQuery(api.companyTeams.list, orgId ? { organizationId: orgId, userEmail: user?.email } : "skip")
   const org = useQuery(api.organizations.get, orgId ? { id: orgId } : "skip")
-  const clients = useQuery(api.clients.list, orgId ? { organizationId: orgId } : "skip")
-  const quotes = useQuery(api.quotes.list, orgId ? { organizationId: orgId } : "skip")
-  const cantieri = useQuery(api.cantieri.list, orgId ? { organizationId: orgId } : "skip")
-  const collaborators = useQuery(api.collaborators.list, orgId ? { organizationId: orgId } : "skip")
+  const clients = useQuery(api.clients.list, orgId ? { organizationId: orgId, userEmail: user?.email } : "skip")
+  const quotes = useQuery(api.quotes.list, orgId ? { organizationId: orgId, userEmail: user?.email } : "skip")
+  const cantieri = useQuery(api.cantieri.list, orgId ? { organizationId: orgId, userEmail: user?.email } : "skip")
+  const collaborators = useQuery(api.collaborators.list, orgId ? { organizationId: orgId, userEmail: user?.email } : "skip")
 
   const createTeam = useMutation(api.companyTeams.create)
   const removeTeam = useMutation(api.companyTeams.remove)

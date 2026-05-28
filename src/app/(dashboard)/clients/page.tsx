@@ -11,11 +11,13 @@ import { useQuery, useMutation } from "convex/react"
 import { api } from "../../../../convex/_generated/api"
 import { Id } from "../../../../convex/_generated/dataModel"
 import Link from "next/link"
+import { useAuth } from "@/lib/auth/auth-context"
 import { useOrgId } from "@/hooks/useOrgId"
 import { PageSkeleton } from "@/components/Skeletons"
 
 export default function ClientsPage() {
   const orgId = useOrgId()
+  const { user } = useAuth()
   const [search, setSearch] = useState("")
   const [filterType, setFilterType] = useState<"all" | "b2b" | "b2c">("all")
   const [filterStatus, setFilterStatus] = useState<"all" | "lead" | "active" | "archived">("all")
@@ -27,13 +29,13 @@ export default function ClientsPage() {
     fullName: "", email: "", phone: "", address: "", fiscalCode: "", companyName: "", vatNumber: "", type: "b2c" as "b2b" | "b2c", status: "lead" as "lead" | "active" | "archived", notes: ""
   })
 
-  const clients = useQuery(api.clients.list, orgId ? { organizationId: orgId!, search: search || undefined, type: filterType !== "all" ? filterType : undefined, status: filterStatus !== "all" ? filterStatus : undefined } : "skip")
+  const clients = useQuery(api.clients.list, orgId ? { organizationId: orgId!, search: search || undefined, type: filterType !== "all" ? filterType : undefined, status: filterStatus !== "all" ? filterStatus : undefined, userEmail: user?.email } : "skip")
   const selectedClient = useQuery(api.clients.get, selectedClientId ? { id: selectedClientId, organizationId: orgId! } : "skip")
-  const clientQuotes = useQuery(api.quotes.list, selectedClientId ? { organizationId: orgId!!, clientId: selectedClientId } : "skip")
-  const clientPayments = useQuery(api.payments.list, selectedClientId ? { organizationId: orgId!!, clientId: selectedClientId } : "skip")
-  const clientCantieri = useQuery(api.cantieri.list, selectedClientId ? { organizationId: orgId!!, clientId: selectedClientId } : "skip")
-  const clientDocuments = useQuery(api.documents.list, selectedClientId ? { organizationId: orgId!!, clientId: selectedClientId } : "skip")
-  const clientAppointments = useQuery(api.appointments.list, selectedClientId ? { organizationId: orgId!!, email: selectedClient?.email } : "skip")
+  const clientQuotes = useQuery(api.quotes.list, selectedClientId ? { organizationId: orgId!!, clientId: selectedClientId, userEmail: user?.email } : "skip")
+  const clientPayments = useQuery(api.payments.list, selectedClientId ? { organizationId: orgId!!, clientId: selectedClientId, userEmail: user?.email } : "skip")
+  const clientCantieri = useQuery(api.cantieri.list, selectedClientId ? { organizationId: orgId!!, clientId: selectedClientId, userEmail: user?.email } : "skip")
+  const clientDocuments = useQuery(api.documents.list, selectedClientId ? { organizationId: orgId!!, clientId: selectedClientId, userEmail: user?.email } : "skip")
+  const clientAppointments = useQuery(api.appointments.list, selectedClientId ? { organizationId: orgId!!, email: selectedClient?.email, userEmail: user?.email } : "skip")
 
   const createClient = useMutation(api.clients.createClient)
   const updateClient = useMutation(api.clients.update)

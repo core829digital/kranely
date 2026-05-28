@@ -1,10 +1,11 @@
 import { v } from "convex/values"
 import { mutation, query } from "./_generated/server"
+import { assertOrgAccess } from "./auth"
 
 export const list = query({
   args: {},
-  handler: async (ctx) => {
-    return await ctx.db.query("organizations").collect()
+  handler: async (ctx, args) => {
+    return await ctx.db.query("organizations").collect().then((items) => items.sort((a, b) => b._creationTime - a._creationTime))
   },
 })
 
@@ -49,18 +50,34 @@ export const update = mutation({
   },
   handler: async (ctx, args) => {
     const { id, ...data } = args
+    const prev = await ctx.db.get(id)
     await ctx.db.patch(id, data)
+
+    if (prev) {
+      await ctx.db.insert("activityLog", {
+        organizationId: id,
+        userEmail: "system",
+        action: "updated",
+        entityType: "organization",
+        entityId: id,
+        entityName: prev.name,
+        details: `Organizzazione "${prev.name}" aggiornata`,
+      })
+    }
+
     return id
   },
 })
 
 export const listUsers = query({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.id("organizations"), userEmail: v.optional(v.string()) },
   handler: async (ctx, args) => {
+    const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
     return await ctx.db
       .query("users")
       .withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId))
       .collect()
+      .then((items) => items.sort((a, b) => b._creationTime - a._creationTime))
   },
 })
 
@@ -80,6 +97,19 @@ export const updateUser = mutation({
     const existing = await ctx.db.get(id)
     if (!existing) throw new Error("Utente non trovato")
     await ctx.db.patch(id, data)
+
+    if (existing.organizationId) {
+      await ctx.db.insert("activityLog", {
+        organizationId: existing.organizationId,
+        userEmail: "system",
+        action: "updated",
+        entityType: "user",
+        entityId: id,
+      entityName: existing.fullName || existing.email,
+        details: `Utente "${existing.fullName || existing.email}" aggiornato`,
+      })
+    }
+
     return id
   },
 })
@@ -90,6 +120,19 @@ export const removeUser = mutation({
     const existing = await ctx.db.get(args.id)
     if (!existing) throw new Error("Utente non trovato")
     await ctx.db.delete(args.id)
+
+    if (existing.organizationId) {
+      await ctx.db.insert("activityLog", {
+        organizationId: existing.organizationId,
+        userEmail: "system",
+        action: "deleted",
+        entityType: "user",
+        entityId: args.id,
+        entityName: existing.fullName || existing.email,
+        details: `Utente "${existing.fullName || existing.email}" rimosso`,
+      })
+    }
+
     return args.id
   },
 })

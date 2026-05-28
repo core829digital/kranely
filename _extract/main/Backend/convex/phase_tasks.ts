@@ -138,7 +138,7 @@ export const update = mutation({
         if (!task) throw new Error("Task not found");
 
         // Admin can update anything; collaborator can only update status of their own assigned task
-        if (caller.role !== "admin" && caller.role !== "superadmin") {
+        if (caller.role !== "admin" ) {
             if (task.assigned_to !== caller.email) throw new Error("Non autorizzato");
             // Collaborators may only update status field
             const allowedKeys = Object.keys(args.data).filter((k) => k !== "status");

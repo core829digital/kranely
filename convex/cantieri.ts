@@ -1,18 +1,19 @@
 import { v } from "convex/values"
 import { mutation, query } from "./_generated/server"
 import { internal } from "./_generated/api"
+import { resolveNotifTarget } from "./lib/helpers"
+import { assertOrgAccess } from "./auth"
 
 // ═══════════════════════════════════════════════════════
 // CANTIERI (Construction Sites)
 // ═══════════════════════════════════════════════════════
 
 export const list = query({
-  args: { organizationId: v.id("organizations"), clientId: v.optional(v.id("clients")), search: v.optional(v.string()), status: v.optional(v.string()) },
+  args: { organizationId: v.id("organizations"), clientId: v.optional(v.id("clients")), search: v.optional(v.string()), status: v.optional(v.string()), userEmail: v.optional(v.string()) },
   handler: async (ctx, args) => {
-    let q = ctx.db.query("cantieri").withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId))
-    const cantieri = await q.collect()
-
-    let filtered = cantieri
+    const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
+    let filtered = await ctx.db.query("cantieri").withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId)).collect()
+    filtered = filtered.sort((a, b) => b._creationTime - a._creationTime)
     if (args.clientId) filtered = filtered.filter((c) => c.clientId === args.clientId)
     if (args.search) {
       const s = args.search.toLowerCase()
@@ -20,7 +21,7 @@ export const list = query({
     }
     if (args.status && args.status !== "all") filtered = filtered.filter((c) => c.status === args.status)
 
-    return filtered.sort((a, b) => b._creationTime - a._creationTime)
+    return filtered
   },
 })
 
@@ -50,16 +51,7 @@ export const create = mutation({
   },
   handler: async (ctx, args) => {
     const { managerId, userEmail, ...rest } = args
-
-    if (userEmail) {
-      const user = await ctx.db
-        .query("users")
-        .withIndex("by_email", (q: any) => q.eq("email", userEmail))
-        .first()
-      if (!user || user.organizationId !== args.organizationId) {
-        throw new Error("Non autorizzato")
-      }
-    }
+    const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
 
     const id = await ctx.db.insert("cantieri", { ...rest, status: args.status || "pianificato", managerId })
 
@@ -75,7 +67,7 @@ export const create = mutation({
 
     await ctx.scheduler.runAfter(0, internal.notifications.createNotification, {
       organizationId: args.organizationId,
-      userEmail: userEmail || "admin@kranely.demo",
+      userEmail: await resolveNotifTarget(ctx, args.organizationId, userEmail),
       title: "Nuovo cantiere",
       message: `Cantiere "${args.name}" creato${args.clientId ? " per cliente" : ""}`,
       type: "cantiere_created",
@@ -102,6 +94,7 @@ export const update = mutation({
     userEmail: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
     const { id, organizationId, userEmail, ...data } = args
     const prev = await ctx.db.get(id)
     if (!prev || prev.organizationId !== organizationId) throw new Error("Not found")
@@ -113,7 +106,7 @@ export const update = mutation({
       }
       await ctx.scheduler.runAfter(0, internal.notifications.createNotification, {
         organizationId: prev.organizationId,
-        userEmail: userEmail || "admin@kranely.demo",
+        userEmail: await resolveNotifTarget(ctx, prev.organizationId, userEmail),
         title: `Cantiere ${statusLabels[data.status] || data.status}`,
         message: `Il cantiere "${prev.name}" è ora "${statusLabels[data.status] || data.status}"`,
         type: "cantiere_status_change",
@@ -127,8 +120,9 @@ export const update = mutation({
 })
 
 export const remove = mutation({
-  args: { id: v.id("cantieri"), organizationId: v.id("organizations") },
+  args: { id: v.id("cantieri"), organizationId: v.id("organizations"), userEmail: v.optional(v.string()) },
   handler: async (ctx, args) => {
+    const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
     const cantiere = await ctx.db.get(args.id)
     if (!cantiere || cantiere.organizationId !== args.organizationId) throw new Error("Not found")
     await ctx.db.delete(args.id)
@@ -166,8 +160,9 @@ export const addPhaseTask = mutation({
 })
 
 export const stats = query({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.id("organizations"), userEmail: v.optional(v.string()) },
   handler: async (ctx, args) => {
+    const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
     const cantieri = await ctx.db
       .query("cantieri")
       .withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId))

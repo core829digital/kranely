@@ -16,10 +16,10 @@ export default function CollaboratorDashboardPage() {
   const { user } = useAuth()
   const orgId = useOrgId()
 
-  const collaborators = useQuery(api.collaborators.list, orgId ? { organizationId: orgId } : "skip")
-  const cantieri = useQuery(api.cantieri.list, orgId ? { organizationId: orgId } : "skip")
-  const certificates = useQuery(api.certificates.list, orgId ? { organizationId: orgId } : "skip")
-  const appointments = useQuery(api.appointments.list, orgId ? { organizationId: orgId } : "skip")
+  const collaborators = useQuery(api.collaborators.list, orgId ? { organizationId: orgId, userEmail: user?.email } : "skip")
+  const cantieri = useQuery(api.cantieri.list, orgId ? { organizationId: orgId, userEmail: user?.email } : "skip")
+  const certificates = useQuery(api.certificates.list, orgId ? { organizationId: orgId, userEmail: user?.email } : "skip")
+  const appointments = useQuery(api.appointments.list, orgId ? { organizationId: orgId, userEmail: user?.email } : "skip")
 
   if (!orgId || !user) return <PageSkeleton />
 

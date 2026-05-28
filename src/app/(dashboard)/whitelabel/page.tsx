@@ -8,12 +8,14 @@ import { Palette, Type, Link, Mail, Phone, Globe, Image, Save } from "lucide-rea
 import { toast } from "sonner"
 import { useQuery, useMutation } from "convex/react"
 import { api } from "../../../../convex/_generated/api"
+import { useAuth } from "@/lib/auth/auth-context"
 import { useOrgId } from "@/hooks/useOrgId"
 import { PageSkeleton } from "@/components/Skeletons"
 
 export default function WhitelabelPage() {
   const orgId = useOrgId()
-  const settings = useQuery(api.whitelabel.get, orgId ? { organizationId: orgId } : "skip")
+  const { user } = useAuth()
+  const settings = useQuery(api.whitelabel.get, orgId ? { organizationId: orgId, userEmail: user?.email } : "skip")
 
   const createSettings = useMutation(api.whitelabel.create)
   const updateSettings = useMutation(api.whitelabel.update)

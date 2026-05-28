@@ -1,9 +1,11 @@
 import { v } from "convex/values"
 import { mutation, query } from "./_generated/server"
+import { assertOrgAccess } from "./auth"
 
 export const get = query({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.id("organizations"), userEmail: v.optional(v.string()) },
   handler: async (ctx, args) => {
+    const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
     const doc = await ctx.db
       .query("ediliziaPrices")
       .withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId))
@@ -15,6 +17,7 @@ export const get = query({
 export const create = mutation({
   args: {
     organizationId: v.id("organizations"),
+    userEmail: v.optional(v.string()),
     pricePerMq: v.number(),
     multiplierNord: v.number(),
     multiplierCentro: v.number(),
@@ -44,6 +47,7 @@ export const create = mutation({
     updatedById: v.optional(v.id("users")),
   },
   handler: async (ctx, args) => {
+    const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
     const { updatedById, ...rest } = args
     const existing = await ctx.db
       .query("ediliziaPrices")
@@ -61,6 +65,7 @@ export const create = mutation({
 export const update = mutation({
   args: {
     organizationId: v.id("organizations"),
+    userEmail: v.optional(v.string()),
     pricePerMq: v.optional(v.number()),
     multiplierNord: v.optional(v.number()),
     multiplierCentro: v.optional(v.number()),
@@ -90,6 +95,7 @@ export const update = mutation({
     updatedById: v.optional(v.id("users")),
   },
   handler: async (ctx, args) => {
+    const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
     const { organizationId, updatedById, ...data } = args
     const existing = await ctx.db
       .query("ediliziaPrices")
@@ -102,8 +108,9 @@ export const update = mutation({
 })
 
 export const remove = mutation({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.id("organizations"), userEmail: v.optional(v.string()) },
   handler: async (ctx, args) => {
+    const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
     const existing = await ctx.db
       .query("ediliziaPrices")
       .withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId))

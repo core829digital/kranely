@@ -12,19 +12,22 @@ import { useQuery, useMutation } from "convex/react"
 import { api } from "../../../../convex/_generated/api"
 import { Id } from "../../../../convex/_generated/dataModel"
 import Link from "next/link"
+import { useAuth } from "@/lib/auth/auth-context"
 import { useOrgId } from "@/hooks/useOrgId"
 import { PageSkeleton } from "@/components/Skeletons"
 
 export default function SharedDocumentsPage() {
   const orgId = useOrgId()
+  const { user } = useAuth()
   const [search, setSearch] = useState("")
-  const [filterType, setFilterType] = useState<string>("all")
+  const [statusFilter, setStatusFilter] = useState("all")
+  const [filterType, setFilterType] = useState("all")
   const [showUploadDialog, setShowUploadDialog] = useState(false)
   const [formData, setFormData] = useState({ name: "", type: "documento", url: "", entityType: "", entityId: "", description: "" })
 
-  const documents = useQuery(api.documents.list, orgId ? { organizationId: orgId! } : "skip")
-  const clients = useQuery(api.clients.list, orgId ? { organizationId: orgId! } : "skip")
-  const cantieri = useQuery(api.cantieri.list, orgId ? { organizationId: orgId! } : "skip")
+  const documents = useQuery(api.documents.list, orgId ? { organizationId: orgId!, userEmail: user?.email } : "skip")
+  const clients = useQuery(api.clients.list, orgId ? { organizationId: orgId!, userEmail: user?.email } : "skip")
+  const cantieri = useQuery(api.cantieri.list, orgId ? { organizationId: orgId!, userEmail: user?.email } : "skip")
 
   const createDoc = useMutation(api.documents.create)
   const removeDoc = useMutation(api.documents.remove)

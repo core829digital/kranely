@@ -11,11 +11,13 @@ import { toast } from "sonner"
 import { useQuery, useMutation } from "convex/react"
 import { api } from "../../../../convex/_generated/api"
 import { Id } from "../../../../convex/_generated/dataModel"
+import { useAuth } from "@/lib/auth/auth-context"
 import { useOrgId } from "@/hooks/useOrgId"
 import { PageSkeleton } from "@/components/Skeletons"
 
 export default function CertificatesPage() {
   const orgId = useOrgId()
+  const { user } = useAuth()
   const [search, setSearch] = useState("")
   const [filterCategory, setFilterCategory] = useState<"all" | "sicurezza" | "qualifica" | "conformita" | "ambientale" | "altro">("all")
   const [filterStatus, setFilterStatus] = useState<"all" | "valido" | "in_scadenza" | "scaduto" | "in_rinnovo">("all")
@@ -26,10 +28,10 @@ export default function CertificatesPage() {
   const [selectedCertId, setSelectedCertId] = useState<Id<"certificates"> | null>(null)
   const [formData, setFormData] = useState({ name: "", category: "qualifica" as "sicurezza" | "qualifica" | "conformita" | "ambientale" | "altro", status: "valido" as "valido" | "in_scadenza" | "scaduto" | "in_rinnovo", issueDate: "", expiryDate: "", issuedBy: "", description: "", collaboratorId: "", cantiereId: "", documentUrl: "" })
 
-  const certificates = useQuery(api.certificates.list, orgId ? { organizationId: orgId!, category: filterCategory !== "all" ? filterCategory : undefined, status: filterStatus !== "all" ? filterStatus : undefined } : "skip")
-  const stats = useQuery(api.certificates.stats, orgId ? { organizationId: orgId! } : "skip")
-  const collaborators = useQuery(api.collaborators.list, orgId ? { organizationId: orgId! } : "skip")
-  const cantieri = useQuery(api.cantieri.list, orgId ? { organizationId: orgId! } : "skip")
+  const certificates = useQuery(api.certificates.list, orgId ? { organizationId: orgId!, category: filterCategory !== "all" ? filterCategory : undefined, status: filterStatus !== "all" ? filterStatus : undefined, userEmail: user?.email } : "skip")
+  const stats = useQuery(api.certificates.stats, orgId ? { organizationId: orgId!, userEmail: user?.email } : "skip")
+  const collaborators = useQuery(api.collaborators.list, orgId ? { organizationId: orgId!, userEmail: user?.email } : "skip")
+  const cantieri = useQuery(api.cantieri.list, orgId ? { organizationId: orgId!, userEmail: user?.email } : "skip")
 
   const createCertificate = useMutation(api.certificates.create)
   const updateCertificate = useMutation(api.certificates.update)

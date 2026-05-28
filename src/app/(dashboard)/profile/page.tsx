@@ -24,7 +24,7 @@ export default function ProfilePage() {
   const { user } = useAuth()
   const orgId = useOrgId()
   const org = useQuery(api.organizations.get, orgId ? { id: orgId } : "skip")
-  const users = useQuery(api.organizations.listUsers, orgId ? { organizationId: orgId } : "skip")
+  const users = useQuery(api.organizations.listUsers, orgId ? { organizationId: orgId, userEmail: user?.email } : "skip")
   const [fullName, setFullName] = useState("")
   const [phone, setPhone] = useState("")
   const [saving, setSaving] = useState(false)
@@ -48,8 +48,8 @@ export default function ProfilePage() {
     try {
       await updateUser({ id: myUser._id, fullName: fullName.trim(), phone: phone.trim() || undefined })
       toast.success("Profilo aggiornato")
-    } catch {
-      toast.error("Errore nel salvataggio")
+    } catch (err: any) {
+      toast.error(err.message || "Errore nel salvataggio")
     } finally {
       setSaving(false)
     }

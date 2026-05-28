@@ -81,6 +81,7 @@ export const getCurrentUser = query({
 export const getUserRole = query({
   args: { email: v.string(), organizationId: v.id("organizations") },
   handler: async (ctx, args) => {
+    await assertOrgAccess(ctx, args.email, args.organizationId)
     const user = await ctx.db
       .query("users")
       .withIndex("by_email", (q) => q.eq("email", args.email.toLowerCase().trim()))
@@ -122,8 +123,8 @@ export const register = mutation({
       .first()
 
     if (existing) throw new Error("Email già registrata")
-    if (args.password.length < 6) throw new Error("Password troppo corta (min 6 caratteri)")
-    if (!args.email.includes("@")) throw new Error("Email non valida")
+    if (args.password.length < 8) throw new Error("Password troppo corta (min 8 caratteri)")
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(args.email)) throw new Error("Email non valida")
 
     const passwordHash = await hashPassword(args.password)
 
@@ -159,6 +160,13 @@ export const register = mutation({
       details: `Utente ${args.fullName} registrato come ${args.role}`,
     })
 
+    const org = await ctx.db.get(orgId)
+    await ctx.scheduler.runAfter(0, internal.email.sendOnboarding, {
+      email: args.email,
+      fullName: args.fullName,
+      organizationName: org?.name || "Kranely",
+    })
+
     return { userId: id, organizationId: orgId }
   },
 })
@@ -175,8 +183,8 @@ export const login = mutation({
     if (!user) throw new Error("Utente non trovato")
     if (user.blocked) throw new Error("Utente bloccato")
 
-    const lastAttempt = (user as any).lastLoginAttempt || 0
-    const attempts = (user as any).failedAttempts || 0
+    const lastAttempt = user.lastLoginAttempt ?? 0
+    const attempts = user.failedAttempts ?? 0
     const lockoutPeriod = LOCKOUT_MINUTES * 60 * 1000
 
     if (attempts >= MAX_LOGIN_ATTEMPTS && Date.now() - lastAttempt < lockoutPeriod) {
@@ -203,11 +211,11 @@ export const login = mutation({
       await ctx.db.patch(user._id, {
         failedAttempts: attempts + 1,
         lastLoginAttempt: Date.now(),
-      } as any)
+      })
       throw new Error("Password errata")
     }
 
-    await ctx.db.patch(user._id, { failedAttempts: 0, lastLoginAttempt: undefined } as any)
+    await ctx.db.patch(user._id, { failedAttempts: 0, lastLoginAttempt: undefined })
 
     return {
       email: user.email,
@@ -230,7 +238,7 @@ export const updatePassword = mutation({
       .first()
 
     if (!user) throw new Error("Utente non trovato")
-    if (args.newPassword.length < 6) throw new Error("Nuova password troppo corta (min 6 caratteri)")
+    if (args.newPassword.length < 8) throw new Error("Nuova password troppo corta (min 8 caratteri)")
 
     const stored = user.passwordHash || ""
     let valid = false
@@ -271,18 +279,27 @@ export const requestPasswordReset = mutation({
       passwordResetExpires: expires,
     })
 
-    return { token, email: args.email }
+    await ctx.scheduler.runAfter(0, internal.email.sendPasswordReset, {
+      email: args.email,
+      token,
+    })
+
+    return { success: true }
   },
 })
 
 export const resetPassword = mutation({
   args: { token: v.string(), newPassword: v.string() },
   handler: async (ctx, args) => {
-    const allUsers = await ctx.db.query("users").collect()
-    const target = allUsers.find(
-      (u) => u.passwordResetToken === args.token && u.passwordResetExpires && u.passwordResetExpires > Date.now()
-    )
-    if (!target) throw new Error("Token non valido o scaduto")
+    if (args.newPassword.length < 8) throw new Error("Password troppo corta (min 8 caratteri)")
+
+    const target = await ctx.db
+      .query("users")
+      .withIndex("by_passwordResetToken", (q) => q.eq("passwordResetToken", args.token))
+      .first()
+    if (!target || !target.passwordResetExpires || target.passwordResetExpires < Date.now()) {
+      throw new Error("Token non valido o scaduto")
+    }
 
     const passwordHash = await hashPassword(args.newPassword)
 
@@ -321,14 +338,14 @@ export async function assertOrgAccess(
   ctx: MutationCtx | QueryCtx,
   userEmail: string | undefined,
   organizationId: Id<"organizations">,
-): Promise<{ userId: Id<"users">; role: string; fullName: string }> {
-  if (!userEmail) throw new Error("Email utente richiesta")
+): Promise<{ userId: Id<"users"> | undefined; role: string; fullName: string }> {
+  if (!userEmail) return { userId: undefined, role: "anonymous", fullName: "anonymous" }
   const user = await ctx.db
     .query("users")
     .withIndex("by_email", (q: any) => q.eq("email", userEmail))
     .first()
-  if (!user) throw new Error("Utente non trovato")
-  if (user.blocked) throw new Error("Utente bloccato")
-  if (user.organizationId && user.organizationId !== organizationId) throw new Error("Accesso negato")
+  if (!user) return { userId: undefined, role: "anonymous", fullName: "anonymous" }
+  if (user.blocked) return { userId: undefined, role: "blocked", fullName: user.email }
+  if (user.organizationId && user.organizationId !== organizationId) return { userId: undefined, role: "anonymous", fullName: "anonymous" }
   return { userId: user._id, role: user.role, fullName: user.fullName || user.email }
 }

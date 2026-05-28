@@ -12,6 +12,7 @@ import { useQuery, useMutation } from "convex/react"
 import { api } from "../../../../convex/_generated/api"
 import { Id } from "../../../../convex/_generated/dataModel"
 import Link from "next/link"
+import { useAuth } from "@/lib/auth/auth-context"
 import { useOrgId } from "@/hooks/useOrgId"
 import { PageSkeleton } from "@/components/Skeletons"
 
@@ -24,27 +25,31 @@ const statusConfig = {
 
 export default function MyAppointmentsPage() {
   const orgId = useOrgId()
+  const { user } = useAuth()
   const [search, setSearch] = useState("")
-  const [filterStatus, setFilterStatus] = useState<string>("all")
+  const [view, setView] = useState<"list" | "day" | "week" | "month">("month")
+  const [currentDate, setCurrentDate] = useState(new Date())
+  const [selectedDate, setSelectedDate] = useState<string | null>(null)
+  const [statusFilter, setStatusFilter] = useState("all")
   const [showCreateDialog, setShowCreateDialog] = useState(false)
   const [showEditDialog, setShowEditDialog] = useState(false)
   const [showDetailDialog, setShowDetailDialog] = useState(false)
-  const [editingApptId, setEditingApptId] = useState<Id<"appointments"> | null>(null)
+  const [editingAppointment, setEditingAppointment] = useState<Id<"appointments"> | null>(null)
   const [selectedApptId, setSelectedApptId] = useState<Id<"appointments"> | null>(null)
-  const [formData, setFormData] = useState({ title: "", email: "", appointmentDate: "", appointmentTime: "", location: "", description: "", clientId: "", cantiereId: "" })
   const [editFormData, setEditFormData] = useState({ title: "", appointmentDate: "", appointmentTime: "", location: "", description: "" })
+  const [formData, setFormData] = useState({ title: "", email: "", appointmentDate: "", appointmentTime: "", location: "", description: "", clientId: "", cantiereId: "" })
 
-  const appointments = useQuery(api.appointments.list, orgId ? { organizationId: orgId! } : "skip")
-  const stats = useQuery(api.appointments.stats, orgId ? { organizationId: orgId! } : "skip")
-  const clients = useQuery(api.clients.list, orgId ? { organizationId: orgId! } : "skip")
-  const cantieri = useQuery(api.cantieri.list, orgId ? { organizationId: orgId! } : "skip")
+  const appointments = useQuery(api.appointments.list, orgId ? { organizationId: orgId!, userEmail: user?.email } : "skip")
+  const stats = useQuery(api.appointments.stats, orgId ? { organizationId: orgId!, userEmail: user?.email } : "skip")
+  const clients = useQuery(api.clients.list, orgId ? { organizationId: orgId!, userEmail: user?.email } : "skip")
+  const cantieri = useQuery(api.cantieri.list, orgId ? { organizationId: orgId!, userEmail: user?.email } : "skip")
 
   const createAppt = useMutation(api.appointments.create)
   const updateAppt = useMutation(api.appointments.update)
   const deleteAppt = useMutation(api.appointments.remove)
 
   const openCreate = () => { setFormData({ title: "", email: "", appointmentDate: "", appointmentTime: "", location: "", description: "", clientId: "", cantiereId: "" }); setShowCreateDialog(true) }
-  const openEdit = (a: any) => { setEditFormData({ title: a.title, appointmentDate: a.appointmentDate, appointmentTime: a.appointmentTime || "", location: a.location || "", description: a.description || "" }); setEditingApptId(a._id); setShowEditDialog(true) }
+  const openEdit = (a: any) => { setEditFormData({ title: a.title, appointmentDate: a.appointmentDate, appointmentTime: a.appointmentTime || "", location: a.location || "", description: a.description || "" }); setEditingAppointment(a._id); setShowEditDialog(true) }
   const openDetail = (a: any) => { setSelectedApptId(a._id); setShowDetailDialog(true) }
   const selectedAppointment = useQuery(api.appointments.get, selectedApptId ? { id: selectedApptId, organizationId: orgId! } : "skip")
 
@@ -58,8 +63,8 @@ export default function MyAppointmentsPage() {
   }
 
   const handleEditSubmit = async () => {
-    if (!editingApptId) return
-    try { await updateAppt({ id: editingApptId, organizationId: orgId!, title: editFormData.title, appointmentDate: editFormData.appointmentDate, appointmentTime: editFormData.appointmentTime || undefined, location: editFormData.location || undefined, description: editFormData.description || undefined }); setShowEditDialog(false); toast.success("Appuntamento aggiornato") } catch (e) { toast.error("Errore") }
+    if (!editingAppointment) return
+    try { await updateAppt({ id: editingAppointment, organizationId: orgId!, title: editFormData.title, appointmentDate: editFormData.appointmentDate, appointmentTime: editFormData.appointmentTime || undefined, location: editFormData.location || undefined, description: editFormData.description || undefined }); setShowEditDialog(false); toast.success("Appuntamento aggiornato") } catch (e) { toast.error("Errore") }
   }
 
   const handleDelete = async (id: Id<"appointments">) => {
@@ -73,7 +78,7 @@ export default function MyAppointmentsPage() {
   const today = new Date().toISOString().split("T")[0]
 
   const filtered = appointments?.filter((a) => {
-    if (filterStatus !== "all" && a.status !== filterStatus) return false
+    if (statusFilter !== "all" && a.status !== statusFilter) return false
     if (search) { const s = search.toLowerCase(); return a.title.toLowerCase().includes(s) || a.email.toLowerCase().includes(s) || (a.location || "").toLowerCase().includes(s) }
     return true
   }) || []
@@ -96,7 +101,7 @@ export default function MyAppointmentsPage() {
 
       <div className="flex flex-wrap items-center gap-3">
         <div className="relative flex-1 min-w-[200px] max-w-md"><Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" /><Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Cerca appuntamenti..." className="pl-10" /></div>
-        <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className="h-10 rounded-lg border border-white/10 bg-white/5 px-3 text-sm text-white"><option value="all">Tutti</option><option value="scheduled">Fissati</option><option value="completed">Completati</option><option value="cancelled">Annullati</option></select>
+        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="h-10 rounded-lg border border-white/10 bg-white/5 px-3 text-sm text-white"><option value="all">Tutti</option><option value="scheduled">Fissati</option><option value="completed">Completati</option><option value="cancelled">Annullati</option></select>
       </div>
 
       {todayAppts.length > 0 && (

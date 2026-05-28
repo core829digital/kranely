@@ -11,11 +11,13 @@ import { useQuery, useMutation } from "convex/react"
 import { api } from "../../../../convex/_generated/api"
 import { Id } from "../../../../convex/_generated/dataModel"
 import Link from "next/link"
+import { useAuth } from "@/lib/auth/auth-context"
 import { useOrgId } from "@/hooks/useOrgId"
 import { PageSkeleton } from "@/components/Skeletons"
 
 export default function CantieriPage() {
   const orgId = useOrgId()
+  const { user } = useAuth()
   const [search, setSearch] = useState("")
   const [filterStatus, setFilterStatus] = useState<"all" | "pianificato" | "in_corso" | "completato" | "sospeso">("all")
   const [showCreateDialog, setShowCreateDialog] = useState(false)
@@ -26,14 +28,14 @@ export default function CantieriPage() {
     clientId: "", name: "", address: "", startDate: "", endDate: "", status: "pianificato" as "pianificato" | "in_corso" | "completato" | "sospeso", description: "", quoteId: "", totalBudget: "", managerId: ""
   })
 
-  const cantieri = useQuery(api.cantieri.list, orgId ? { organizationId: orgId!, search: search || undefined, status: filterStatus !== "all" ? filterStatus : undefined } : "skip")
-  const clients = useQuery(api.clients.list, orgId ? { organizationId: orgId! } : "skip")
+  const cantieri = useQuery(api.cantieri.list, orgId ? { organizationId: orgId!, search: search || undefined, status: filterStatus !== "all" ? filterStatus : undefined, userEmail: user?.email } : "skip")
+  const clients = useQuery(api.clients.list, orgId ? { organizationId: orgId!, userEmail: user?.email } : "skip")
   const selectedCantiere = useQuery(api.cantieri.get, selectedCantiereId ? { id: selectedCantiereId, organizationId: orgId! } : "skip")
-  const cantierePayments = useQuery(api.payments.list, selectedCantiereId ? { organizationId: orgId!!, cantiereId: selectedCantiereId } : "skip")
-  const cantiereDocuments = useQuery(api.documents.list, selectedCantiereId ? { organizationId: orgId!!, cantiereId: selectedCantiereId } : "skip")
-  const cantiereOrders = useQuery(api.supplierOrders.list, selectedCantiereId ? { organizationId: orgId!!, cantiereId: selectedCantiereId } : "skip")
-  const cantiereTasks = useQuery(api.tasks.list, selectedCantiereId ? { organizationId: orgId!!, cantiereId: selectedCantiereId } : "skip")
-  const allCantiereAppointments = useQuery(api.appointments.list, selectedCantiereId ? { organizationId: orgId!! } : "skip")
+  const cantierePayments = useQuery(api.payments.list, selectedCantiereId ? { organizationId: orgId!!, cantiereId: selectedCantiereId, userEmail: user?.email } : "skip")
+  const cantiereDocuments = useQuery(api.documents.list, selectedCantiereId ? { organizationId: orgId!!, cantiereId: selectedCantiereId, userEmail: user?.email } : "skip")
+  const cantiereOrders = useQuery(api.supplierOrders.list, selectedCantiereId ? { organizationId: orgId!!, cantiereId: selectedCantiereId, userEmail: user?.email } : "skip")
+  const cantiereTasks = useQuery(api.tasks.list, selectedCantiereId ? { organizationId: orgId!!, cantiereId: selectedCantiereId, userEmail: user?.email } : "skip")
+  const allCantiereAppointments = useQuery(api.appointments.list, selectedCantiereId ? { organizationId: orgId!!, userEmail: user?.email } : "skip")
   const cantiereAppointments = allCantiereAppointments?.filter((a) => a.cantiereId === selectedCantiereId) || []
 
   const createCantiere = useMutation(api.cantieri.create)

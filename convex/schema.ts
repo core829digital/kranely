@@ -68,7 +68,8 @@ export default defineSchema({
     .index("by_clerk", ["clerkId"])
     .index("by_email", ["email"])
     .index("by_role", ["role"])
-    .index("by_organization", ["organizationId"]),
+    .index("by_organization", ["organizationId"])
+    .index("by_passwordResetToken", ["passwordResetToken"]),
 
   // ═══════════════════════════════════════════════════════
   // CLIENTS
@@ -680,6 +681,7 @@ export default defineSchema({
     fileType: v.optional(v.string()),
     mimeType: v.optional(v.string()),
     fileSize: v.optional(v.number()),
+    storageId: v.optional(v.id("_storage")),
     isPublic: v.optional(v.boolean()),
     sharedWith: v.optional(v.array(v.string())),
     clientId: v.optional(v.id("clients")),
@@ -829,4 +831,14 @@ export default defineSchema({
   })
     .index("by_organization", ["organizationId"])
     .index("by_stripe", ["stripeSubscriptionId"]),
+
+  // ═══════════════════════════════════════════════════════
+  // STRIPE EVENTS (idempotency)
+  // ═══════════════════════════════════════════════════════
+
+  stripeEvents: defineTable({
+    stripeEventId: v.string(),
+    processed: v.boolean(),
+    processedAt: v.optional(v.number()),
+  }).index("by_stripeEventId", ["stripeEventId"]),
 })

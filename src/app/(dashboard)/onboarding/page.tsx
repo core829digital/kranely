@@ -8,7 +8,7 @@ import { useAuth } from "@/lib/auth/auth-context"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { toast } from "sonner"
-import { UserCheck, Key, Mail, User, Loader2 } from "lucide-react"
+import { UserCheck, Key, Mail, Phone, User, Loader2 } from "lucide-react"
 
 export default function OnboardingPage() {
   const searchParams = useSearchParams()
@@ -109,7 +109,7 @@ export default function OnboardingPage() {
             <Input value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Il tuo nome" required />
           </div>
           <div>
-            <label className="block text-sm font-medium text-white/80 mb-1 flex items-center gap-2"><Mail className="w-3.5 h-3.5" /> Telefono</label>
+            <label className="block text-sm font-medium text-white/80 mb-1 flex items-center gap-2"><Phone className="w-3.5 h-3.5" /> Telefono</label>
             <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+39 000 000 0000" />
           </div>
           <div>

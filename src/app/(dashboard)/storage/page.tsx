@@ -1,38 +1,73 @@
 ﻿"use client"
 
-import { useState } from "react"
+import { useState, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
-import { Label } from "@/components/ui/input"
-import { Search, HardDrive, FileText, Image, Folder, Upload, Trash2, Download, Eye, File } from "lucide-react"
+import { Label } from "@radix-ui/react-label"
+import { Search, HardDrive, FileText, Image, Folder, Upload, Trash2, Download, Eye, File, Loader2 } from "lucide-react"
 import { toast } from "sonner"
 import { useQuery, useMutation } from "convex/react"
 import { api } from "../../../../convex/_generated/api"
 import { Id } from "../../../../convex/_generated/dataModel"
+import { useAuth } from "@/lib/auth/auth-context"
 import { useOrgId } from "@/hooks/useOrgId"
 import { PageSkeleton } from "@/components/Skeletons"
 
 export default function StoragePage() {
   const orgId = useOrgId()
+  const { user } = useAuth()
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const [search, setSearch] = useState("")
   const [filterCategory, setFilterCategory] = useState<string>("all")
   const DOC_TYPES = ["contract", "quote", "invoice", "technical", "certificate", "photo", "other"] as const
   type DocType = typeof DOC_TYPES[number]
   const [showUploadDialog, setShowUploadDialog] = useState(false)
-  const [formData, setFormData] = useState({ name: "", category: "documenti", url: "", description: "" })
+  const [formData, setFormData] = useState({ name: "", category: "documenti", description: "" })
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [uploading, setUploading] = useState(false)
 
-  const documents = useQuery(api.documents.list, orgId ? { organizationId: orgId! } : "skip")
-
-  const createDoc = useMutation(api.documents.create)
+  const documents = useQuery(api.documents.list, orgId ? { organizationId: orgId!, userEmail: user?.email } : "skip")
   const removeDoc = useMutation(api.documents.remove)
+  const generateUploadUrl = useMutation(api.upload.generateUploadUrl)
+  const saveFile = useMutation(api.upload.saveFile)
 
-  const openUpload = () => { setFormData({ name: "", category: "documenti", url: "", description: "" }); setShowUploadDialog(true) }
+  const openUpload = () => {
+    setFormData({ name: "", category: "documenti", description: "" })
+    setSelectedFile(null)
+    setShowUploadDialog(true)
+  }
 
   const handleUpload = async () => {
     if (!formData.name || !orgId) { toast.error("Inserisci un nome"); return }
-    try { await createDoc({ organizationId: orgId!, title: formData.name, fileName: formData.name, type: DOC_TYPES.includes(formData.category as DocType) ? (formData.category as DocType) : "other", fileUrl: formData.url || "", description: formData.description || undefined }); setShowUploadDialog(false); toast.success("File caricato") } catch (e) { toast.error("Errore") }
+    if (!selectedFile) { toast.error("Seleziona un file"); return }
+    setUploading(true)
+    try {
+      const uploadUrl = await generateUploadUrl()
+      const result = await fetch(uploadUrl, {
+        method: "POST",
+        headers: { "Content-Type": selectedFile.type },
+        body: selectedFile,
+      })
+      if (!result.ok) throw new Error("Upload fallito")
+      const { storageId } = await result.json()
+      const docType = DOC_TYPES.includes(formData.category as DocType) ? (formData.category as DocType) : "other"
+      await saveFile({
+        organizationId: orgId,
+        storageId,
+        fileName: formData.name,
+        type: docType,
+        fileSize: selectedFile.size,
+        description: formData.description || undefined,
+      })
+      setShowUploadDialog(false)
+      toast.success("File caricato")
+    } catch (err: any) {
+      toast.error(err.message || "Errore upload")
+    } finally {
+      setUploading(false)
+    }
   }
 
   const handleDelete = async (id: Id<"documents">) => {
@@ -46,7 +81,8 @@ export default function StoragePage() {
     return true
   }) || []
 
-  const totalSize = filtered.length * 2.5
+  const totalBytes = documents?.reduce((sum, d) => sum + (d.fileSize || 0), 0) || 0
+  const totalSize = totalBytes > 0 ? (totalBytes / (1024 * 1024)) : 0
   const categories = [
     { value: "all", label: "Tutti", count: documents?.length || 0 },
     { value: "documento", label: "Documenti", count: documents?.filter((d) => d.type === "documento").length || 0 },
@@ -69,7 +105,7 @@ export default function StoragePage() {
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <div className="p-4 rounded-xl border border-white/10 bg-white/[0.02]"><div className="flex items-center gap-2 mb-2"><HardDrive className="w-4 h-4 text-kranely-accent" /><span className="text-sm text-white/60">File Totali</span></div><p className="text-xl font-bold text-white">{documents.length}</p></div>
-        <div className="p-4 rounded-xl border border-white/10 bg-white/[0.02]"><div className="flex items-center gap-2 mb-2"><FileText className="w-4 h-4 text-blue-400" /><span className="text-sm text-white/60">Dimensione Stimata</span></div><p className="text-xl font-bold text-blue-400">{totalSize.toFixed(1)} MB</p></div>
+        <div className="p-4 rounded-xl border border-white/10 bg-white/[0.02]"><div className="flex items-center gap-2 mb-2"><FileText className="w-4 h-4 text-blue-400" /><span className="text-sm text-white/60">Dimensione Totale</span></div><p className="text-xl font-bold text-blue-400">{totalSize.toFixed(1)} MB</p></div>
         <div className="p-4 rounded-xl border border-white/10 bg-white/[0.02]"><div className="flex items-center gap-2 mb-2"><Image className="w-4 h-4 text-green-400" /><span className="text-sm text-white/60">Foto</span></div><p className="text-xl font-bold text-green-400">{documents.filter((d) => d.type === "foto").length}</p></div>
         <div className="p-4 rounded-xl border border-white/10 bg-white/[0.02]"><div className="flex items-center gap-2 mb-2"><Folder className="w-4 h-4 text-purple-400" /><span className="text-sm text-white/60">Categorie</span></div><p className="text-xl font-bold text-purple-400">{categories.filter((c) => c.count > 0).length}</p></div>
       </div>
@@ -85,12 +121,12 @@ export default function StoragePage() {
         {filtered.map((doc) => (
           <div key={doc._id} className="p-5 rounded-xl border border-white/10 bg-white/[0.02]">
             <div className="flex items-center justify-center mb-4 p-4 rounded-lg bg-white/5">{fileIcon(doc.type || "other")}</div>
-            <h3 className="font-medium text-white truncate mb-1">{doc.name}</h3>
-            <p className="text-xs text-white/40 mb-3">{doc.type} - {new Date(doc._creationTime).toLocaleDateString("it-IT")}</p>
+            <h3 className="font-medium text-white truncate mb-1">{doc.fileName || doc.title || "Senza nome"}</h3>
+            <p className="text-xs text-white/40 mb-3">{doc.type} - {new Date(doc._creationTime).toLocaleDateString("it-IT")}{doc.fileSize ? ` · ${(doc.fileSize / 1024).toFixed(0)} KB` : ""}</p>
             {doc.description && <p className="text-sm text-white/60 mb-3 line-clamp-1">{doc.description}</p>}
             <div className="flex items-center gap-2 pt-3 border-t border-white/10">
-              <Button size="sm" variant="outline" className="flex-1 border-white/10 bg-white text-black hover:bg-white/90"><Eye className="w-3 h-3 mr-1" />Apri</Button>
-              <Button size="sm" variant="outline" className="border-white/10 bg-white text-black hover:bg-white/90" title="Scarica" aria-label="Scarica"><Download className="w-3 h-3" /></Button>
+              <Button size="sm" variant="outline" className="flex-1 border-white/10 bg-white text-black hover:bg-white/90" onClick={() => doc.fileUrl && window.open(doc.fileUrl, "_blank")}><Eye className="w-3 h-3 mr-1" />Apri</Button>
+              <Button size="sm" variant="outline" className="border-white/10 bg-white text-black hover:bg-white/90" title="Scarica" aria-label="Scarica" onClick={() => doc.fileUrl && window.open(doc.fileUrl, "_blank")}><Download className="w-3 h-3" /></Button>
               <Button size="sm" variant="destructive" onClick={() => handleDelete(doc._id)}><Trash2 className="w-3 h-3" /></Button>
             </div>
           </div>
@@ -102,12 +138,20 @@ export default function StoragePage() {
       <Dialog open={showUploadDialog} onOpenChange={setShowUploadDialog}>
         <DialogContent><DialogHeader><DialogTitle>Carica File</DialogTitle></DialogHeader>
           <div className="space-y-4 py-4">
-            <div><Label>Nome File *</Label><Input value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} /></div>
-            <div><Label>Categoria</Label><select value={formData.category} onChange={(e) => setFormData({ ...formData, category: e.target.value })} className="h-10 w-full rounded-lg border border-white/10 bg-white/5 px-3 text-sm text-white"><option value="documento">Documento</option><option value="foto">Foto</option><option value="preventivo">Preventivo</option><option value="fattura">Fattura</option></select></div>
-            <div><Label>URL</Label><Input value={formData.url} onChange={(e) => setFormData({ ...formData, url: e.target.value })} placeholder="https://..." /></div>
-            <div><Label>Descrizione</Label><Input value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} /></div>
+            <div><Label className="text-sm font-medium text-white/80">Nome File *</Label><Input value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} placeholder="nome-file.pdf" /></div>
+            <div><Label className="text-sm font-medium text-white/80">Categoria</Label><select value={formData.category} onChange={(e) => setFormData({ ...formData, category: e.target.value })} className="h-10 w-full rounded-lg border border-white/10 bg-white/5 px-3 text-sm text-white"><option value="documento">Documento</option><option value="foto">Foto</option><option value="preventivo">Preventivo</option><option value="fattura">Fattura</option></select></div>
+            <div><Label className="text-sm font-medium text-white/80">File *</Label>
+              <input ref={fileInputRef} type="file" onChange={(e) => setSelectedFile(e.target.files?.[0] || null)} className="w-full text-sm text-white file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:bg-kranely-accent file:text-kranely-app-bg hover:file:bg-kranely-accent/90" />
+              {selectedFile && <p className="text-xs text-white/40 mt-1">{selectedFile.name} ({(selectedFile.size / 1024).toFixed(0)} KB)</p>}
+            </div>
+            <div><Label className="text-sm font-medium text-white/80">Descrizione</Label><Input value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} /></div>
           </div>
-          <DialogFooter><Button variant="outline" onClick={() => setShowUploadDialog(false)} className="border-white/10">Annulla</Button><Button onClick={handleUpload} className="bg-kranely-accent text-kranely-app-bg">Carica</Button></DialogFooter>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowUploadDialog(false)} className="border-white/10">Annulla</Button>
+            <Button onClick={handleUpload} disabled={uploading} className="bg-kranely-accent text-kranely-app-bg">
+              {uploading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Caricamento...</> : "Carica"}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

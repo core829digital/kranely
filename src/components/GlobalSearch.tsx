@@ -5,6 +5,7 @@ import { Search, FileText, User, Building2, HardHat, Truck, FolderOpen, ArrowRig
 import { useQuery } from "convex/react"
 import { api } from "../../convex/_generated/api"
 import { useOrgId } from "@/hooks/useOrgId"
+import { useAuth } from "@/lib/auth/auth-context"
 import Link from "next/link"
 import { cn } from "@/lib/utils"
 
@@ -19,15 +20,16 @@ interface SearchResult {
 
 export default function GlobalSearch() {
   const orgId = useOrgId()
+  const { user } = useAuth()
   const [query, setQuery] = useState("")
   const [open, setOpen] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
   const [selectedIndex, setSelectedIndex] = useState(0)
 
-  const clients = useQuery(api.clients.list, orgId ? { organizationId: orgId } : "skip")
-  const cantieri = useQuery(api.cantieri.list, orgId ? { organizationId: orgId } : "skip")
-  const suppliers = useQuery(api.suppliers.list, orgId ? { organizationId: orgId } : "skip")
-  const quotes = useQuery(api.quotes.list, orgId ? { organizationId: orgId } : "skip")
+  const clients = useQuery(api.clients.list, orgId ? { organizationId: orgId, userEmail: user?.email } : "skip")
+  const cantieri = useQuery(api.cantieri.list, orgId ? { organizationId: orgId, userEmail: user?.email } : "skip")
+  const suppliers = useQuery(api.suppliers.list, orgId ? { organizationId: orgId, userEmail: user?.email } : "skip")
+  const quotes = useQuery(api.quotes.list, orgId ? { organizationId: orgId, userEmail: user?.email } : "skip")
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {

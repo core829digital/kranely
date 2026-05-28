@@ -11,11 +11,13 @@ import { useQuery, useMutation } from "convex/react"
 import { api } from "../../../../convex/_generated/api"
 import { Id } from "../../../../convex/_generated/dataModel"
 import Link from "next/link"
+import { useAuth } from "@/lib/auth/auth-context"
 import { useOrgId } from "@/hooks/useOrgId"
 import { PageSkeleton } from "@/components/Skeletons"
 
 export default function QuotesPage() {
   const orgId = useOrgId()
+  const { user } = useAuth()
   const [search, setSearch] = useState("")
   const [filterStatus, setFilterStatus] = useState<"all" | "draft" | "sent" | "accepted" | "rejected" | "in_lavorazione">("all")
   const [filterType, setFilterType] = useState<"all" | "preventivo" | "sopralluogo" | "assistenza">("all")
@@ -27,13 +29,13 @@ export default function QuotesPage() {
     clientId: "", title: "", description: "", quoteType: "preventivo" as "preventivo" | "sopralluogo" | "assistenza", status: "draft" as "draft" | "sent" | "accepted" | "rejected" | "in_lavorazione", totalAmount: "", validUntil: "", email: ""
   })
 
-  const quotes = useQuery(api.quotes.list, orgId ? { organizationId: orgId!, search: search || undefined, status: filterStatus !== "all" ? filterStatus : undefined, type: filterType !== "all" ? filterType : undefined } : "skip")
-  const clients = useQuery(api.clients.list, orgId ? { organizationId: orgId! } : "skip")
+  const quotes = useQuery(api.quotes.list, orgId ? { organizationId: orgId!, search: search || undefined, status: filterStatus !== "all" ? filterStatus : undefined, type: filterType !== "all" ? filterType : undefined, userEmail: user?.email } : "skip")
+  const clients = useQuery(api.clients.list, orgId ? { organizationId: orgId!, userEmail: user?.email } : "skip")
   const selectedQuote = useQuery(api.quotes.get, selectedQuoteId ? { id: selectedQuoteId, organizationId: orgId! } : "skip")
   const quoteClient = useQuery(api.clients.get, selectedQuote?.clientId ? { id: selectedQuote.clientId, organizationId: orgId! } : "skip")
   const quoteCantiere = useQuery(api.cantieri.get, selectedQuote?.cantiereId ? { id: selectedQuote.cantiereId, organizationId: orgId! } : "skip")
-  const quotePayments = useQuery(api.payments.list, selectedQuote?.cantiereId ? { organizationId: orgId!!, cantiereId: selectedQuote.cantiereId } : "skip")
-  const quoteDocuments = useQuery(api.documents.list, selectedQuoteId ? { organizationId: orgId!!, quoteId: selectedQuoteId } : "skip")
+  const quotePayments = useQuery(api.payments.list, selectedQuote?.cantiereId ? { organizationId: orgId!!, cantiereId: selectedQuote.cantiereId, userEmail: user?.email } : "skip")
+  const quoteDocuments = useQuery(api.documents.list, selectedQuoteId ? { organizationId: orgId!!, quoteId: selectedQuoteId, userEmail: user?.email } : "skip")
 
   const createQuote = useMutation(api.quotes.create)
   const updateQuote = useMutation(api.quotes.update)

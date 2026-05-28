@@ -9,7 +9,7 @@ import { PageSkeleton } from "@/components/Skeletons"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Select } from "@/components/ui/select"
 import { Clock, Calendar, Building2, Users, Plus, X, CheckCircle2, Loader2 } from "lucide-react"
 import { toast } from "sonner"
 
@@ -24,9 +24,9 @@ export default function DailyLogsPage() {
   const [description, setDescription] = useState("")
   const [saving, setSaving] = useState(false)
 
-  const collaborators = useQuery(api.collaborators.list, orgId ? { organizationId: orgId } : "skip")
-  const cantieri = useQuery(api.cantieri.list, orgId ? { organizationId: orgId } : "skip")
-  const hoursEntries = useQuery(api.collaborators.listHours, orgId ? { organizationId: orgId } : "skip")
+  const collaborators = useQuery(api.collaborators.list, orgId ? { organizationId: orgId, userEmail: user?.email } : "skip")
+  const cantieri = useQuery(api.cantieri.list, orgId ? { organizationId: orgId, userEmail: user?.email } : "skip")
+  const hoursEntries = useQuery(api.collaborators.listHours, orgId ? { organizationId: orgId, userEmail: user?.email } : "skip")
 
   const addHours = useMutation(api.collaborators.addHours)
   const approveHours = useMutation(api.collaborators.updateHours)
@@ -43,7 +43,7 @@ export default function DailyLogsPage() {
       await addHours({
         organizationId: orgId,
         collaboratorId: collaboratorId as any,
-        cantiereId: cantiereId ? (cantiereId as any) : undefined,
+        cantiereId: (cantiereId || undefined) as any,
         date,
         hours: Number(hours),
         description: description || undefined,
@@ -109,26 +109,21 @@ export default function DailyLogsPage() {
             <form onSubmit={handleSubmit} className="space-y-3">
               <div>
                 <label className="block text-xs text-white/60 mb-1">Collaboratore</label>
-                <Select value={collaboratorId} onValueChange={setCollaboratorId}>
-                  <SelectTrigger><SelectValue placeholder="Seleziona..." /></SelectTrigger>
-                  <SelectContent>
+                <select value={collaboratorId} onChange={(e) => setCollaboratorId(e.target.value)} className="flex h-10 w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-kranely-accent/50 focus:border-kranely-accent/50 transition-colors appearance-none cursor-pointer">
+                    <option value="" disabled>Seleziona...</option>
                     {collaborators?.map((c) => (
-                      <SelectItem key={c._id} value={c._id}>{c.fullName}</SelectItem>
+                      <option key={c._id} value={c._id}>{c.fullName}</option>
                     ))}
-                  </SelectContent>
-                </Select>
+                  </select>
               </div>
               <div>
                 <label className="block text-xs text-white/60 mb-1">Cantiere (opzionale)</label>
-                <Select value={cantiereId || "none"} onValueChange={(v) => setCantiereId(v === "none" ? "" : v)}>
-                  <SelectTrigger><SelectValue placeholder="Nessuno" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">Nessuno</SelectItem>
+                <select value={cantiereId || "none"} onChange={(e) => setCantiereId(e.target.value === "none" ? "" : e.target.value)} className="flex h-10 w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-kranely-accent/50 focus:border-kranely-accent/50 transition-colors appearance-none cursor-pointer">
+                    <option value="none">Nessuno</option>
                     {cantieri?.map((c) => (
-                      <SelectItem key={c._id} value={c._id}>{c.name}</SelectItem>
+                      <option key={c._id} value={c._id}>{c.name}</option>
                     ))}
-                  </SelectContent>
-                </Select>
+                  </select>
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <div>

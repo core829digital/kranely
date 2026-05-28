@@ -9,7 +9,7 @@ export const listAdminConversations = query({
     args: {},
     handler: async (ctx) => {
         const caller = await getCallerInfo(ctx);
-        if (!caller || (caller.role !== "admin" && caller.role !== "superadmin")) return [];
+        if (!caller || (caller.role !== "admin" )) return [];
 
         return await ctx.db
             .query("conversations")
@@ -78,7 +78,7 @@ export const getMessages = query({
 
         // Only participants (client or admin in this conversation) or system admins can read messages
         const isParticipant = conversation.client_email === caller.email || conversation.admin_email === caller.email;
-        const isAdmin = caller.role === "admin" || caller.role === "superadmin";
+        const isAdmin = caller.role === "admin" ;
         if (!isParticipant && !isAdmin) return [];
 
         return await ctx.db

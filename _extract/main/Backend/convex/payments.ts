@@ -34,7 +34,7 @@ export const list = query({
         if (!caller) return [];
 
         // Admin/CEO see all (with optional filters)
-        if (caller.role === "admin" || caller.role === "superadmin") {
+        if (caller.role === "admin" ) {
             let results;
             if (args.type) {
                 results = await ctx.db.query("payments").withIndex("by_type", (q: any) => q.eq("type", args.type)).collect();
@@ -128,7 +128,7 @@ export const getById = query({
         }
 
         // Admins see all
-        if (caller.role === "admin" || caller.role === "superadmin") return payment;
+        if (caller.role === "admin" ) return payment;
 
         // Suppliers: only their own payments
         if (caller.role === "supplier") {
@@ -290,7 +290,7 @@ export const uploadPaymentProof = mutation({
         if (!payment) throw new Error("Pagamento non trovato");
 
         // Authorization: must be admin OR the actual payment recipient
-        const isAdmin = caller.role === "admin" || caller.role === "superadmin";
+        const isAdmin = caller.role === "admin" ;
         if (!isAdmin) {
             let authorized = false;
             if (payment.supplier_id) {
@@ -447,7 +447,7 @@ export const markAsReceived = mutation({
             if (c && c.email === caller.email) isRecipient = true;
         }
 
-        if (!isRecipient && caller.role !== "admin" && caller.role !== "superadmin") {
+        if (!isRecipient && caller.role !== "admin" ) {
             throw new Error("Solo il destinatario può confermare la ricezione.");
         }
 
@@ -487,7 +487,7 @@ export const confirmPayment = mutation({
             }
             finalStatus = "confirmed";
         } else if (payment.type === "client") {
-            if (caller.role !== "admin" && caller.role !== "superadmin") {
+            if (caller.role !== "admin" ) {
                 throw new Error("Solo l'amministratore può confermare i pagamenti dei clienti.");
             }
         }
@@ -718,7 +718,7 @@ export const rejectPayment = mutation({
 
         // Authorization check
         if (payment.type === "client") {
-            if (caller.role !== "admin" && caller.role !== "superadmin") {
+            if (caller.role !== "admin" ) {
                 throw new Error("Solo l'amministratore può rifiutare i pagamenti dei clienti.");
             }
         } else if (payment.type === "supplier") {
@@ -842,7 +842,7 @@ export const getStats = query({
     args: {},
     handler: async (ctx) => {
         const caller = await getCallerInfo(ctx);
-        if (!caller || (caller.role !== "admin" && caller.role !== "superadmin")) return null;
+        if (!caller || (caller.role !== "admin" )) return null;
         const all = await ctx.db.query("payments").collect();
         const supplierPayments = all.filter(p => p.type === "supplier");
         const collaboratorPayments = all.filter(p => p.type === "collaborator");
@@ -966,7 +966,7 @@ export const updatePaymentSettings = mutation({
     },
     handler: async (ctx, args) => {
         const caller = await getCallerInfo(ctx);
-        if (!caller || (caller.role !== "admin" && caller.role !== "superadmin")) {
+        if (!caller || (caller.role !== "admin" )) {
             throw new Error("Solo l'Admin può modificare le impostazioni di pagamento.");
         }
         const existing = await ctx.db.query("payment_settings").order("desc").first();
@@ -1032,7 +1032,7 @@ export const generateServicePayment = mutation({
     },
     handler: async (ctx, args) => {
         const caller = await getCallerInfo(ctx);
-        if (!caller || (caller.role !== "admin" && caller.role !== "superadmin")) {
+        if (!caller || (caller.role !== "admin" )) {
             throw new Error("Solo l'Admin può creare pagamenti per servizi.");
         }
         const collab = await ctx.db.get(args.collaborator_id);

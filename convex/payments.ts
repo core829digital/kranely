@@ -1,24 +1,25 @@
 import { v } from "convex/values"
 import { mutation, query } from "./_generated/server"
 import { internal } from "./_generated/api"
+import { resolveNotifTarget } from "./lib/helpers"
+import { assertOrgAccess } from "./auth"
 
 // ═══════════════════════════════════════════════════════
 // PAYMENTS (Pagamenti)
 // ═══════════════════════════════════════════════════════
 
 export const list = query({
-  args: { organizationId: v.id("organizations"), cantiereId: v.optional(v.id("cantieri")), clientId: v.optional(v.id("clients")), status: v.optional(v.string()), type: v.optional(v.string()) },
+  args: { organizationId: v.id("organizations"), cantiereId: v.optional(v.id("cantieri")), clientId: v.optional(v.id("clients")), status: v.optional(v.string()), type: v.optional(v.string()), userEmail: v.optional(v.string()) },
   handler: async (ctx, args) => {
-    let q = ctx.db.query("payments").withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId))
-    const payments = await q.collect()
-
-    let filtered = payments
+    const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
+    let filtered = await ctx.db.query("payments").withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId)).collect()
+    filtered = filtered.sort((a, b) => b._creationTime - a._creationTime)
     if (args.cantiereId) filtered = filtered.filter((p) => p.cantiereId === args.cantiereId)
     if (args.clientId) filtered = filtered.filter((p) => p.clientId === args.clientId)
     if (args.status && args.status !== "all") filtered = filtered.filter((p) => p.status === args.status)
     if (args.type && args.type !== "all") filtered = filtered.filter((p) => p.type === args.type)
 
-    return filtered.sort((a, b) => (b.dueDate || "").localeCompare(a.dueDate || ""))
+    return filtered
   },
 })
 
@@ -50,17 +51,7 @@ export const create = mutation({
   },
   handler: async (ctx, args) => {
     const { userEmail, ...rest } = args
-
-    if (userEmail) {
-      const user = await ctx.db
-        .query("users")
-        .withIndex("by_email", (q: any) => q.eq("email", userEmail))
-        .first()
-      if (!user || user.organizationId !== args.organizationId) {
-        throw new Error("Non autorizzato")
-      }
-    }
-
+    const user = await assertOrgAccess(ctx, userEmail, args.organizationId)
     const id = await ctx.db.insert("payments", { ...rest, status: args.status || "in_attesa" })
 
     await ctx.db.insert("activityLog", {
@@ -76,7 +67,7 @@ export const create = mutation({
     if (args.dueDate) {
       await ctx.scheduler.runAfter(0, internal.notifications.createNotification, {
         organizationId: args.organizationId,
-        userEmail: userEmail || "admin@kranely.demo",
+        userEmail: await resolveNotifTarget(ctx, args.organizationId, userEmail),
         title: "Nuovo pagamento in arrivo",
         message: `Pagamento di EUR${args.amount.toLocaleString("it-IT")} "${args.description}" in scadenza il ${new Date(args.dueDate).toLocaleDateString("it-IT")}`,
         type: "payment_due",
@@ -93,6 +84,7 @@ export const update = mutation({
   args: {
     id: v.id("payments"),
     organizationId: v.id("organizations"),
+    userEmail: v.optional(v.string()),
     description: v.optional(v.string()),
     amount: v.optional(v.number()),
     status: v.optional(v.union(v.literal("in_attesa"), v.literal("in_verifica"), v.literal("pagato"), v.literal("in_ritardo"), v.literal("parziale"))),
@@ -102,7 +94,8 @@ export const update = mutation({
     notes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const { id, organizationId, ...data } = args
+    const { id, organizationId, userEmail, ...data } = args
+    const user = await assertOrgAccess(ctx, userEmail, organizationId)
     const doc = await ctx.db.get(id)
     if (!doc || doc.organizationId !== organizationId) throw new Error("Not found")
     await ctx.db.patch(id, data)
@@ -123,7 +116,7 @@ export const markAsPaid = mutation({
 
     await ctx.scheduler.runAfter(0, internal.notifications.createNotification, {
       organizationId: payment.organizationId,
-      userEmail: "admin@kranely.demo",
+      userEmail: await resolveNotifTarget(ctx, payment.organizationId),
       title: "Pagamento ricevuto",
       message: `Pagamento di EUR${payment.amount.toLocaleString("it-IT")} "${payment.description}" è stato segnato come pagato`,
       type: "payment_received",
@@ -136,8 +129,9 @@ export const markAsPaid = mutation({
 })
 
 export const remove = mutation({
-  args: { id: v.id("payments"), organizationId: v.id("organizations") },
+  args: { id: v.id("payments"), organizationId: v.id("organizations"), userEmail: v.optional(v.string()) },
   handler: async (ctx, args) => {
+    const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
     const payment = await ctx.db.get(args.id)
     if (!payment || payment.organizationId !== args.organizationId) throw new Error("Not found")
     await ctx.db.delete(args.id)
@@ -146,8 +140,9 @@ export const remove = mutation({
 })
 
 export const stats = query({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.id("organizations"), userEmail: v.optional(v.string()) },
   handler: async (ctx, args) => {
+    const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
     const payments = await ctx.db
       .query("payments")
       .withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId))

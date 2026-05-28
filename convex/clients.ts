@@ -1,6 +1,7 @@
 import { v } from "convex/values"
 import { mutation, query } from "./_generated/server"
 import { internal } from "./_generated/api"
+import { assertOrgAccess } from "./auth"
 
 // ═══════════════════════════════════════════════════════
 // ORGANIZATIONS
@@ -79,8 +80,9 @@ export const getByEmail = query({
 })
 
 export const getByOrganization = query({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.id("organizations"), userEmail: v.optional(v.string()) },
   handler: async (ctx, args) => {
+    const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
     return await ctx.db
       .query("users")
       .withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId))
@@ -93,12 +95,11 @@ export const getByOrganization = query({
 // ═══════════════════════════════════════════════════════
 
 export const list = query({
-  args: { organizationId: v.id("organizations"), search: v.optional(v.string()), type: v.optional(v.string()), status: v.optional(v.string()) },
+  args: { organizationId: v.id("organizations"), search: v.optional(v.string()), type: v.optional(v.string()), status: v.optional(v.string()), userEmail: v.optional(v.string()) },
   handler: async (ctx, args) => {
-    let q = ctx.db.query("clients").withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId))
-    const clients = await q.collect()
-
-    let filtered = clients
+    const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
+    let filtered = await ctx.db.query("clients").withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId)).collect()
+    filtered = filtered.sort((a, b) => b._creationTime - a._creationTime)
     if (args.search) {
       const s = args.search.toLowerCase()
       filtered = filtered.filter((c) => c.fullName.toLowerCase().includes(s) || c.email.toLowerCase().includes(s) || (c.companyName && c.companyName.toLowerCase().includes(s)))
@@ -106,7 +107,7 @@ export const list = query({
     if (args.type && args.type !== "all") filtered = filtered.filter((c) => c.clientType === args.type)
     if (args.status && args.status !== "all") filtered = filtered.filter((c) => c.status === args.status)
 
-    return filtered.sort((a, b) => b._creationTime - a._creationTime)
+    return filtered
   },
 })
 
@@ -137,16 +138,7 @@ export const createClient = mutation({
   },
   handler: async (ctx, args) => {
     const { createdById, userEmail, ...rest } = args
-
-    if (userEmail) {
-      const user = await ctx.db
-        .query("users")
-        .withIndex("by_email", (q: any) => q.eq("email", userEmail))
-        .first()
-      if (!user || user.organizationId !== args.organizationId) {
-        throw new Error("Non autorizzato: appartieni a un'organizzazione diversa")
-      }
-    }
+    const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
 
     const id = await ctx.db.insert("clients", { ...rest, status: args.status || "lead", clientType: args.type, createdById })
 
@@ -191,6 +183,7 @@ export const update = mutation({
     userEmail: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
     const { id, organizationId, userEmail, ...data } = args
     const prev = await ctx.db.get(id)
     if (!prev || prev.organizationId !== organizationId) throw new Error("Not found")
@@ -213,8 +206,9 @@ export const update = mutation({
 })
 
 export const remove = mutation({
-  args: { id: v.id("clients"), organizationId: v.id("organizations") },
+  args: { id: v.id("clients"), organizationId: v.id("organizations"), userEmail: v.optional(v.string()) },
   handler: async (ctx, args) => {
+    const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
     const client = await ctx.db.get(args.id)
     if (!client || client.organizationId !== args.organizationId) throw new Error("Not found")
     await ctx.db.delete(args.id)
@@ -223,8 +217,9 @@ export const remove = mutation({
 })
 
 export const stats = query({
-  args: { organizationId: v.id("organizations") },
+  args: { organizationId: v.id("organizations"), userEmail: v.optional(v.string()) },
   handler: async (ctx, args) => {
+    const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
     const clients = await ctx.db
       .query("clients")
       .withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId))

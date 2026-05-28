@@ -25,11 +25,11 @@ export default function PrivateAreaPage() {
   const [search, setSearch] = useState("")
   const [selectedQuote, setSelectedQuote] = useState<Doc<"quotes"> | null>(null)
 
-  const clients = useQuery(api.clients.list, orgId ? { organizationId: orgId } : "skip")
-  const allQuotes = useQuery(api.quotes.list, orgId ? { organizationId: orgId } : "skip")
-  const cantieri = useQuery(api.cantieri.list, orgId ? { organizationId: orgId } : "skip")
-  const documents = useQuery(api.documents.list, orgId ? { organizationId: orgId } : "skip")
-  const payments = useQuery(api.payments.list, orgId ? { organizationId: orgId } : "skip")
+  const clients = useQuery(api.clients.list, orgId ? { organizationId: orgId, userEmail: user?.email } : "skip")
+  const allQuotes = useQuery(api.quotes.list, orgId ? { organizationId: orgId, userEmail: user?.email } : "skip")
+  const cantieri = useQuery(api.cantieri.list, orgId ? { organizationId: orgId, userEmail: user?.email } : "skip")
+  const documents = useQuery(api.documents.list, orgId ? { organizationId: orgId, userEmail: user?.email } : "skip")
+  const payments = useQuery(api.payments.list, orgId ? { organizationId: orgId, userEmail: user?.email } : "skip")
 
   const isAdmin = user?.role === "admin" || user?.role === "superadmin"
   const myClient = clients?.find((c) => c.email === user?.email)
