@@ -46,15 +46,7 @@ export default function SeedPage() {
           </div>
         )}
 
-        <div className="p-4 rounded-lg bg-white/5 border border-white/10">
-          <p className="text-xs text-white/40 mb-2 font-medium uppercase tracking-wider">Account demo</p>
-          <div className="space-y-1 text-xs text-white/60">
-            <p><span className="text-white/80">Admin:</span> admin@kranely.app / admin123</p>
-            <p><span className="text-white/80">Client:</span> client@test.com / client123</p>
-            <p><span className="text-white/80">Supplier:</span> supplier@test.com / supplier123</p>
-            <p><span className="text-white/80">Collaborator:</span> collaborator@test.com / collab123</p>
-          </div>
-        </div>
+
 
         <div className="text-center">
           <a href="/sign-in" className="text-sm text-[#c8ff66] hover:underline">

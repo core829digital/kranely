@@ -78,18 +78,7 @@ function SignInForm() {
         </Button>
       </form>
 
-      <div className="mt-6 p-4 rounded-lg bg-white/5 border border-white/10">
-        <p className="text-xs text-white/40 mb-2 font-medium uppercase tracking-wider">Account demo</p>
-        <div className="space-y-1 text-xs text-white/60">
-          <p><span className="text-white/80">Admin:</span> admin@kranely.app / admin123</p>
-          <p><span className="text-white/80">Client:</span> client@test.com / client123</p>
-          <p><span className="text-white/80">Supplier:</span> supplier@test.com / supplier123</p>
-          <p><span className="text-white/80">Collaborator:</span> collaborator@test.com / collab123</p>
-        </div>
-        <a href="/seed" className="mt-3 block text-center text-xs text-[#c8ff66] hover:underline">
-          Popola database demo
-        </a>
-      </div>
+
 
       <p className="text-center text-sm text-white/60 mt-6">
         Non hai un account?{" "}
