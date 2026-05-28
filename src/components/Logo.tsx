@@ -15,7 +15,7 @@ export function Logo({ size = "md", showText = true }: { size?: LogoSize; showTe
   return (
     <div className="flex items-center gap-2">
       <Image
-        src="/kranely%20logo%20oro%20trasparente.png"
+        src="/kranely-logo.png"
         alt="Kranely"
         width={dims.w}
         height={dims.h}
