@@ -134,10 +134,10 @@ export const createClient = mutation({
     userEmail: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const { createdById, userEmail, ...rest } = args
+    const { createdById, userEmail, type: clientType, ...rest } = args
     const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
 
-    const id = await ctx.db.insert("clients", { ...rest, status: args.status || "lead", clientType: args.type, createdById })
+    const id = await ctx.db.insert("clients", { ...rest, clientType, status: args.status || "lead", createdById })
 
     await ctx.db.insert("activityLog", {
       organizationId: args.organizationId,
@@ -181,10 +181,10 @@ export const update = mutation({
   },
   handler: async (ctx, args) => {
     const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
-    const { id, organizationId, userEmail, ...data } = args
+    const { id, organizationId, userEmail, type, ...data } = args
     const prev = await ctx.db.get(id)
     if (!prev || prev.organizationId !== organizationId) throw new Error("Not found")
-    await ctx.db.patch(id, data)
+    await ctx.db.patch(id, { ...data, clientType: type })
 
     if (data.status && data.status !== prev.status) {
       await ctx.scheduler.runAfter(0, internal.notifications.createNotification, {
