@@ -82,7 +82,7 @@ export default function PaymentsPage() {
   const handleUpdate = async () => {
     if (!editingId) return
     try {
-      await updatePayment({ id: editingId, organizationId: orgId!, description: formData.description, amount: parseFloat(formData.amount), status: formData.status, dueDate: formData.dueDate || undefined, method: formData.method, notes: formData.notes || undefined })
+      await updatePayment({ id: editingId, organizationId: orgId!, userEmail: user?.email, description: formData.description, amount: parseFloat(formData.amount), status: formData.status, dueDate: formData.dueDate || undefined, method: formData.method, notes: formData.notes || undefined })
       setShowEditDialog(false); toast.success("Pagamento aggiornato")
     } catch (e) { toast.error("Errore") }
   }
@@ -118,7 +118,7 @@ export default function PaymentsPage() {
 
   const handleDelete = async (id: Id<"payments">) => {
     if (!confirm("Eliminare questo pagamento?")) return
-    try { await deletePayment({ id, organizationId: orgId! }); toast.success("Pagamento eliminato") } catch (e) { toast.error("Errore") }
+    try { await deletePayment({ id, organizationId: orgId!, userEmail: user?.email }); toast.success("Pagamento eliminato") } catch (e) { toast.error("Errore") }
   }
 
   const statusBadge = (status: string) => {

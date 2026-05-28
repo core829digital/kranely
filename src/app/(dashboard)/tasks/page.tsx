@@ -62,7 +62,7 @@ export default function TasksPage() {
   const openCreate = () => { setFormData({ cantiereId: "", phase: "in_lavorazione", title: "", description: "", assignedTo: "", priority: "media", dueDate: "" }); setShowCreateDialog(true) }
 
   const openDetail = (task: any) => { setSelectedTaskId(task._id); setShowDetailDialog(true) }
-  const selectedTask = useQuery(api.tasks.get, selectedTaskId ? { id: selectedTaskId } : "skip")
+  const selectedTask = useQuery(api.tasks.get, selectedTaskId && orgId ? { id: selectedTaskId, organizationId: orgId, userEmail: user?.email } : "skip")
 
   const openEdit = (task: any) => {
     setEditFormData({ title: task.title, description: task.description || "", status: task.status, priority: task.priority || "media", dueDate: task.dueDate || "", assignedTo: task.assignedTo || "" })

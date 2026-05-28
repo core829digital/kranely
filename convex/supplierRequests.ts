@@ -18,9 +18,11 @@ export const list = query({
 })
 
 export const get = query({
-  args: { id: v.id("supplierRequests") },
+  args: { id: v.id("supplierRequests"), organizationId: v.id("organizations") },
   handler: async (ctx, args) => {
-    return await ctx.db.get(args.id)
+    const doc = await ctx.db.get(args.id)
+    if (!doc || doc.organizationId !== args.organizationId) throw new Error("Not found")
+    return doc
   },
 })
 
@@ -68,6 +70,8 @@ export const create = mutation({
 export const update = mutation({
   args: {
     id: v.id("supplierRequests"),
+    organizationId: v.id("organizations"),
+    userEmail: v.optional(v.string()),
     status: v.optional(v.union(v.literal("draft"), v.literal("sent"), v.literal("received"), v.literal("quoted"), v.literal("accepted"), v.literal("rejected"), v.literal("preventivato"))),
     supplierId: v.optional(v.id("suppliers")),
     quotedPrice: v.optional(v.number()),
@@ -78,8 +82,24 @@ export const update = mutation({
     supplierQuoteDocId: v.optional(v.id("documents")),
   },
   handler: async (ctx, args) => {
-    const { id, ...data } = args
+    await assertOrgAccess(ctx, args.userEmail, args.organizationId)
+    const { id, organizationId, userEmail, ...data } = args
+    const prev = await ctx.db.get(id)
+    if (!prev || prev.organizationId !== organizationId) throw new Error("Not found")
     await ctx.db.patch(id, data)
+
+    if (prev) {
+      await ctx.db.insert("activityLog", {
+        organizationId: prev.organizationId,
+        userEmail: userEmail || "system",
+        action: "updated",
+        entityType: "supplierRequest",
+        entityId: id,
+        entityName: prev.title,
+        details: `Richiesta "${prev.title}" aggiornata`,
+      })
+    }
+
     return id
   },
 })

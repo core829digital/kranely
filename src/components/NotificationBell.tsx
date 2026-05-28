@@ -44,7 +44,8 @@ export function NotificationBell({ userEmail }: NotificationBellProps) {
   const removeNotification = useMutation(api.notifications.remove)
 
   const handleMarkRead = async (id: Id<"notifications">) => {
-    try { await markAsRead({ id }) } catch (e) { toast.error("Errore") }
+    if (!orgId) return
+    try { await markAsRead({ id, organizationId: orgId, userEmail }) } catch (e) { toast.error("Errore") }
   }
 
   const handleMarkAllRead = async () => {
@@ -53,7 +54,8 @@ export function NotificationBell({ userEmail }: NotificationBellProps) {
   }
 
   const handleDelete = async (id: Id<"notifications">) => {
-    try { await removeNotification({ id }) } catch (e) { toast.error("Errore") }
+    if (!orgId) return
+    try { await removeNotification({ id, organizationId: orgId, userEmail }) } catch (e) { toast.error("Errore") }
   }
 
   const formatTime = (timestamp: number) => {

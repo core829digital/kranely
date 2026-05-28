@@ -72,8 +72,12 @@ export const create = mutation({
 })
 
 export const remove = mutation({
-  args: { id: v.id("users") },
+  args: { id: v.id("users"), organizationId: v.id("organizations"), userEmail: v.optional(v.string()) },
   handler: async (ctx, args) => {
+    await assertOrgAccess(ctx, args.userEmail, args.organizationId)
+    const driver = await ctx.db.get(args.id)
+    if (!driver || driver.organizationId !== args.organizationId) throw new Error("Driver not found")
+    if (driver.role !== "driver") throw new Error("Can only remove drivers")
     await ctx.db.delete(args.id)
     return args.id
   },

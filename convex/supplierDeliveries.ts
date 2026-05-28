@@ -102,17 +102,18 @@ export const update = mutation({
     userEmail: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const { id, organizationId, userEmail, ...data } = args
-    const prev = await ctx.db.get(id)
-    if (!prev || prev.organizationId !== organizationId) throw new Error("Not found")
-    await ctx.db.patch(id, data)
+    await assertOrgAccess(ctx, args.userEmail, args.organizationId)
+    const prev = await ctx.db.get(args.id)
+    if (!prev || prev.organizationId !== args.organizationId) throw new Error("Not found")
+    const { userEmail, ...data } = args
+    await ctx.db.patch(args.id, data)
 
     await ctx.db.insert("activityLog", {
-      organizationId,
-      userEmail: userEmail || "system",
+      organizationId: args.organizationId,
+      userEmail: args.userEmail || "system",
       action: "updated",
       entityType: "supplierDelivery",
-      entityId: id,
+      entityId: args.id,
       entityName: prev.description,
       details: `Consegna "${prev.description}" aggiornata`,
     })
@@ -149,7 +150,7 @@ export const update = mutation({
       }
     }
 
-    return id
+    return args.id
   },
 })
 

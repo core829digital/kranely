@@ -154,8 +154,11 @@ export const getUnreadCount = query({
 })
 
 export const markAsRead = mutation({
-  args: { id: v.id("notifications") },
+  args: { id: v.id("notifications"), organizationId: v.id("organizations"), userEmail: v.optional(v.string()) },
   handler: async (ctx, args) => {
+    await assertOrgAccess(ctx, args.userEmail, args.organizationId)
+    const notif = await ctx.db.get(args.id)
+    if (!notif || notif.organizationId !== args.organizationId) throw new Error("Not found")
     await ctx.db.patch(args.id, { isRead: true, readAt: new Date().toISOString() })
   },
 })
@@ -182,8 +185,11 @@ export const markAllAsRead = mutation({
 })
 
 export const remove = mutation({
-  args: { id: v.id("notifications") },
+  args: { id: v.id("notifications"), organizationId: v.id("organizations"), userEmail: v.optional(v.string()) },
   handler: async (ctx, args) => {
+    await assertOrgAccess(ctx, args.userEmail, args.organizationId)
+    const notif = await ctx.db.get(args.id)
+    if (!notif || notif.organizationId !== args.organizationId) throw new Error("Not found")
     await ctx.db.delete(args.id)
   },
 })

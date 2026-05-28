@@ -33,9 +33,12 @@ export const listChannels = query({
 })
 
 export const getChannel = query({
-  args: { id: v.id("chatChannels") },
+  args: { id: v.id("chatChannels"), organizationId: v.id("organizations"), userEmail: v.optional(v.string()) },
   handler: async (ctx, args) => {
-    return await ctx.db.get(args.id)
+    await assertOrgAccess(ctx, args.userEmail, args.organizationId)
+    const channel = await ctx.db.get(args.id)
+    if (!channel || channel.organizationId !== args.organizationId) throw new Error("Channel not found")
+    return channel
   },
 })
 
@@ -59,8 +62,11 @@ export const createChannel = mutation({
 })
 
 export const listMessages = query({
-  args: { channelId: v.id("chatChannels") },
+  args: { channelId: v.id("chatChannels"), organizationId: v.id("organizations"), userEmail: v.optional(v.string()) },
   handler: async (ctx, args) => {
+    await assertOrgAccess(ctx, args.userEmail, args.organizationId)
+    const channel = await ctx.db.get(args.channelId)
+    if (!channel || channel.organizationId !== args.organizationId) throw new Error("Channel not found")
     return await ctx.db
       .query("channelMessages")
       .withIndex("by_channel", (q) => q.eq("channelId", args.channelId))
@@ -115,8 +121,9 @@ export const sendMessage = mutation({
 })
 
 export const deleteMessage = mutation({
-  args: { id: v.id("channelMessages") },
+  args: { id: v.id("channelMessages"), organizationId: v.id("organizations"), userEmail: v.optional(v.string()) },
   handler: async (ctx, args) => {
+    await assertOrgAccess(ctx, args.userEmail, args.organizationId)
     const msg = await ctx.db.get(args.id)
     if (!msg) throw new Error("Message not found")
     await ctx.db.delete(args.id)

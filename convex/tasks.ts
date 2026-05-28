@@ -31,9 +31,12 @@ export const list = query({
 })
 
 export const get = query({
-  args: { id: v.id("phaseTasks") },
+  args: { id: v.id("phaseTasks"), organizationId: v.id("organizations"), userEmail: v.optional(v.string()) },
   handler: async (ctx, args) => {
-    return await ctx.db.get(args.id)
+    await assertOrgAccess(ctx, args.userEmail, args.organizationId)
+    const doc = await ctx.db.get(args.id)
+    if (!doc || doc.organizationId !== args.organizationId) throw new Error("Not found")
+    return doc
   },
 })
 

@@ -644,6 +644,7 @@ function ProduzioneTab({ orgId, selectedSupplierId, userEmail }: { orgId: Id<"or
         status: "in_progress",
         startedDate: new Date().toISOString().split("T")[0],
         progressPercentage: 20,
+        userEmail,
       })
       await updateOrderStatus(orderId, "in_production")
       toast.success("Produzione avviata!")
@@ -751,7 +752,7 @@ function ProduzioneTab({ orgId, selectedSupplierId, userEmail }: { orgId: Id<"or
             </div>
           )}
 
-          {orders?.filter((o) => o.status === "confirmed" && !production?.some((p) => p.orderId === o._id)).map((o) => (
+          {(orders || []).filter((o) => o.status === "confirmed" && !production?.some((p) => p.orderId === o._id)).map((o) => (
             <div key={o._id} className="p-4 rounded-xl border border-dashed border-white/10 bg-white/[0.02] flex items-center justify-between">
               <div>
                 <p className="text-sm text-white">{o.orderNumber || o.description} — EUR {o.totalAmount?.toLocaleString("it-IT") || 0}</p>
@@ -784,7 +785,7 @@ function ConsegnaTab({ orgId, selectedSupplierId, userEmail }: { orgId: Id<"orga
     if (!form.description || !selectedSupplierId) { toast.error("Compila i campi obbligatori"); return }
     try {
       await createDelivery({
-        organizationId: orgId, supplierId: selectedSupplierId, description: form.description,
+        organizationId: orgId, userEmail, supplierId: selectedSupplierId, description: form.description,
         expectedDate: form.expectedDate || undefined, deliveryDate: form.deliveryDate || undefined,
         driverName: form.driverName || undefined, driverPhone: form.driverPhone || undefined,
         driverVehicle: form.driverVehicle || undefined, driverLicensePlate: form.driverLicensePlate || undefined,
@@ -797,7 +798,7 @@ function ConsegnaTab({ orgId, selectedSupplierId, userEmail }: { orgId: Id<"orga
 
   const handleStatusChange = async (id: Id<"supplierDeliveries">, status: string) => {
     try {
-      await updateDelivery({ id, organizationId: orgId, status: status as any })
+      await updateDelivery({ id, organizationId: orgId, userEmail, status: status as any })
       toast.success("Stato aggiornato")
     } catch { toast.error("Errore") }
   }
@@ -945,7 +946,7 @@ function ChatTab({ orgId, selectedSupplierId, userEmail }: { orgId: Id<"organiza
   )
 
   const channelId = supplierChannel?._id as Id<"chatChannels"> | undefined
-  const messages = useQuery(api.chat.listMessages, channelId ? { channelId } : "skip")
+  const messages = useQuery(api.chat.listMessages, channelId && orgId ? { channelId, organizationId: orgId, userEmail } : "skip")
 
   const createChannel = useMutation(api.chat.createChannel)
   const sendMessage = useMutation(api.chat.sendMessage)
