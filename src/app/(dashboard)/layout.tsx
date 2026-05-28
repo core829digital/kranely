@@ -26,7 +26,7 @@ export default function DashboardLayout({
     return (
       <div className="min-h-screen flex items-center justify-center bg-kranely-app-bg">
         <div className="text-center">
-          <Logo size="md" showText={false} />
+          <Logo size="md" />
           <p className="text-white/60">Reindirizzamento...</p>
         </div>
       </div>

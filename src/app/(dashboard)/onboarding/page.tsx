@@ -97,7 +97,7 @@ export default function OnboardingPage() {
     <div className="min-h-screen flex items-center justify-center bg-kranely-app-bg">
       <div className="w-full max-w-md px-4">
         <div className="text-center mb-8">
-          <Logo size="lg" showText={false} />
+          <Logo size="lg" />
           <h1 className="text-2xl font-bold text-white">Completa registrazione</h1>
           <p className="text-white/60 mt-2">Imposta i tuoi dati per attivare l'account</p>
         </div>

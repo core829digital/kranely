@@ -43,7 +43,7 @@ export default function ResetPasswordPage() {
       <div className="w-full max-w-md px-4">
         <div className="text-center mb-8">
           <div className="flex justify-center mb-4">
-            <Logo size="lg" showText={false} />
+            <Logo size="lg" />
           </div>
           <h1 className="text-2xl font-bold text-white">Reimposta password</h1>
           <p className="text-white/60 mt-2">Scegli una nuova password per il tuo account</p>

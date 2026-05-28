@@ -26,7 +26,7 @@ function AdminDashboard() {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="text-center">
-          <Logo size="lg" showText={false} />
+          <Logo size="lg" />
           <p className="text-white/60 mt-4">Caricamento dati...</p>
         </div>
       </div>
@@ -265,7 +265,7 @@ export default function AdminPage() {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="text-center">
-          <Logo size="lg" showText={false} />
+          <Logo size="lg" />
           <p className="text-white/60 mt-4">Caricamento...</p>
         </div>
       </div>
