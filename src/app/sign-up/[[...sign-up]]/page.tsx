@@ -1,6 +1,8 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
+import Link from "next/link"
 import { Logo } from "@/components/Logo"
 import { useAuth, type UserRole, type UserSubrole } from "@/lib/auth/auth-context"
 import { Button } from "@/components/ui/button"
@@ -22,6 +24,7 @@ const SUBROLE_LABELS: Record<string, string> = {
 
 export default function SignUpPage() {
   const { signUp, isLoading, error } = useAuth()
+  const router = useRouter()
   const [fullName, setFullName] = useState("")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
@@ -35,7 +38,7 @@ export default function SignUpPage() {
     const success = await signUp(email, password, fullName, role, subrole, phone)
     if (success) {
       toast.success("Account creato con successo")
-      window.location.href = "/dashboard"
+      router.push("/dashboard")
     } else {
       toast.error(error || "Errore nella registrazione")
     }
@@ -102,9 +105,9 @@ export default function SignUpPage() {
             />
             <span className="text-sm text-white/60">
               Accetto i{" "}
-              <a href="/terms" className="text-kranely-accent hover:underline">Termini e Servizio</a>
+              <Link href="/terms" className="text-kranely-accent hover:underline">Termini e Servizio</Link>
               {" "}e la{" "}
-              <a href="/privacy" className="text-kranely-accent hover:underline">Privacy Policy</a>
+              <Link href="/privacy" className="text-kranely-accent hover:underline">Privacy Policy</Link>
             </span>
           </label>
 
@@ -115,7 +118,7 @@ export default function SignUpPage() {
 
         <p className="text-center text-sm text-white/60 mt-6">
           Hai già un account?{" "}
-          <a href="/sign-in" className="text-kranely-accent hover:underline">Accedi</a>
+          <Link href="/sign-in" className="text-kranely-accent hover:underline">Accedi</Link>
         </p>
       </div>
     </div>

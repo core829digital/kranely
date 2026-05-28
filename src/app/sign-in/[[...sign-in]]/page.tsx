@@ -1,12 +1,15 @@
 "use client"
 
 import { useState, Suspense, useEffect } from "react"
+import { useRouter } from "next/navigation"
+import Link from "next/link"
 import { useAuth } from "@/lib/auth/auth-context"
 import { Button } from "@/components/ui/button"
 import { Logo } from "@/components/Logo"
 
 function SignInForm() {
   const { signIn, isLoading } = useAuth()
+  const router = useRouter()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
@@ -20,7 +23,7 @@ function SignInForm() {
     setError("")
     const success = await signIn(email, password)
     if (success) {
-      window.location.href = "/dashboard"
+      router.push("/dashboard")
     } else {
       setError("Email o password non corretti")
     }
@@ -61,9 +64,9 @@ function SignInForm() {
         </div>
 
         <div className="flex items-center justify-end">
-          <a href="/forgot-password" className="text-xs text-kranely-accent hover:underline">
+          <Link href="/forgot-password" className="text-xs text-kranely-accent hover:underline">
             Password dimenticata?
-          </a>
+          </Link>
         </div>
 
         {error && (
@@ -83,9 +86,9 @@ function SignInForm() {
 
       <p className="text-center text-sm text-white/60 mt-6">
         Non hai un account?{" "}
-        <a href="/sign-up" className="text-kranely-accent hover:underline">
+        <Link href="/sign-up" className="text-kranely-accent hover:underline">
           Registrati ora
-        </a>
+        </Link>
       </p>
     </div>
   )
