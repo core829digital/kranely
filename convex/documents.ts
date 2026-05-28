@@ -55,7 +55,7 @@ export const create = mutation({
 
     await ctx.db.insert("activityLog", {
       organizationId: args.organizationId,
-      userEmail: "system",
+      userEmail: userEmail || "system",
       action: "uploaded",
       entityType: "document",
       entityId: id,
@@ -95,7 +95,7 @@ export const update = mutation({
 
     await ctx.db.insert("activityLog", {
       organizationId,
-      userEmail: "system",
+      userEmail: args.userEmail || "system",
       action: "updated",
       entityType: "document",
       entityId: id,
@@ -113,11 +113,16 @@ export const remove = mutation({
     const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
     const doc = await ctx.db.get(args.id)
     if (!doc || doc.organizationId !== args.organizationId) throw new Error("Not found")
+
+    if (doc.storageId) {
+      await ctx.storage.delete(doc.storageId)
+    }
+
     await ctx.db.delete(args.id)
 
     await ctx.db.insert("activityLog", {
       organizationId: args.organizationId,
-      userEmail: "system",
+      userEmail: args.userEmail || "system",
       action: "deleted",
       entityType: "document",
       entityId: args.id,

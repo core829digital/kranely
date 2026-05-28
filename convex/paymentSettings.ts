@@ -66,7 +66,7 @@ export const update = mutation({
 
     await ctx.db.insert("activityLog", {
       organizationId,
-      userEmail: "system",
+      userEmail: args.userEmail || "system",
       action: "updated",
       entityType: "paymentSettings",
       entityId: existing._id,
@@ -90,7 +90,7 @@ export const remove = mutation({
 
     await ctx.db.insert("activityLog", {
       organizationId: args.organizationId,
-      userEmail: "system",
+      userEmail: args.userEmail || "system",
       action: "deleted",
       entityType: "paymentSettings",
       entityId: existing._id,

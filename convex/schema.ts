@@ -534,6 +534,7 @@ export default defineSchema({
     paidDate: v.optional(v.string()),
     status: v.union(v.literal("in_attesa"), v.literal("in_verifica"), v.literal("pagato"), v.literal("in_ritardo"), v.literal("parziale")),
     method: v.optional(v.union(v.literal("bonifico"), v.literal("contanti"), v.literal("carta"), v.literal("paypal"), v.literal("altro"))),
+    proofDocId: v.optional(v.id("documents")),
     invoiceNumber: v.optional(v.string()),
     invoiceUrl: v.optional(v.string()),
     proofUrl: v.optional(v.string()),

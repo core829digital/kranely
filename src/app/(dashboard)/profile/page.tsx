@@ -46,7 +46,7 @@ export default function ProfilePage() {
     if (!myUser) { toast.error("Utente non trovato"); return }
     setSaving(true)
     try {
-      await updateUser({ id: myUser._id, fullName: fullName.trim(), phone: phone.trim() || undefined })
+      await updateUser({ id: myUser._id, organizationId: orgId!, userEmail: user?.email, fullName: fullName.trim(), phone: phone.trim() || undefined })
       toast.success("Profilo aggiornato")
     } catch (err: any) {
       toast.error(err.message || "Errore nel salvataggio")

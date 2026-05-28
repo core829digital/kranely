@@ -52,7 +52,7 @@ export const create = mutation({
 
     await ctx.db.insert("activityLog", {
       organizationId: args.organizationId,
-      userEmail: "system",
+      userEmail: userEmail || "system",
       action: "created",
       entityType: "supplierOrder",
       entityId: id,
@@ -67,19 +67,31 @@ export const create = mutation({
 export const update = mutation({
   args: {
     id: v.id("supplierOrders"),
+    organizationId: v.id("organizations"),
+    userEmail: v.optional(v.string()),
     orderNumber: v.optional(v.string()),
     description: v.optional(v.string()),
     totalAmount: v.optional(v.number()),
     status: v.optional(v.union(v.literal("pending"), v.literal("confirmed"), v.literal("in_production"), v.literal("shipped"), v.literal("delivered"), v.literal("cancelled"))),
     expectedDelivery: v.optional(v.string()),
     notes: v.optional(v.string()),
-    userEmail: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const { id, userEmail, ...data } = args
+    await assertOrgAccess(ctx, args.userEmail, args.organizationId)
+    const { id, organizationId, userEmail, ...data } = args
     const prev = await ctx.db.get(id)
     if (!prev) throw new Error("Ordine non trovato")
     await ctx.db.patch(id, data)
+
+    await ctx.db.insert("activityLog", {
+      organizationId: prev.organizationId,
+      userEmail: userEmail || "system",
+      action: "updated",
+      entityType: "supplierOrder",
+      entityId: id,
+      entityName: prev.orderNumber || prev.description,
+      details: `Ordine fornitore aggiornato a "${data.status || prev.status}"`,
+    })
 
     if (data.status && data.status !== prev.status) {
       const statusLabels: Record<string, string> = {
@@ -98,17 +110,35 @@ export const update = mutation({
       })
 
       if (data.status === "confirmed" && prev.totalAmount) {
-        await ctx.db.insert("payments", {
-          organizationId: prev.organizationId,
-          type: "supplier",
-          description: `Pagamento ordine ${prev.orderNumber || prev.description}`,
-          amount: prev.totalAmount,
-          status: "in_attesa",
-          dueDate: prev.expectedDelivery || undefined,
-          supplierId: prev.supplierId,
-          orderId: id,
-          cantiereId: prev.cantiereId,
-        })
+        const existingPayment = await ctx.db
+          .query("payments")
+          .withIndex("by_organization", (q) => q.eq("organizationId", prev.organizationId))
+          .filter((q) => q.eq(q.field("orderId"), id))
+          .first()
+
+        if (!existingPayment) {
+          const paymentData: Record<string, any> = {
+            organizationId: prev.organizationId,
+            type: "supplier",
+            description: `Pagamento ordine ${prev.orderNumber || prev.description}`,
+            amount: prev.totalAmount,
+            status: "in_attesa",
+            dueDate: prev.expectedDelivery || undefined,
+            supplierId: prev.supplierId,
+            orderId: id,
+            cantiereId: prev.cantiereId,
+          }
+
+          if (prev.cantiereId) {
+            const cantiere = await ctx.db.get(prev.cantiereId)
+            if (cantiere) {
+              if (cantiere.clientId) paymentData.clientId = cantiere.clientId
+              if (cantiere.quoteId) paymentData.quoteId = cantiere.quoteId
+            }
+          }
+
+          await ctx.db.insert("payments", paymentData as any)
+        }
       }
 
       if (data.status === "delivered" && prev.cantiereId) {
@@ -120,7 +150,9 @@ export const update = mutation({
             .collect()
             .then((orders) => orders.every((o) => o.status === "delivered" || o._id === id))
 
-          if (!allDelivered && prev.cantiereId) {
+          if (allDelivered) {
+            await ctx.db.patch(prev.cantiereId, { status: "completato" })
+          } else {
             await ctx.db.patch(prev.cantiereId, { status: "in_corso" })
           }
         }
@@ -132,10 +164,11 @@ export const update = mutation({
 })
 
 export const remove = mutation({
-  args: { id: v.id("supplierOrders") },
+  args: { id: v.id("supplierOrders"), organizationId: v.id("organizations"), userEmail: v.optional(v.string()) },
   handler: async (ctx, args) => {
+    await assertOrgAccess(ctx, args.userEmail, args.organizationId)
     const order = await ctx.db.get(args.id)
-    if (!order) throw new Error("Supplier order not found")
+    if (!order || order.organizationId !== args.organizationId) throw new Error("Supplier order not found")
     await ctx.db.delete(args.id)
     return args.id
   },

@@ -73,7 +73,7 @@ export default function DashboardPage() {
   let quoteChartData: { name: string; value: number; color: string }[] = []
 
   try {
-    revenueChartData = revenueTrend?.map((item) => ({ month: item.month.slice(5), revenue: item.incoming, expenses: item.outgoing })) || []
+    revenueChartData = revenueTrend?.map((item) => ({ month: item.month, revenue: item.incoming, expenses: item.outgoing })) || []
   } catch {
     toast.error("Errore nel caricamento")
   }

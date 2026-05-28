@@ -32,13 +32,21 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 const SESSION_KEY = "kranely_session"
 const SESSION_EXPIRY = 7 * 24 * 60 * 60 * 1000
+const SESSION_DATA_COOKIE = "kranely_session_data"
 
 function setSessionCookie(email: string) {
   try { document.cookie = `kranely_session=${encodeURIComponent(email)}; path=/; max-age=${7 * 24 * 60 * 60}; SameSite=Lax` } catch {}
 }
 
+function setSessionDataCookie(role: string, organizationId: string) {
+  try {
+    const data = encodeURIComponent(JSON.stringify({ role, organizationId }))
+    document.cookie = `${SESSION_DATA_COOKIE}=${data}; path=/; max-age=${7 * 24 * 60 * 60}; SameSite=Lax`
+  } catch {}
+}
+
 function clearSessionCookie() {
-  try { document.cookie = "kranely_session=; path=/; max-age=0" } catch {}
+  try { document.cookie = "kranely_session=; path=/; max-age=0"; document.cookie = `${SESSION_DATA_COOKIE}=; path=/; max-age=0` } catch {}
 }
 
 interface SessionData {
@@ -99,6 +107,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         _id: session.userId as Id<"users"> | undefined,
       })
       setSessionCookie(session.email)
+      setSessionDataCookie(session.role, session.organizationId)
     }
     setInitialized(true)
   }, [])

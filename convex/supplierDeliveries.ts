@@ -57,7 +57,7 @@ export const create = mutation({
 
     await ctx.db.insert("activityLog", {
       organizationId: args.organizationId,
-      userEmail: "system",
+      userEmail: args.userEmail || "system",
       action: "created",
       entityType: "supplierDelivery",
       entityId: id,
@@ -109,7 +109,7 @@ export const update = mutation({
 
     await ctx.db.insert("activityLog", {
       organizationId,
-      userEmail: "system",
+      userEmail: userEmail || "system",
       action: "updated",
       entityType: "supplierDelivery",
       entityId: id,
@@ -138,7 +138,12 @@ export const update = mutation({
         if (prev.cantiereId) {
           const cantiere = await ctx.db.get(prev.cantiereId)
           if (cantiere && cantiere.status !== "completato") {
-            await ctx.db.patch(prev.cantiereId, { status: "completato" })
+            const allOrders = await ctx.db
+              .query("supplierOrders")
+              .withIndex("by_cantiere", (q) => q.eq("cantiereId", prev.cantiereId!))
+              .collect()
+            const allDelivered = allOrders.every((o) => o.status === "delivered")
+            await ctx.db.patch(prev.cantiereId, { status: allDelivered ? "completato" : "in_corso" })
           }
         }
       }
@@ -158,7 +163,7 @@ export const remove = mutation({
 
     await ctx.db.insert("activityLog", {
       organizationId: args.organizationId,
-      userEmail: "system",
+      userEmail: args.userEmail || "system",
       action: "deleted",
       entityType: "supplierDelivery",
       entityId: args.id,

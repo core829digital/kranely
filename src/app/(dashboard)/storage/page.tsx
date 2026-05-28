@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Label } from "@radix-ui/react-label"
-import { Search, HardDrive, FileText, Image, Folder, Upload, Trash2, Download, Eye, File, Loader2 } from "lucide-react"
+import { Search, HardDrive, FileText, Image, Folder, Upload, Trash2, Download, Eye, File, Loader2, Building2, Users, FileSpreadsheet } from "lucide-react"
 import { toast } from "sonner"
 import { useQuery, useMutation } from "convex/react"
 import { api } from "../../../../convex/_generated/api"
@@ -24,17 +24,20 @@ export default function StoragePage() {
   const DOC_TYPES = ["contract", "quote", "invoice", "technical", "certificate", "photo", "other"] as const
   type DocType = typeof DOC_TYPES[number]
   const [showUploadDialog, setShowUploadDialog] = useState(false)
-  const [formData, setFormData] = useState({ name: "", category: "documenti", description: "" })
+  const [formData, setFormData] = useState({ name: "", category: "documenti", description: "", clientId: "", cantiereId: "", quoteId: "" })
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [uploading, setUploading] = useState(false)
 
   const documents = useQuery(api.documents.list, orgId ? { organizationId: orgId!, userEmail: user?.email } : "skip")
+  const clients = useQuery(api.clients.list, orgId ? { organizationId: orgId!, userEmail: user?.email } : "skip")
+  const cantieri = useQuery(api.cantieri.list, orgId ? { organizationId: orgId!, userEmail: user?.email } : "skip")
+  const quotes = useQuery(api.quotes.list, orgId ? { organizationId: orgId!, userEmail: user?.email } : "skip")
   const removeDoc = useMutation(api.documents.remove)
   const generateUploadUrl = useMutation(api.upload.generateUploadUrl)
   const saveFile = useMutation(api.upload.saveFile)
 
   const openUpload = () => {
-    setFormData({ name: "", category: "documenti", description: "" })
+    setFormData({ name: "", category: "documenti", description: "", clientId: "", cantiereId: "", quoteId: "" })
     setSelectedFile(null)
     setShowUploadDialog(true)
   }
@@ -60,6 +63,9 @@ export default function StoragePage() {
         type: docType,
         fileSize: selectedFile.size,
         description: formData.description || undefined,
+        clientId: formData.clientId ? formData.clientId as Id<"clients"> : undefined,
+        cantiereId: formData.cantiereId ? formData.cantiereId as Id<"cantieri"> : undefined,
+        quoteId: formData.quoteId ? formData.quoteId as Id<"quotes"> : undefined,
       })
       setShowUploadDialog(false)
       toast.success("File caricato")
@@ -124,6 +130,11 @@ export default function StoragePage() {
             <h3 className="font-medium text-white truncate mb-1">{doc.fileName || doc.title || "Senza nome"}</h3>
             <p className="text-xs text-white/40 mb-3">{doc.type} - {new Date(doc._creationTime).toLocaleDateString("it-IT")}{doc.fileSize ? ` · ${(doc.fileSize / 1024).toFixed(0)} KB` : ""}</p>
             {doc.description && <p className="text-sm text-white/60 mb-3 line-clamp-1">{doc.description}</p>}
+            <div className="flex flex-wrap gap-1 mb-3">
+              {doc.clientId && <Badge variant="secondary" className="text-xs"><Users className="w-3 h-3 mr-1" />Cliente</Badge>}
+              {doc.cantiereId && <Badge variant="secondary" className="text-xs"><Building2 className="w-3 h-3 mr-1" />Cantiere</Badge>}
+              {doc.quoteId && <Badge variant="secondary" className="text-xs"><FileSpreadsheet className="w-3 h-3 mr-1" />Preventivo</Badge>}
+            </div>
             <div className="flex items-center gap-2 pt-3 border-t border-white/10">
               <Button size="sm" variant="outline" className="flex-1 border-white/10 bg-white text-black hover:bg-white/90" onClick={() => doc.fileUrl && window.open(doc.fileUrl, "_blank")}><Eye className="w-3 h-3 mr-1" />Apri</Button>
               <Button size="sm" variant="outline" className="border-white/10 bg-white text-black hover:bg-white/90" title="Scarica" aria-label="Scarica" onClick={() => doc.fileUrl && window.open(doc.fileUrl, "_blank")}><Download className="w-3 h-3" /></Button>
@@ -136,15 +147,35 @@ export default function StoragePage() {
       {filtered.length === 0 && <div className="p-12 text-center text-white/40"><HardDrive className="w-12 h-12 mx-auto mb-4 opacity-50" /><p>Nessun file archiviato</p></div>}
 
       <Dialog open={showUploadDialog} onOpenChange={setShowUploadDialog}>
-        <DialogContent><DialogHeader><DialogTitle>Carica File</DialogTitle></DialogHeader>
-          <div className="space-y-4 py-4">
-            <div><Label className="text-sm font-medium text-white/80">Nome File *</Label><Input value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} placeholder="nome-file.pdf" /></div>
+        <DialogContent className="max-w-2xl"><DialogHeader><DialogTitle>Carica File</DialogTitle></DialogHeader>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4">
+            <div className="md:col-span-2"><Label className="text-sm font-medium text-white/80">Nome File *</Label><Input value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} placeholder="nome-file.pdf" /></div>
             <div><Label className="text-sm font-medium text-white/80">Categoria</Label><select value={formData.category} onChange={(e) => setFormData({ ...formData, category: e.target.value })} className="h-10 w-full rounded-lg border border-white/10 bg-white/5 px-3 text-sm text-white"><option value="documento">Documento</option><option value="foto">Foto</option><option value="preventivo">Preventivo</option><option value="fattura">Fattura</option></select></div>
-            <div><Label className="text-sm font-medium text-white/80">File *</Label>
+            <div><Label className="text-sm font-medium text-white/80">Collegato a</Label>
+              <select value={formData.quoteId} onChange={(e) => setFormData({ ...formData, quoteId: e.target.value, clientId: "", cantiereId: "" })} className="h-10 w-full rounded-lg border border-white/10 bg-white/5 px-3 text-sm text-white">
+                <option value="">Nessuno</option>
+                <optgroup label="━━ Preventivi ━━">
+                  {quotes?.filter((q) => q.title).map((q) => <option key={q._id} value={q._id}>📄 {q.title}</option>)}
+                </optgroup>
+              </select>
+            </div>
+            <div><Label className="text-sm font-medium text-white/80">Cliente</Label>
+              <select value={formData.clientId} onChange={(e) => setFormData({ ...formData, clientId: e.target.value, quoteId: "" })} className="h-10 w-full rounded-lg border border-white/10 bg-white/5 px-3 text-sm text-white">
+                <option value="">Nessuno</option>
+                {clients?.map((c) => <option key={c._id} value={c._id}>👤 {c.fullName}</option>)}
+              </select>
+            </div>
+            <div><Label className="text-sm font-medium text-white/80">Cantiere</Label>
+              <select value={formData.cantiereId} onChange={(e) => setFormData({ ...formData, cantiereId: e.target.value })} className="h-10 w-full rounded-lg border border-white/10 bg-white/5 px-3 text-sm text-white">
+                <option value="">Nessuno</option>
+                {cantieri?.map((c) => <option key={c._id} value={c._id}>🏗️ {c.name}</option>)}
+              </select>
+            </div>
+            <div className="md:col-span-2"><Label className="text-sm font-medium text-white/80">File *</Label>
               <input ref={fileInputRef} type="file" onChange={(e) => setSelectedFile(e.target.files?.[0] || null)} className="w-full text-sm text-white file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:bg-kranely-accent file:text-kranely-app-bg hover:file:bg-kranely-accent/90" />
               {selectedFile && <p className="text-xs text-white/40 mt-1">{selectedFile.name} ({(selectedFile.size / 1024).toFixed(0)} KB)</p>}
             </div>
-            <div><Label className="text-sm font-medium text-white/80">Descrizione</Label><Input value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} /></div>
+            <div className="md:col-span-2"><Label className="text-sm font-medium text-white/80">Descrizione</Label><Input value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} /></div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowUploadDialog(false)} className="border-white/10">Annulla</Button>

@@ -106,9 +106,12 @@ export const revenueTrend = query({
     const monthly: Record<string, { incoming: number; outgoing: number }> = {}
 
     for (const p of paid) {
-      const date = p.paidDate || (p.dueDate && p.dueDate.slice(0, 7))
-      if (!date) continue
-
+      let date = p.paidDate || p.dueDate
+      if (!date) {
+        const ts = p._creationTime
+        const d = new Date(ts)
+        date = d.toISOString().slice(0, 7)
+      }
       const key = date.slice(0, 7) // YYYY-MM
       if (!monthly[key]) monthly[key] = { incoming: 0, outgoing: 0 }
 
@@ -180,12 +183,67 @@ export const recentActivity = query({
   args: { organizationId: v.id("organizations"), limit: v.optional(v.number()), userEmail: v.optional(v.string()) },
   handler: async (ctx, args) => {
     const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
+    const limit = args.limit || 20
     const logs = await ctx.db
       .query("activityLog")
       .withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId))
+      .order("desc")
+      .take(limit)
+
+    return logs
+  },
+})
+
+export const budgetReconciliation = query({
+  args: { organizationId: v.id("organizations"), userEmail: v.optional(v.string()) },
+  handler: async (ctx, args) => {
+    const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
+
+    const cantieri = await ctx.db
+      .query("cantieri")
+      .withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId))
       .collect()
 
-    const sorted = logs.sort((a, b) => b._creationTime - a._creationTime)
-    return sorted.slice(0, args.limit || 20)
+    const payments = await ctx.db
+      .query("payments")
+      .withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId))
+      .collect()
+
+    const cantiereBudgets = cantieri
+      .filter((c) => c.totalBudget && c.totalBudget > 0)
+      .map((c) => {
+        const cantierePayments = payments.filter((p) => p.cantiereId === c._id && p.type === "client")
+        const spent = cantierePayments.filter((p) => p.status === "pagato").reduce((s, p) => s + p.amount, 0)
+        const pending = cantierePayments.filter((p) => p.status === "in_attesa" || p.status === "in_ritardo").reduce((s, p) => s + p.amount, 0)
+        return {
+          cantiereId: c._id,
+          cantiereName: c.name,
+          budget: c.totalBudget!,
+          spent,
+          pending,
+          remaining: Math.max(0, c.totalBudget! - spent),
+          usagePercent: Math.round((spent / c.totalBudget!) * 100),
+          status: spent > c.totalBudget! ? "over" : spent / c.totalBudget! > 0.8 ? "warning" : spent === 0 ? "unused" : "on_track",
+        }
+      })
+
+    const totalBudget = cantieri.reduce((s, c) => s + (c.totalBudget || 0), 0)
+    const totalSpent = cantiereBudgets.reduce((s, c) => s + c.spent, 0)
+    const totalPending = cantiereBudgets.reduce((s, c) => s + c.pending, 0)
+
+    return {
+      cantieri: cantiereBudgets.sort((a, b) => b.budget - a.budget),
+      totals: {
+        budget: totalBudget,
+        spent: totalSpent,
+        pending: totalPending,
+        remaining: Math.max(0, totalBudget - totalSpent),
+        usagePercent: totalBudget > 0 ? Math.round((totalSpent / totalBudget) * 100) : 0,
+      },
+      overBudget: cantiereBudgets.filter((c) => c.status === "over").length,
+      onTrack: cantiereBudgets.filter((c) => c.status === "on_track").length,
+      warning: cantiereBudgets.filter((c) => c.status === "warning").length,
+      unused: cantiereBudgets.filter((c) => c.status === "unused").length,
+    }
   },
 })

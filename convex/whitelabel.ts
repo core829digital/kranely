@@ -55,6 +55,8 @@ export const create = mutation({
 export const update = mutation({
   args: {
     id: v.id("whiteLabelSettings"),
+    organizationId: v.id("organizations"),
+    userEmail: v.optional(v.string()),
     appName: v.optional(v.string()),
     tagline: v.optional(v.string()),
     logoUrl: v.optional(v.string()),
@@ -69,14 +71,16 @@ export const update = mutation({
     customCss: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const { id, ...data } = args
+    await assertOrgAccess(ctx, args.userEmail, args.organizationId)
+    const { id, organizationId, userEmail, ...data } = args
     const prev = await ctx.db.get(id)
+    if (!prev || prev.organizationId !== organizationId) throw new Error("Not found")
     await ctx.db.patch(id, data)
 
     if (prev) {
       await ctx.db.insert("activityLog", {
         organizationId: prev.organizationId,
-        userEmail: "system",
+        userEmail: userEmail || "system",
         action: "updated",
         entityType: "whiteLabelSettings",
         entityId: id,

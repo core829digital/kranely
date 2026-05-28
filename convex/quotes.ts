@@ -35,6 +35,36 @@ export const get = query({
   },
 })
 
+export const getWithDocuments = query({
+  args: { id: v.id("quotes"), organizationId: v.id("organizations") },
+  handler: async (ctx, args) => {
+    const quote = await ctx.db.get(args.id)
+    if (!quote || quote.organizationId !== args.organizationId) throw new Error("Not found")
+
+    const documents = await ctx.db
+      .query("documents")
+      .withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId))
+      .collect()
+      .then((docs) => docs.filter((d) => d.quoteId === args.id))
+
+    let selectedVersionDoc = null
+    if (quote.clientSelectedVersionDocId) {
+      selectedVersionDoc = await ctx.db.get(quote.clientSelectedVersionDocId)
+    }
+
+    const payments = await ctx.db
+      .query("payments")
+      .withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId))
+      .collect()
+      .then((ps) => ps.filter((p) =>
+        p.quoteId === args.id ||
+        (p.cantiereId && quote.cantiereId && p.cantiereId === quote.cantiereId)
+      ))
+
+    return { quote, documents, selectedVersionDoc, payments }
+  },
+})
+
 export const create = mutation({
   args: {
     organizationId: v.id("organizations"),
@@ -57,7 +87,7 @@ export const create = mutation({
 
     await ctx.db.insert("activityLog", {
       organizationId: args.organizationId,
-      userEmail: "system",
+      userEmail: userEmail || "system",
       action: "created",
       entityType: "quote",
       entityId: id,
@@ -81,6 +111,9 @@ export const update = mutation({
     estimatedPrice: v.optional(v.number()),
     validUntil: v.optional(v.string()),
     clientQuoteExpiresAt: v.optional(v.string()),
+    clientSelectedVersionDocId: v.optional(v.id("documents")),
+    files: v.optional(v.array(v.string())),
+    attachmentPhotos: v.optional(v.array(v.string())),
   },
   handler: async (ctx, args) => {
     const { id, organizationId, userEmail, ...data } = args
@@ -91,7 +124,7 @@ export const update = mutation({
 
     await ctx.db.insert("activityLog", {
       organizationId,
-      userEmail: "system",
+      userEmail: userEmail || "system",
       action: "updated",
       entityType: "quote",
       entityId: id,
@@ -138,6 +171,69 @@ export const update = mutation({
   },
 })
 
+export const linkDocument = mutation({
+  args: {
+    quoteId: v.id("quotes"),
+    documentId: v.id("documents"),
+    organizationId: v.id("organizations"),
+    setAsSelectedVersion: v.optional(v.boolean()),
+    userEmail: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
+    const quote = await ctx.db.get(args.quoteId)
+    if (!quote || quote.organizationId !== args.organizationId) throw new Error("Quote not found")
+    const doc = await ctx.db.get(args.documentId)
+    if (!doc || doc.organizationId !== args.organizationId) throw new Error("Document not found")
+
+    await ctx.db.patch(args.documentId, { quoteId: args.quoteId } as any)
+
+    if (args.setAsSelectedVersion) {
+      await ctx.db.patch(args.quoteId, { clientSelectedVersionDocId: args.documentId })
+    }
+
+    await ctx.db.insert("activityLog", {
+      organizationId: args.organizationId,
+      userEmail: args.userEmail || "system",
+      action: "linked_document",
+      entityType: "quote",
+      entityId: args.quoteId,
+      entityName: quote.title,
+      details: `Documento "${doc.title}" collegato al preventivo "${quote.title}"`,
+    })
+
+    return args.documentId
+  },
+})
+
+export const setSelectedVersionDoc = mutation({
+  args: {
+    quoteId: v.id("quotes"),
+    documentId: v.id("documents"),
+    organizationId: v.id("organizations"),
+    userEmail: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
+    const quote = await ctx.db.get(args.quoteId)
+    if (!quote || quote.organizationId !== args.organizationId) throw new Error("Quote not found")
+
+    await ctx.db.patch(args.quoteId, { clientSelectedVersionDocId: args.documentId } as any)
+
+    await ctx.db.insert("activityLog", {
+      organizationId: args.organizationId,
+      userEmail: args.userEmail || "system",
+      action: "selected_version",
+      entityType: "quote",
+      entityId: args.quoteId,
+      entityName: quote.title,
+      details: `Versione documento selezionata per il preventivo "${quote.title}"`,
+    })
+
+    return args.quoteId
+  },
+})
+
 export const remove = mutation({
   args: { id: v.id("quotes"), organizationId: v.id("organizations"), userEmail: v.optional(v.string()) },
   handler: async (ctx, args) => {
@@ -148,7 +244,7 @@ export const remove = mutation({
 
     await ctx.db.insert("activityLog", {
       organizationId: args.organizationId,
-      userEmail: "system",
+      userEmail: args.userEmail || "system",
       action: "deleted",
       entityType: "quote",
       entityId: args.id,

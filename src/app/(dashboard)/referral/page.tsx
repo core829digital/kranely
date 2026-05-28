@@ -34,16 +34,16 @@ export default function ReferralPage() {
 
   const handleCreate = async () => {
     if (!formData.code || !orgId) { toast.error("Inserisci un codice"); return }
-    try { await createCode({ organizationId: orgId, code: formData.code, discountPercent: parseInt(formData.discountPercent), description: formData.description || undefined, maxUses: formData.maxUses ? parseInt(formData.maxUses) : undefined }); setShowCreateDialog(false); toast.success("Codice creato") } catch (e) { toast.error("Errore") }
+    try { await createCode({ organizationId: orgId, code: formData.code, discountPercent: parseInt(formData.discountPercent), description: formData.description || undefined, maxUses: formData.maxUses ? parseInt(formData.maxUses) : undefined, userEmail: user?.email }); setShowCreateDialog(false); toast.success("Codice creato") } catch (e) { toast.error("Errore") }
   }
 
   const toggleActive = async (id: Id<"referralCodes">, current: boolean) => {
-    try { await updateCode({ id, isActive: !current }); toast.success("Stato aggiornato") } catch (e) { toast.error("Errore") }
+    try { await updateCode({ id, isActive: !current, organizationId: orgId!, userEmail: user?.email }); toast.success("Stato aggiornato") } catch (e) { toast.error("Errore") }
   }
 
   const handleDelete = async (id: Id<"referralCodes">) => {
     if (!confirm("Eliminare questo codice?")) return
-    try { await removeCode({ id }); toast.success("Codice eliminato") } catch (e) { toast.error("Errore") }
+    try { await removeCode({ id, organizationId: orgId!, userEmail: user?.email }); toast.success("Codice eliminato") } catch (e) { toast.error("Errore") }
   }
 
   const copyCode = (code: string, id: string) => { navigator.clipboard.writeText(code); setCopiedId(id); toast.success("Codice copiato"); setTimeout(() => setCopiedId(null), 2000) }

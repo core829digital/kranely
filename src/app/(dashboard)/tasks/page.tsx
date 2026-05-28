@@ -73,7 +73,7 @@ export default function TasksPage() {
   const handleEdit = async () => {
     if (!editingTaskId) return
     try {
-      await updateTask({ id: editingTaskId, title: editFormData.title, description: editFormData.description || undefined, status: editFormData.status, priority: editFormData.priority, dueDate: editFormData.dueDate || undefined, completedDate: editFormData.status === "completato" ? new Date().toISOString().split("T")[0] : undefined })
+      await updateTask({ id: editingTaskId, organizationId: orgId!, userEmail: user?.email, title: editFormData.title, description: editFormData.description || undefined, status: editFormData.status, priority: editFormData.priority, dueDate: editFormData.dueDate || undefined, completedDate: editFormData.status === "completato" ? new Date().toISOString().split("T")[0] : undefined })
       setShowEditDialog(false); toast.success("Task aggiornato")
     } catch (e) { toast.error("Errore") }
   }
@@ -81,7 +81,7 @@ export default function TasksPage() {
   const handleCreate = async () => {
     if (!formData.title || !formData.cantiereId || !orgId) { toast.error("Compila i campi obbligatori"); return }
     try {
-      await createTask({ organizationId: orgId, cantiereId: formData.cantiereId as Id<"cantieri">, phase: formData.phase as any, title: formData.title, description: formData.description || undefined, assignedTo: formData.assignedTo || undefined, priority: formData.priority as any, dueDate: formData.dueDate || undefined })
+      await createTask({ organizationId: orgId, cantiereId: formData.cantiereId as Id<"cantieri">, phase: formData.phase as any, title: formData.title, description: formData.description || undefined, assignedTo: formData.assignedTo || undefined, priority: formData.priority as any, dueDate: formData.dueDate || undefined, userEmail: user?.email })
       setShowCreateDialog(false)
       toast.success("Task creato")
     } catch (e) { toast.error("Errore nella creazione") }
@@ -89,14 +89,14 @@ export default function TasksPage() {
 
   const handleStatusChange = async (taskId: Id<"phaseTasks">, newStatus: "da_fare" | "in_corso" | "completato") => {
     try {
-      await updateTask({ id: taskId, status: newStatus, completedDate: newStatus === "completato" ? new Date().toISOString().split("T")[0] : undefined })
+      await updateTask({ id: taskId, organizationId: orgId!, userEmail: user?.email, status: newStatus, completedDate: newStatus === "completato" ? new Date().toISOString().split("T")[0] : undefined })
       toast.success(`Task spostato in: ${statusConfig[newStatus].label}`)
     } catch (e) { toast.error("Errore nell'aggiornamento") }
   }
 
   const handleDelete = async (id: Id<"phaseTasks">) => {
     if (!confirm("Eliminare questo task?")) return
-    try { await removeTask({ id }); toast.success("Task eliminato") } catch (e) { toast.error("Errore") }
+    try { await removeTask({ id, organizationId: orgId!, userEmail: user?.email }); toast.success("Task eliminato") } catch (e) { toast.error("Errore") }
   }
 
   const getCantiereName = (id: string) => cantieri?.find((c) => c._id === id)?.name || "..."

@@ -57,7 +57,7 @@ export const create = mutation({
 
     await ctx.db.insert("activityLog", {
       organizationId: args.organizationId,
-      userEmail: "system",
+      userEmail: userEmail || "system",
       action: "created",
       entityType: "cantiere",
       entityId: id,
@@ -100,6 +100,17 @@ export const update = mutation({
     if (!prev || prev.organizationId !== organizationId) throw new Error("Not found")
     await ctx.db.patch(id, data)
 
+    const changedFields = Object.entries(data).filter(([_, v]) => v !== undefined).map(([k]) => k).join(", ")
+    await ctx.db.insert("activityLog", {
+      organizationId,
+      userEmail: userEmail || "system",
+      action: "updated",
+      entityType: "cantiere",
+      entityId: id,
+      entityName: prev.name,
+      details: `Cantiere "${prev.name}" aggiornato: ${changedFields}`,
+    })
+
     if (data.status && data.status !== prev.status) {
       const statusLabels: Record<string, string> = {
         pianificato: "Pianificato", in_corso: "In corso", completato: "Completato", sospeso: "Sospeso",
@@ -140,8 +151,11 @@ export const addPhaseTask = mutation({
     dueDate: v.optional(v.string()),
     status: v.optional(v.union(v.literal("da_fare"), v.literal("in_corso"), v.literal("completato"))),
     priority: v.optional(v.union(v.literal("bassa"), v.literal("media"), v.literal("alta"))),
+    organizationId: v.id("organizations"),
+    userEmail: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    await assertOrgAccess(ctx, args.userEmail, args.organizationId)
     const cantiere = await ctx.db.get(args.cantiereId)
     if (!cantiere) throw new Error("Cantiere non trovato")
     const id = await ctx.db.insert("phaseTasks", {

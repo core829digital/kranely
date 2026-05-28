@@ -1,11 +1,11 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Input, Label, Textarea } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
-import { Plus, Search, Eye, Edit2, Trash2, Users, Building2, CreditCard, TrendingUp, TrendingDown, Calendar, CheckCircle, Truck } from "lucide-react"
+import { Plus, Search, Eye, Edit2, Trash2, Users, Building2, CreditCard, TrendingUp, TrendingDown, Calendar, CheckCircle, Truck, FileText, Loader2, Upload, Download } from "lucide-react"
 import { toast } from "sonner"
 import { useQuery, useMutation } from "convex/react"
 import { api } from "../../../../convex/_generated/api"
@@ -20,25 +20,33 @@ export default function PaymentsPage() {
   const { user } = useAuth()
   const [search, setSearch] = useState("")
   const [filterStatus, setFilterStatus] = useState<"all" | "pending" | "pagato" | "in_ritardo" | "in_verifica" | "cancellato">("all")
-  const [filterType, setFilterType] = useState<"all" | "acconto" | "saldo" | "rata" | "acconto_materiali" | "acconto_lavorazione" | "commissione_agente">("all")
+  const [filterType, setFilterType] = useState<"all" | "incoming" | "outgoing">("all")
   const [showCreateDialog, setShowCreateDialog] = useState(false)
   const [showEditDialog, setShowEditDialog] = useState(false)
   const [showDetailDialog, setShowDetailDialog] = useState(false)
+  const [showProofUploadDialog, setShowProofUploadDialog] = useState(false)
   const [editingId, setEditingId] = useState<Id<"payments"> | null>(null)
   const [selectedPaymentId, setSelectedPaymentId] = useState<Id<"payments"> | null>(null)
-  const [showPayment, setShowPayment] = useState(false)
-  const [formData, setFormData] = useState<any>({ clientId: "", cantiereId: "", amount: "", description: "", dueDate: "", type: "acconto", status: "pending", paymentMethod: "", notes: "", quoteId: "", invoiceNumber: "" })
+  const [markAsPaidPaymentId, setMarkAsPaidPaymentId] = useState<Id<"payments"> | null>(null)
+  const [formData, setFormData] = useState<any>({ clientId: "", cantiereId: "", amount: "", description: "", dueDate: "", type: "client", status: "in_attesa", method: "bonifico", notes: "", supplierId: "" })
+  const [proofFile, setProofFile] = useState<File | null>(null)
+  const [uploadingProof, setUploadingProof] = useState(false)
+  const proofFileRef = useRef<HTMLInputElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const payments = useQuery(api.payments.list, orgId ? { organizationId: orgId!, status: filterStatus !== "all" ? filterStatus : undefined, type: filterType !== "all" ? filterType : undefined, userEmail: user?.email } : "skip")
   const stats = useQuery(api.payments.stats, orgId ? { organizationId: orgId!, userEmail: user?.email } : "skip")
   const clients = useQuery(api.clients.list, orgId ? { organizationId: orgId!, userEmail: user?.email } : "skip")
   const cantieri = useQuery(api.cantieri.list, orgId ? { organizationId: orgId!, userEmail: user?.email } : "skip")
   const suppliers = useQuery(api.suppliers.list, orgId ? { organizationId: orgId!, userEmail: user?.email } : "skip")
+  const paymentDetail = useQuery(api.payments.getWithProof, selectedPaymentId && orgId ? { id: selectedPaymentId, organizationId: orgId! } : "skip")
 
   const createPayment = useMutation(api.payments.create)
   const updatePayment = useMutation(api.payments.update)
   const deletePayment = useMutation(api.payments.remove)
   const markAsPaid = useMutation(api.payments.markAsPaid)
+  const generateUploadUrl = useMutation(api.upload.generateUploadUrl)
+  const saveFile = useMutation(api.upload.saveFile)
 
   const openCreate = () => {
     setFormData({ type: "client", description: "", amount: "", status: "in_attesa", dueDate: "", clientId: "", cantiereId: "", supplierId: "", method: "bonifico", notes: "" })
@@ -54,6 +62,13 @@ export default function PaymentsPage() {
     setFormData({ type: p.type, description: p.description, amount: p.amount.toString(), status: p.status, dueDate: p.dueDate || "", clientId: p.clientId || "", cantiereId: p.cantiereId || "", supplierId: p.supplierId || "", method: p.method || "bonifico", notes: p.notes || "" })
     setEditingId(p._id)
     setShowEditDialog(true)
+  }
+
+  const openMarkAsPaid = (p: any) => {
+    setMarkAsPaidPaymentId(p._id)
+    setFormData({ ...formData, method: p.method || "bonifico" })
+    setProofFile(null)
+    setShowProofUploadDialog(true)
   }
 
   const handleCreate = async () => {
@@ -72,14 +87,48 @@ export default function PaymentsPage() {
     } catch (e) { toast.error("Errore") }
   }
 
+  const handleMarkAsPaidWithProof = async () => {
+    if (!markAsPaidPaymentId) return
+    setUploadingProof(true)
+    try {
+      let proofDocId: Id<"documents"> | undefined
+      if (proofFile) {
+        const uploadUrl = await generateUploadUrl()
+        const result = await fetch(uploadUrl, { method: "POST", headers: { "Content-Type": proofFile.type }, body: proofFile })
+        if (!result.ok) throw new Error("Upload ricevuta fallito")
+        const { storageId } = await result.json()
+        proofDocId = await saveFile({
+          organizationId: orgId!,
+          storageId,
+          fileName: `ricevuta-${markAsPaidPaymentId.slice(0, 8)}`,
+          type: "invoice",
+          fileSize: proofFile.size,
+          description: "Ricevuta di pagamento",
+        })
+      }
+      await markAsPaid({ id: markAsPaidPaymentId, organizationId: orgId!, method: formData.method, proofDocId, userEmail: user?.email })
+      setShowProofUploadDialog(false)
+      toast.success("Pagamento segnato come pagato con ricevuta")
+    } catch (e: any) {
+      toast.error(e.message || "Errore")
+    } finally {
+      setUploadingProof(false)
+    }
+  }
+
   const handleDelete = async (id: Id<"payments">) => {
     if (!confirm("Eliminare questo pagamento?")) return
     try { await deletePayment({ id, organizationId: orgId! }); toast.success("Pagamento eliminato") } catch (e) { toast.error("Errore") }
   }
-  const handleMarkPaid = async (id: Id<"payments">) => { try { await markAsPaid({ id }); toast.success("Pagamento segnato come pagato") } catch (e) { toast.error("Errore") } }
 
   const statusBadge = (status: string) => {
-    const map: Record<string, { label: string; variant: "success" | "default" | "secondary" | "destructive" | "warning" }> = { paid: { label: "Pagato", variant: "success" }, pending: { label: "In Attesa", variant: "default" }, overdue: { label: "Scaduto", variant: "destructive" }, cancelled: { label: "Annullato", variant: "secondary" } }
+    const map: Record<string, { label: string; variant: "success" | "default" | "secondary" | "destructive" | "warning" }> = {
+      pagato: { label: "Pagato", variant: "success" },
+      in_attesa: { label: "In Attesa", variant: "default" },
+      in_ritardo: { label: "Scaduto", variant: "destructive" },
+      in_verifica: { label: "In Verifica", variant: "warning" },
+      parziale: { label: "Parziale", variant: "secondary" },
+    }
     const { label, variant } = map[status] || { label: status, variant: "secondary" }
     return <Badge variant={variant}>{label}</Badge>
   }
@@ -111,8 +160,8 @@ export default function PaymentsPage() {
 
       <div className="flex flex-wrap items-center gap-3">
         <div className="relative flex-1 min-w-[200px] max-w-md"><Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" /><Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Cerca pagamenti..." className="pl-10" /></div>
-        <select value={filterType} onChange={(e) => setFilterType(e.target.value as any)} className="h-10 rounded-lg border border-white/10 bg-white/5 px-3 text-sm text-white"><option value="all">Tutti i tipi</option><option value="incoming">Entrate</option><option value="outgoing">Uscite</option></select>
-        <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value as any)} className="h-10 rounded-lg border border-white/10 bg-white/5 px-3 text-sm text-white"><option value="all">Tutti gli stati</option><option value="paid">Pagato</option><option value="pending">In Attesa</option><option value="overdue">Scaduto</option><option value="cancelled">Annullato</option></select>
+        <select value={filterType} onChange={(e) => setFilterType(e.target.value as any)} className="h-10 rounded-lg border border-white/10 bg-white/5 px-3 text-sm text-white"><option value="all">Tutti i tipi</option><option value="client">Entrate</option><option value="supplier">Uscite Fornitori</option><option value="collaborator">Uscite Collaboratori</option></select>
+        <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value as any)} className="h-10 rounded-lg border border-white/10 bg-white/5 px-3 text-sm text-white"><option value="all">Tutti gli stati</option><option value="pagato">Pagato</option><option value="in_attesa">In Attesa</option><option value="in_ritardo">Scaduto</option><option value="in_verifica">In Verifica</option></select>
       </div>
 
       <div className="rounded-xl border border-white/10 overflow-hidden">
@@ -126,7 +175,7 @@ export default function PaymentsPage() {
                 <th className="text-left px-4 py-3 text-xs font-medium text-white/60 uppercase">Stato</th>
                 <th className="text-left px-4 py-3 text-xs font-medium text-white/60 uppercase hidden lg:table-cell">Importo</th>
                 <th className="text-left px-4 py-3 text-xs font-medium text-white/60 uppercase hidden lg:table-cell">Scadenza</th>
-                <th className="w-24"></th>
+                <th className="w-32"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5">
@@ -135,7 +184,10 @@ export default function PaymentsPage() {
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
                       <div className={`w-9 h-9 rounded-full flex items-center justify-center ${p.type === "client" ? "bg-green-500/10" : "bg-red-500/10"}`}>{p.type === "client" ? <TrendingUp className="w-4 h-4 text-green-400" /> : <TrendingDown className="w-4 h-4 text-red-400" />}</div>
-                      <div><p className="text-sm font-medium text-white">{p.description}</p>{p.method && <p className="text-xs text-white/40">{p.method}</p>}</div>
+                      <div>
+                        <p className="text-sm font-medium text-white">{p.description}</p>
+                        <p className="text-xs text-white/40">{p.method || "-"}</p>
+                      </div>
                     </div>
                   </td>
                   <td className="px-4 py-3 hidden md:table-cell">
@@ -144,16 +196,16 @@ export default function PaymentsPage() {
                     {p.supplierId && <Link href="/suppliers" className="text-sm text-kranely-accent hover:underline">{getEntityName("supplierId", p.supplierId)}</Link>}
                     {!p.clientId && !p.cantiereId && !p.supplierId && <span className="text-sm text-white/40">-</span>}
                   </td>
-                  <td className="px-4 py-3"><Badge variant={p.type === "client" ? "success" : "destructive"}>{p.type === "client" ? "Entrata" : "Uscita"}</Badge></td>
+                  <td className="px-4 py-3"><Badge variant={p.type === "client" ? "success" : "destructive"}>{p.type === "client" ? "Entrata" : p.type === "supplier" ? "Fornitore" : "Collaboratore"}</Badge></td>
                   <td className="px-4 py-3">{statusBadge(p.status)}</td>
                   <td className={`px-4 py-3 text-sm font-medium hidden lg:table-cell ${p.type === "client" ? "text-green-400" : "text-red-400"}`}>EUR{p.amount.toLocaleString("it-IT")}</td>
                   <td className="px-4 py-3 text-sm text-white/60 hidden lg:table-cell">{p.dueDate || "-"}</td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-1">
-                      <button onClick={() => openDetail(p)} className="p-1.5 rounded bg-white text-black hover:bg-white/80"><Eye className="w-4 h-4" /></button>
-                      {p.status === "in_attesa" && <button onClick={() => handleMarkPaid(p._id)} className="p-1.5 rounded bg-white text-black hover:bg-white/80 hover:text-green-600" title="Segna come pagato"><CheckCircle className="w-4 h-4" /></button>}
-                      <button onClick={() => openEdit(p)} className="p-1.5 rounded bg-white text-black hover:bg-white/80"><Edit2 className="w-4 h-4" /></button>
-                      <button onClick={() => handleDelete(p._id)} className="p-1.5 rounded bg-white text-black hover:bg-red-100 hover:text-red-600"><Trash2 className="w-4 h-4" /></button>
+                      <button onClick={() => openDetail(p)} className="p-1.5 rounded bg-white text-black hover:bg-white/80" title="Dettagli"><Eye className="w-4 h-4" /></button>
+                      {p.status !== "pagato" && <button onClick={() => openMarkAsPaid(p)} className="p-1.5 rounded bg-white text-black hover:bg-white/80 hover:text-green-600" title="Segna come pagato + ricevuta"><CheckCircle className="w-4 h-4" /></button>}
+                      <button onClick={() => openEdit(p)} className="p-1.5 rounded bg-white text-black hover:bg-white/80" title="Modifica"><Edit2 className="w-4 h-4" /></button>
+                      <button onClick={() => handleDelete(p._id)} className="p-1.5 rounded bg-white text-black hover:bg-red-100 hover:text-red-600" title="Elimina"><Trash2 className="w-4 h-4" /></button>
                     </div>
                   </td>
                 </tr>
@@ -164,6 +216,7 @@ export default function PaymentsPage() {
         {filteredPayments.length === 0 && <div className="p-12 text-center text-white/40"><CreditCard className="w-12 h-12 mx-auto mb-4 opacity-50" /><p>Nessun pagamento trovato</p></div>}
       </div>
 
+      {/* Create Dialog */}
       <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
         <DialogContent className="max-w-2xl">
           <DialogHeader><DialogTitle>Nuovo Pagamento</DialogTitle></DialogHeader>
@@ -186,12 +239,12 @@ export default function PaymentsPage() {
         </DialogContent>
       </Dialog>
 
+      {/* Detail Dialog with Proof */}
       <Dialog open={showDetailDialog} onOpenChange={setShowDetailDialog}>
         <DialogContent className="max-w-lg">
           <DialogHeader><DialogTitle>Dettagli Pagamento</DialogTitle></DialogHeader>
-          {selectedPaymentId && payments && (() => {
-            const p = payments.find(x => x._id === selectedPaymentId)
-            if (!p) return null
+          {paymentDetail && (() => {
+            const { payment: p, proofDoc } = paymentDetail
             return (
               <div className="space-y-4 py-4">
                 <div className="flex items-center justify-between">
@@ -213,19 +266,58 @@ export default function PaymentsPage() {
                 {p.cantiereId && <div className="pt-2 border-t border-white/10"><Link href="/cantieri" className="text-sm text-kranely-accent hover:underline flex items-center gap-2"><Building2 className="w-4 h-4" /> {getEntityName("cantiereId", p.cantiereId)}</Link></div>}
                 {p.supplierId && <div className="pt-2 border-t border-white/10"><Link href="/suppliers" className="text-sm text-kranely-accent hover:underline flex items-center gap-2"><Truck className="w-4 h-4" /> {getEntityName("supplierId", p.supplierId)}</Link></div>}
                 {p.notes && <div><span className="text-white/40 text-sm">Note</span><p className="text-sm text-white mt-1">{p.notes}</p></div>}
+                {proofDoc && (
+                  <div className="pt-2 border-t border-white/10">
+                    <span className="text-xs text-white/40 block mb-2">Ricevuta di pagamento</span>
+                    <Button onClick={() => window.open(proofDoc.fileUrl, "_blank")} className="bg-kranely-accent text-kranely-app-bg w-full">
+                      <FileText className="w-4 h-4 mr-2" /> {proofDoc.fileName || "Apri ricevuta"}
+                    </Button>
+                  </div>
+                )}
               </div>
             )
           })()}
+          {!paymentDetail && <p className="text-white/60 text-center py-4">Caricamento...</p>}
         </DialogContent>
       </Dialog>
 
+      {/* Mark as Paid + Proof Upload Dialog */}
+      <Dialog open={showProofUploadDialog} onOpenChange={setShowProofUploadDialog}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader><DialogTitle>Segna come pagato</DialogTitle></DialogHeader>
+          <div className="space-y-4 py-4">
+            <div><Label>Metodo di pagamento</Label>
+              <select value={formData.method} onChange={(e) => setFormData({ ...formData, method: e.target.value })} className="h-10 w-full rounded-lg border border-white/10 bg-white/5 px-3 text-sm text-white">
+                <option value="bonifico">Bonifico</option>
+                <option value="contanti">Contanti</option>
+                <option value="carta">Carta</option>
+                <option value="paypal">PayPal</option>
+                <option value="altro">Altro</option>
+              </select>
+            </div>
+            <div>
+              <Label>Allega ricevuta (opzionale)</Label>
+              <input ref={proofFileRef} type="file" onChange={(e) => setProofFile(e.target.files?.[0] || null)} className="w-full text-sm text-white file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:bg-kranely-accent file:text-kranely-app-bg hover:file:bg-kranely-accent/90 mt-2" />
+              {proofFile && <p className="text-xs text-white/40 mt-1">{proofFile.name} ({(proofFile.size / 1024).toFixed(0)} KB)</p>}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowProofUploadDialog(false)} className="border-white/10">Annulla</Button>
+            <Button onClick={handleMarkAsPaidWithProof} disabled={uploadingProof} className="bg-green-600 hover:bg-green-700 text-white">
+              {uploadingProof ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Caricamento...</> : <><CheckCircle className="w-4 h-4 mr-2" />Conferma pagamento</>}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Dialog */}
       <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
         <DialogContent className="max-w-2xl">
           <DialogHeader><DialogTitle>Modifica Pagamento</DialogTitle></DialogHeader>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4">
             <div className="md:col-span-2"><Label>Descrizione</Label><Input value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} /></div>
             <div><Label>Importo (EUR)</Label><Input type="number" value={formData.amount} onChange={(e) => setFormData({ ...formData, amount: e.target.value })} /></div>
-            <div><Label>Stato</Label><select value={formData.status} onChange={(e) => setFormData({ ...formData, status: e.target.value as any })} className="h-10 w-full rounded-lg border border-white/10 bg-white/5 px-3 text-sm text-white"><option value="pending">In Attesa</option><option value="paid">Pagato</option><option value="overdue">Scaduto</option><option value="cancelled">Annullato</option></select></div>
+            <div><Label>Stato</Label><select value={formData.status} onChange={(e) => setFormData({ ...formData, status: e.target.value as any })} className="h-10 w-full rounded-lg border border-white/10 bg-white/5 px-3 text-sm text-white"><option value="in_attesa">In Attesa</option><option value="pagato">Pagato</option><option value="in_ritardo">Scaduto</option><option value="in_verifica">In Verifica</option><option value="parziale">Parziale</option></select></div>
             <div><Label>Scadenza</Label><Input type="date" value={formData.dueDate} onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })} /></div>
             <div><Label>Metodo</Label><select value={formData.method} onChange={(e) => setFormData({ ...formData, method: e.target.value as any })} className="h-10 w-full rounded-lg border border-white/10 bg-white/5 px-3 text-sm text-white"><option value="bonifico">Bonifico</option><option value="contanti">Contanti</option><option value="carta">Carta</option><option value="paypal">PayPal</option><option value="altro">Altro</option></select></div>
             <div className="md:col-span-2"><Label>Note</Label><Textarea value={formData.notes} onChange={(e) => setFormData({ ...formData, notes: e.target.value })} rows={3} /></div>

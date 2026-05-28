@@ -1,4 +1,6 @@
-export const PERMISSION_MAP: Record<string, string[]> = {
+export type UserRole = "superadmin" | "admin" | "supplier" | "driver" | "collaborator" | "client"
+
+export const PERMISSION_MAP: Record<string, UserRole[]> = {
   "dashboard:view": ["admin", "client", "supplier", "collaborator"],
   "clients:view": ["admin"],
   "clients:create": ["admin"],
@@ -24,7 +26,7 @@ export const PERMISSION_MAP: Record<string, string[]> = {
   "settings:view": ["admin", "client", "supplier", "collaborator"],
 }
 
-export const SIDEBAR_ITEMS: Record<string, string[]> = {
+export const SIDEBAR_ITEMS: Record<string, UserRole[]> = {
   "Dashboard": ["admin", "client", "supplier", "collaborator"],
   "Fornitori": ["admin", "supplier"],
   "Collaboratori": ["admin"],
@@ -40,14 +42,67 @@ export const SIDEBAR_ITEMS: Record<string, string[]> = {
   "Settings": ["admin", "client", "supplier", "collaborator"],
 }
 
+const ROUTE_ACCESS_MAP: Record<string, UserRole[]> = {
+  "/dashboard": ["admin", "client", "supplier", "collaborator"],
+  "/client-dashboard": ["client"],
+  "/collaborator-dashboard": ["collaborator"],
+  "/supplier-dashboard": ["supplier"],
+  "/driver-dashboard": ["driver"],
+  "/admin": ["admin", "superadmin"],
+  "/clients": ["admin"],
+  "/suppliers": ["admin", "supplier"],
+  "/collaborators": ["admin"],
+  "/cantieri": ["admin", "collaborator"],
+  "/quotes": ["admin"],
+  "/payments": ["admin", "supplier", "collaborator", "client"],
+  "/documents": ["admin", "client", "supplier", "collaborator"],
+  "/appointments": ["admin", "client", "supplier", "collaborator"],
+  "/my-appointments": ["client", "supplier", "collaborator"],
+  "/certificates": ["admin", "collaborator"],
+  "/messages": ["admin", "client", "collaborator"],
+  "/tasks": ["admin", "collaborator"],
+  "/blog": ["admin"],
+  "/blog-admin": ["admin"],
+  "/referral": ["admin"],
+  "/whitelabel": ["admin"],
+  "/company-dashboard": ["admin"],
+  "/workflow": ["admin", "supplier"],
+  "/activity-log": ["admin"],
+  "/settings": ["admin", "client", "supplier", "collaborator"],
+  "/profile": ["admin", "client", "supplier", "collaborator", "driver"],
+  "/storage": ["admin", "client", "supplier", "collaborator"],
+  "/prices": ["admin", "client", "supplier", "collaborator"],
+  "/seed": ["superadmin"],
+  "/daily-logs": ["admin", "collaborator"],
+}
+
 export function hasPermission(role: string, permission: string): boolean {
   if (role === "superadmin" || role === "admin") return true
   const allowed = PERMISSION_MAP[permission]
-  return allowed?.includes(role) ?? false
+  return allowed?.includes(role as UserRole) ?? false
 }
 
 export function canViewSidebarItem(role: string, itemName: string): boolean {
   if (role === "superadmin" || role === "admin") return true
   const allowed = SIDEBAR_ITEMS[itemName]
-  return allowed?.includes(role) ?? false
+  return allowed?.includes(role as UserRole) ?? false
+}
+
+export function canAccessRoute(role: string, pathname: string): boolean {
+  if (role === "superadmin") return true
+  const allowed = ROUTE_ACCESS_MAP[pathname]
+  if (!allowed) return true
+  return allowed.includes(role as UserRole)
+}
+
+export function getDefaultRouteForRole(role: UserRole): string {
+  switch (role) {
+    case "superadmin": return "/admin"
+    case "admin": return "/dashboard"
+    case "client": return "/client-dashboard"
+    case "supplier": return "/supplier-dashboard"
+    case "collaborator": return "/collaborator-dashboard"
+    case "driver": return "/driver-dashboard"
+    default: return "/"
+  }
 }

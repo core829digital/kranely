@@ -1,11 +1,11 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Input, Label, Textarea } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
-import { Search, Eye, Edit2, Trash2, FileText, Download, Upload, FolderOpen } from "lucide-react"
+import { Search, Eye, Edit2, Trash2, FileText, Download, Upload, FolderOpen, Loader2 } from "lucide-react"
 import { toast } from "sonner"
 import { useQuery, useMutation } from "convex/react"
 import { api } from "../../../../convex/_generated/api"
@@ -21,29 +21,35 @@ export default function DocumentsPage() {
   const [search, setSearch] = useState("")
   const [filterStatus, setFilterStatus] = useState("all")
   const [filterType, setFilterType] = useState("all")
-  const [showUploadDialog, setShowUploadDialog] = useState(false)
   const [showCreateDialog, setShowCreateDialog] = useState(false)
   const [showEditDialog, setShowEditDialog] = useState(false)
   const [showDetailDialog, setShowDetailDialog] = useState(false)
-  const [showShareDialog, setShowShareDialog] = useState(false)
   const [selectedDocId, setSelectedDocId] = useState<Id<"documents"> | null>(null)
   const [editingDocId, setEditingDocId] = useState<Id<"documents"> | null>(null)
   const [formData, setFormData] = useState({ title: "", type: "other" as string, fileUrl: "", fileName: "", status: "draft" as string, description: "", clientId: "", cantiereId: "", quoteId: "" })
   const [editFormData, setEditFormData] = useState({ title: "", description: "", status: "draft" })
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [uploading, setUploading] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const documents = useQuery(api.documents.list, orgId ? { organizationId: orgId!, status: filterStatus !== "all" ? filterStatus : undefined, userEmail: user?.email } : "skip")
   const stats = useQuery(api.documents.stats, orgId ? { organizationId: orgId!, userEmail: user?.email } : "skip")
   const clients = useQuery(api.clients.list, orgId ? { organizationId: orgId!, userEmail: user?.email } : "skip")
   const cantieri = useQuery(api.cantieri.list, orgId ? { organizationId: orgId!, userEmail: user?.email } : "skip")
+  const quotes = useQuery(api.quotes.list, orgId ? { organizationId: orgId!, userEmail: user?.email } : "skip")
   const selectedDoc = useQuery(api.documents.get, selectedDocId ? { id: selectedDocId, organizationId: orgId! } : "skip")
 
   const createDocument = useMutation(api.documents.create)
   const updateDocument = useMutation(api.documents.update)
   const deleteDocument = useMutation(api.documents.remove)
+  const generateUploadUrl = useMutation(api.upload.generateUploadUrl)
+  const saveFile = useMutation(api.upload.saveFile)
 
-  const openCreate = () => { setFormData({ title: "", type: "other", fileUrl: "", fileName: "", status: "draft", description: "", clientId: "", cantiereId: "", quoteId: "" }); setShowCreateDialog(true) }
+  const openCreate = () => {
+    setFormData({ title: "", type: "other", fileUrl: "", fileName: "", status: "draft", description: "", clientId: "", cantiereId: "", quoteId: "" })
+    setSelectedFile(null)
+    setShowCreateDialog(true)
+  }
 
   const openDetail = (doc: any) => { setSelectedDocId(doc._id); setShowDetailDialog(true) }
 
@@ -55,7 +61,47 @@ export default function DocumentsPage() {
 
   const handleCreate = async () => {
     if (!formData.title || !orgId) { toast.error("Compila i campi obbligatori"); return }
-    try { await createDocument({ organizationId: orgId!, title: formData.title, type: formData.type as any, fileUrl: formData.fileUrl || "/docs/placeholder.pdf", fileName: formData.fileName || formData.title, status: formData.status as any, description: formData.description || undefined, clientId: formData.clientId ? formData.clientId as Id<"clients"> : undefined, cantiereId: formData.cantiereId ? formData.cantiereId as Id<"cantieri"> : undefined, quoteId: formData.quoteId ? formData.quoteId as Id<"quotes"> : undefined }); setShowCreateDialog(false); toast.success("Documento caricato") } catch (e) { toast.error("Errore") }
+    setUploading(true)
+    try {
+      if (selectedFile) {
+        const uploadUrl = await generateUploadUrl()
+        const result = await fetch(uploadUrl, { method: "POST", headers: { "Content-Type": selectedFile.type }, body: selectedFile })
+        if (!result.ok) throw new Error("Upload fallito")
+        const { storageId } = await result.json()
+        await saveFile({
+          organizationId: orgId!,
+          storageId,
+          fileName: formData.title,
+          type: formData.type,
+          fileSize: selectedFile.size,
+          description: formData.description || undefined,
+          clientId: formData.clientId ? formData.clientId as Id<"clients"> : undefined,
+          cantiereId: formData.cantiereId ? formData.cantiereId as Id<"cantieri"> : undefined,
+          quoteId: formData.quoteId ? formData.quoteId as Id<"quotes"> : undefined,
+        })
+      } else if (formData.fileUrl) {
+        await createDocument({
+          organizationId: orgId!,
+          title: formData.title,
+          type: formData.type as any,
+          fileUrl: formData.fileUrl,
+          fileName: formData.fileName || formData.title,
+          status: formData.status as any,
+          description: formData.description || undefined,
+          clientId: formData.clientId ? formData.clientId as Id<"clients"> : undefined,
+          cantiereId: formData.cantiereId ? formData.cantiereId as Id<"cantieri"> : undefined,
+          quoteId: formData.quoteId ? formData.quoteId as Id<"quotes"> : undefined,
+        })
+      } else {
+        toast.error("Seleziona un file o inserisci un URL"); return
+      }
+      setShowCreateDialog(false)
+      toast.success("Documento caricato")
+    } catch (err: any) {
+      toast.error(err.message || "Errore")
+    } finally {
+      setUploading(false)
+    }
   }
 
   const handleEdit = async () => {
@@ -106,6 +152,7 @@ export default function DocumentsPage() {
         ))}
       </div>
       {documents.length === 0 && <div className="p-12 text-center text-white/40"><FolderOpen className="w-12 h-12 mx-auto mb-4 opacity-50" /><p>Nessun documento</p></div>}
+
       <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
         <DialogContent className="max-w-2xl"><DialogHeader><DialogTitle>Carica Documento</DialogTitle></DialogHeader>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4">
@@ -114,12 +161,30 @@ export default function DocumentsPage() {
             <div><Label>Stato</Label><select value={formData.status} onChange={(e) => setFormData({ ...formData, status: e.target.value as any })} className="h-10 w-full rounded-lg border border-white/10 bg-white/5 px-3 text-sm text-white"><option value="draft">Bozza</option><option value="final">Finale</option><option value="archived">Archiviato</option></select></div>
             <div><Label>Cliente</Label><select value={formData.clientId} onChange={(e) => setFormData({ ...formData, clientId: e.target.value })} className="h-10 w-full rounded-lg border border-white/10 bg-white/5 px-3 text-sm text-white"><option value="">Nessuno</option>{clients?.map((c) => <option key={c._id} value={c._id}>{c.fullName}</option>)}</select></div>
             <div><Label>Cantiere</Label><select value={formData.cantiereId} onChange={(e) => setFormData({ ...formData, cantiereId: e.target.value })} className="h-10 w-full rounded-lg border border-white/10 bg-white/5 px-3 text-sm text-white"><option value="">Nessuno</option>{cantieri?.map((c) => <option key={c._id} value={c._id}>{c.name}</option>)}</select></div>
-            <div className="md:col-span-2"><Label>URL File</Label><Input value={formData.fileUrl} onChange={(e) => setFormData({ ...formData, fileUrl: e.target.value })} placeholder="/docs/file.pdf" /></div>
+            <div className="md:col-span-2">
+              <Label>Preventivo collegato</Label>
+              <select value={formData.quoteId} onChange={(e) => setFormData({ ...formData, quoteId: e.target.value })} className="h-10 w-full rounded-lg border border-white/10 bg-white/5 px-3 text-sm text-white">
+                <option value="">Nessuno</option>
+                {quotes?.filter((q) => q.title).map((q) => <option key={q._id} value={q._id}>{q.title}</option>)}
+              </select>
+            </div>
+            <div className="md:col-span-2">
+              <Label>Carica file (opzionale — lascia vuoto se usi URL)</Label>
+              <input ref={fileInputRef} type="file" onChange={(e) => { setSelectedFile(e.target.files?.[0] || null); if (e.target.files?.[0]) setFormData({ ...formData, fileUrl: "" }) }} className="w-full text-sm text-white file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:bg-kranely-accent file:text-kranely-app-bg hover:file:bg-kranely-accent/90" />
+              {selectedFile && <p className="text-xs text-white/40 mt-1">{selectedFile.name} ({(selectedFile.size / 1024).toFixed(0)} KB)</p>}
+            </div>
+            <div className="md:col-span-2"><Label>Oppure URL file</Label><Input value={formData.fileUrl} onChange={(e) => { setFormData({ ...formData, fileUrl: e.target.value }); if (e.target.value) setSelectedFile(null) }} placeholder="/docs/file.pdf" /></div>
             <div className="md:col-span-2"><Label>Descrizione</Label><Textarea value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} rows={3} /></div>
           </div>
-          <DialogFooter><Button variant="outline" onClick={() => setShowCreateDialog(false)} className="border-white/10">Annulla</Button><Button onClick={handleCreate} className="bg-kranely-accent text-kranely-app-bg">Carica</Button></DialogFooter>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowCreateDialog(false)} className="border-white/10">Annulla</Button>
+            <Button onClick={handleCreate} disabled={uploading} className="bg-kranely-accent text-kranely-app-bg">
+              {uploading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Caricamento...</> : "Carica"}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
+
       <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
         <DialogContent className="max-w-2xl"><DialogHeader><DialogTitle>Modifica Documento</DialogTitle></DialogHeader>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4">
@@ -130,6 +195,7 @@ export default function DocumentsPage() {
           <DialogFooter><Button variant="outline" onClick={() => setShowEditDialog(false)} className="border-white/10">Annulla</Button><Button onClick={handleEdit} className="bg-kranely-accent text-kranely-app-bg">Salva</Button></DialogFooter>
         </DialogContent>
       </Dialog>
+
       <Dialog open={showDetailDialog} onOpenChange={setShowDetailDialog}>
         <DialogContent className="max-w-2xl"><DialogHeader><DialogTitle>Dettaglio Documento</DialogTitle></DialogHeader>
           {selectedDoc && (
@@ -142,6 +208,7 @@ export default function DocumentsPage() {
                 <div><span className="text-xs text-white/40">Dimensione</span><p className="text-white">{formatFileSize(selectedDoc.fileSize)}</p></div>
                 {selectedDoc.clientId && <div><span className="text-xs text-white/40">Cliente</span><Link href="/clients" className="text-kranely-accent hover:underline">{clients?.find((c) => c._id === selectedDoc.clientId)?.fullName}</Link></div>}
                 {selectedDoc.cantiereId && <div><span className="text-xs text-white/40">Cantiere</span><Link href="/cantieri" className="text-kranely-accent hover:underline">{cantieri?.find((c) => c._id === selectedDoc.cantiereId)?.name}</Link></div>}
+                {selectedDoc.quoteId && <div className="md:col-span-2"><span className="text-xs text-white/40">Preventivo</span><Link href="/quotes" className="text-kranely-accent hover:underline">{quotes?.find((q) => q._id === selectedDoc.quoteId)?.title}</Link></div>}
               </div>
               {selectedDoc.description && <div><span className="text-xs text-white/40">Descrizione</span><p className="text-white/80 mt-1">{selectedDoc.description}</p></div>}
               {selectedDoc.fileUrl && <div className="pt-4"><Button onClick={() => window.open(selectedDoc.fileUrl, "_blank")} className="bg-kranely-accent text-kranely-app-bg"><Download className="w-4 h-4 mr-2" /> Apri File</Button></div>}

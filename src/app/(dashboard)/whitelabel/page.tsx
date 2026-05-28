@@ -40,9 +40,9 @@ export default function WhitelabelPage() {
     if (!orgId) return
     try {
       if (settings?._id) {
-        await updateSettings({ id: settings._id, ...formData })
+        await updateSettings({ id: settings._id, organizationId: orgId, userEmail: user?.email, ...formData })
       } else {
-        await createSettings({ organizationId: orgId, ...formData })
+        await createSettings({ organizationId: orgId, userEmail: user?.email, ...formData })
       }
       toast.success("Impostazioni salvate")
     } catch (e) { toast.error("Errore") }

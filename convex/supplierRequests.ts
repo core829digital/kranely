@@ -53,7 +53,7 @@ export const create = mutation({
 
     await ctx.db.insert("activityLog", {
       organizationId: args.organizationId,
-      userEmail: "system",
+      userEmail: userEmail || "system",
       action: "created",
       entityType: "supplierRequest",
       entityId: id,
@@ -98,7 +98,9 @@ export const convertToOrder = mutation({
     const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
     const request = await ctx.db.get(args.requestId)
     if (!request) throw new Error("Richiesta non trovata")
-    if (!request.depositPaid) throw new Error("L'acconto deve essere pagato prima di convertire in ordine")
+    if (!request.depositPaymentId) throw new Error("L'acconto deve essere pagato prima di convertire in ordine")
+    const depositPayment = await ctx.db.get(request.depositPaymentId)
+    if (!depositPayment || depositPayment.status !== "pagato") throw new Error("L'acconto deve essere pagato prima di convertire in ordine")
 
     const orderId = await ctx.db.insert("supplierOrders", {
       organizationId: args.organizationId,
@@ -125,7 +127,7 @@ export const convertToOrder = mutation({
 
     await ctx.db.insert("activityLog", {
       organizationId: args.organizationId,
-      userEmail: "system",
+      userEmail: args.userEmail || "system",
       action: "converted",
       entityType: "supplierRequest",
       entityId: args.requestId,
@@ -169,10 +171,11 @@ export const stats = query({
 })
 
 export const remove = mutation({
-  args: { id: v.id("supplierRequests") },
+  args: { id: v.id("supplierRequests"), organizationId: v.id("organizations"), userEmail: v.optional(v.string()) },
   handler: async (ctx, args) => {
+    await assertOrgAccess(ctx, args.userEmail, args.organizationId)
     const existing = await ctx.db.get(args.id)
-    if (!existing) throw new Error("Richiesta non trovata")
+    if (!existing || existing.organizationId !== args.organizationId) throw new Error("Richiesta non trovata")
     await ctx.db.delete(args.id)
     return args.id
   },

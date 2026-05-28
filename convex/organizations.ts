@@ -43,20 +43,23 @@ export const create = mutation({
 export const update = mutation({
   args: {
     id: v.id("organizations"),
+    userEmail: v.optional(v.string()),
     name: v.optional(v.string()),
     slug: v.optional(v.string()),
     plan: v.optional(v.union(v.literal("free"), v.literal("pro"), v.literal("enterprise"))),
     status: v.optional(v.union(v.literal("trial"), v.literal("active"), v.literal("suspended"), v.literal("cancelled"))),
   },
   handler: async (ctx, args) => {
-    const { id, ...data } = args
+    await assertOrgAccess(ctx, args.userEmail, args.id)
+    const { id, userEmail, ...data } = args
     const prev = await ctx.db.get(id)
+    if (!prev) throw new Error("Not found")
     await ctx.db.patch(id, data)
 
     if (prev) {
       await ctx.db.insert("activityLog", {
         organizationId: id,
-        userEmail: "system",
+        userEmail: userEmail || "system",
         action: "updated",
         entityType: "organization",
         entityId: id,
@@ -78,12 +81,14 @@ export const listUsers = query({
       .withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId))
       .collect()
       .then((items) => items.sort((a, b) => b._creationTime - a._creationTime))
-  },
+  }
 })
 
 export const updateUser = mutation({
   args: {
     id: v.id("users"),
+    organizationId: v.id("organizations"),
+    userEmail: v.optional(v.string()),
     fullName: v.optional(v.string()),
     role: v.optional(v.union(v.literal("superadmin"), v.literal("admin"), v.literal("supplier"), v.literal("driver"), v.literal("collaborator"), v.literal("client"))),
     subrole: v.optional(v.union(v.literal("serramenti"), v.literal("edilizia"), v.literal("generale"))),
@@ -93,7 +98,8 @@ export const updateUser = mutation({
     blocked: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
-    const { id, ...data } = args
+    await assertOrgAccess(ctx, args.userEmail, args.organizationId)
+    const { id, organizationId, userEmail, ...data } = args
     const existing = await ctx.db.get(id)
     if (!existing) throw new Error("Utente non trovato")
     await ctx.db.patch(id, data)
@@ -101,11 +107,11 @@ export const updateUser = mutation({
     if (existing.organizationId) {
       await ctx.db.insert("activityLog", {
         organizationId: existing.organizationId,
-        userEmail: "system",
+        userEmail: userEmail || "system",
         action: "updated",
         entityType: "user",
         entityId: id,
-      entityName: existing.fullName || existing.email,
+        entityName: existing.fullName || existing.email,
         details: `Utente "${existing.fullName || existing.email}" aggiornato`,
       })
     }
@@ -115,16 +121,17 @@ export const updateUser = mutation({
 })
 
 export const removeUser = mutation({
-  args: { id: v.id("users") },
+  args: { id: v.id("users"), organizationId: v.id("organizations"), userEmail: v.optional(v.string()) },
   handler: async (ctx, args) => {
+    await assertOrgAccess(ctx, args.userEmail, args.organizationId)
     const existing = await ctx.db.get(args.id)
     if (!existing) throw new Error("Utente non trovato")
     await ctx.db.delete(args.id)
 
     if (existing.organizationId) {
       await ctx.db.insert("activityLog", {
-        organizationId: existing.organizationId,
-        userEmail: "system",
+        organizationId: args.organizationId,
+        userEmail: args.userEmail || "system",
         action: "deleted",
         entityType: "user",
         entityId: args.id,

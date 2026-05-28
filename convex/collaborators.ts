@@ -57,7 +57,7 @@ export const create = mutation({
 
     await ctx.db.insert("activityLog", {
       organizationId: args.organizationId,
-      userEmail: "system",
+      userEmail: userEmail || "system",
       action: "created",
       entityType: "collaborator",
       entityId: id,
@@ -111,7 +111,7 @@ export const update = mutation({
 
     await ctx.db.insert("activityLog", {
       organizationId,
-      userEmail: "system",
+      userEmail: userEmail || "system",
       action: "updated",
       entityType: "collaborator",
       entityId: id,
@@ -145,7 +145,7 @@ export const remove = mutation({
 
     await ctx.db.insert("activityLog", {
       organizationId: args.organizationId,
-      userEmail: "system",
+      userEmail: args.userEmail || "system",
       action: "deleted",
       entityType: "collaborator",
       entityId: args.id,
@@ -241,7 +241,7 @@ export const updateHours = mutation({
 
     await ctx.db.insert("activityLog", {
       organizationId,
-      userEmail: "system",
+      userEmail: args.userEmail || "system",
       action: "updated",
       entityType: "collaboratorHours",
       entityId: id,
@@ -262,7 +262,7 @@ export const removeHours = mutation({
 
     await ctx.db.insert("activityLog", {
       organizationId: args.organizationId,
-      userEmail: "system",
+      userEmail: args.userEmail || "system",
       action: "deleted",
       entityType: "collaboratorHours",
       entityId: args.id,

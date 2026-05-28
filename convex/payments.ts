@@ -32,6 +32,19 @@ export const get = query({
   },
 })
 
+export const getWithProof = query({
+  args: { id: v.id("payments"), organizationId: v.id("organizations") },
+  handler: async (ctx, args) => {
+    const payment = await ctx.db.get(args.id)
+    if (!payment || payment.organizationId !== args.organizationId) throw new Error("Not found")
+    let proofDoc = null
+    if (payment.proofDocId) {
+      proofDoc = await ctx.db.get(payment.proofDocId)
+    }
+    return { payment, proofDoc }
+  },
+})
+
 export const create = mutation({
   args: {
     organizationId: v.id("organizations"),
@@ -46,6 +59,7 @@ export const create = mutation({
     supplierId: v.optional(v.id("suppliers")),
     collaboratorId: v.optional(v.id("collaborators")),
     method: v.optional(v.union(v.literal("bonifico"), v.literal("contanti"), v.literal("carta"), v.literal("paypal"), v.literal("altro"))),
+    proofDocId: v.optional(v.id("documents")),
     notes: v.optional(v.string()),
     userEmail: v.optional(v.string()),
   },
@@ -56,7 +70,7 @@ export const create = mutation({
 
     await ctx.db.insert("activityLog", {
       organizationId: args.organizationId,
-      userEmail: "system",
+      userEmail: userEmail || "system",
       action: "created",
       entityType: "payment",
       entityId: id,
@@ -91,6 +105,7 @@ export const update = mutation({
     dueDate: v.optional(v.string()),
     paidDate: v.optional(v.string()),
     method: v.optional(v.union(v.literal("bonifico"), v.literal("carta"), v.literal("paypal"), v.literal("altro"))),
+    proofDocId: v.optional(v.id("documents")),
     notes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
@@ -99,19 +114,52 @@ export const update = mutation({
     const doc = await ctx.db.get(id)
     if (!doc || doc.organizationId !== organizationId) throw new Error("Not found")
     await ctx.db.patch(id, data)
+
+    await ctx.db.insert("activityLog", {
+      organizationId,
+      userEmail: userEmail || "system",
+      action: "updated",
+      entityType: "payment",
+      entityId: id,
+      entityName: doc.description,
+      details: `Pagamento "${doc.description}" aggiornato`,
+    })
+
     return id
   },
 })
 
 export const markAsPaid = mutation({
-  args: { id: v.id("payments"), paidDate: v.optional(v.string()) },
+  args: {
+    id: v.id("payments"),
+    organizationId: v.id("organizations"),
+    paidDate: v.optional(v.string()),
+    proofDocId: v.optional(v.id("documents")),
+    method: v.optional(v.union(v.literal("bonifico"), v.literal("contanti"), v.literal("carta"), v.literal("paypal"), v.literal("altro"))),
+    userEmail: v.optional(v.string()),
+  },
   handler: async (ctx, args) => {
+    await assertOrgAccess(ctx, args.userEmail, args.organizationId)
     const payment = await ctx.db.get(args.id)
-    if (!payment) throw new Error("Payment not found")
+    if (!payment || payment.organizationId !== args.organizationId) throw new Error("Payment not found")
 
-    await ctx.db.patch(args.id, {
+    const patch: any = {
       status: "pagato",
       paidDate: args.paidDate || new Date().toISOString().split("T")[0],
+    }
+    if (args.proofDocId) patch.proofDocId = args.proofDocId
+    if (args.method) patch.method = args.method
+
+    await ctx.db.patch(args.id, patch)
+
+    await ctx.db.insert("activityLog", {
+      organizationId: payment.organizationId,
+      userEmail: args.userEmail || "system",
+      action: "marked_paid",
+      entityType: "payment",
+      entityId: args.id,
+      entityName: payment.description,
+      details: `Pagamento "${payment.description}" di EUR${payment.amount.toLocaleString("it-IT")} segnato come pagato${args.proofDocId ? " con ricevuta" : ""}`,
     })
 
     await ctx.scheduler.runAfter(0, internal.notifications.createNotification, {
@@ -134,6 +182,17 @@ export const remove = mutation({
     const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
     const payment = await ctx.db.get(args.id)
     if (!payment || payment.organizationId !== args.organizationId) throw new Error("Not found")
+
+    await ctx.db.insert("activityLog", {
+      organizationId: args.organizationId,
+      userEmail: args.userEmail || "system",
+      action: "deleted",
+      entityType: "payment",
+      entityId: args.id,
+      entityName: payment.description,
+      details: `Pagamento "${payment.description}" eliminato`,
+    })
+
     await ctx.db.delete(args.id)
     return args.id
   },

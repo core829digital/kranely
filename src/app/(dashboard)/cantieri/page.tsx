@@ -210,6 +210,41 @@ export default function CantieriPage() {
                 <div><span className="text-white/40">Inizio</span><p className="text-white">{selectedCantiere.startDate || "-"}</p></div>
                 <div><span className="text-white/40">Fine</span><p className="text-white">{selectedCantiere.endDate || "-"}</p></div>
               </div>
+              {selectedCantiere.totalBudget && selectedCantiere.totalBudget > 0 && cantierePayments && (
+                <div className="space-y-1">
+                  <div className="flex justify-between text-xs">
+                    <span className="text-white/60">Budget vs Speso</span>
+                    <span className="text-white/80">
+                      EUR{cantierePayments.filter((p) => p.status === "pagato").reduce((s, p) => s + p.amount, 0).toLocaleString("it-IT")} / EUR{selectedCantiere.totalBudget.toLocaleString("it-IT")}
+                    </span>
+                  </div>
+                  <div className="w-full bg-white/10 rounded-full h-2.5">
+                    {(() => {
+                      const spent = cantierePayments.filter((p) => p.status === "pagato").reduce((s, p) => s + p.amount, 0)
+                      const pct = Math.min(Math.round((spent / selectedCantiere.totalBudget!) * 100), 100)
+                      const overBudget = spent > selectedCantiere.totalBudget!
+                      return (
+                        <div
+                          className={`h-2.5 rounded-full transition-all ${overBudget ? "bg-red-500" : pct > 80 ? "bg-yellow-500" : "bg-green-500"}`}
+                          style={{ width: `${pct}%` }}
+                        />
+                      )
+                    })()}
+                  </div>
+                  <div className="flex justify-between text-xs">
+                    <span className={cantierePayments.filter((p) => p.status === "pagato").reduce((s, p) => s + p.amount, 0) > selectedCantiere.totalBudget ? "text-red-400" : "text-green-400"}>
+                      {(() => {
+                        const spent = cantierePayments.filter((p) => p.status === "pagato").reduce((s, p) => s + p.amount, 0)
+                        const pct = Math.round((spent / selectedCantiere.totalBudget!) * 100)
+                        return `${pct}% utilizzato`
+                      })()}
+                    </span>
+                    <span className="text-white/40">
+                      Residuo: EUR{Math.max(0, selectedCantiere.totalBudget - cantierePayments.filter((p) => p.status === "pagato").reduce((s, p) => s + p.amount, 0)).toLocaleString("it-IT")}
+                    </span>
+                  </div>
+                </div>
+              )}
               {selectedCantiere.description && <div><span className="text-white/40 text-sm">Descrizione</span><p className="text-sm text-white mt-1">{selectedCantiere.description}</p></div>}
               <div className="space-y-3 pt-4 border-t border-white/10">
                 <h4 className="text-sm font-semibold text-white flex items-center gap-2"><CreditCard className="w-4 h-4" /> Pagamenti ({cantierePayments?.length || 0})</h4>

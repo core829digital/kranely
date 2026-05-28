@@ -141,7 +141,7 @@ export const createClient = mutation({
 
     await ctx.db.insert("activityLog", {
       organizationId: args.organizationId,
-      userEmail: "system",
+      userEmail: userEmail || "system",
       action: "created",
       entityType: "client",
       entityId: id,
@@ -209,6 +209,17 @@ export const remove = mutation({
     const client = await ctx.db.get(args.id)
     if (!client || client.organizationId !== args.organizationId) throw new Error("Not found")
     await ctx.db.delete(args.id)
+
+    await ctx.db.insert("activityLog", {
+      organizationId: args.organizationId,
+      userEmail: args.userEmail || "system",
+      action: "deleted",
+      entityType: "client",
+      entityId: args.id,
+      entityName: client.fullName,
+      details: `Cliente "${client.fullName}" rimosso`,
+    })
+
     return args.id
   },
 })

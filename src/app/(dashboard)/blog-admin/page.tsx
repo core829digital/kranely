@@ -31,7 +31,7 @@ export default function BlogAdminPage() {
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault(); if (!orgId) return
     try {
-      await createPost({ organizationId: orgId, ...form, readTime: form.readTime, tags: undefined })
+      await createPost({ organizationId: orgId, ...form, userEmail: user?.email, readTime: form.readTime, tags: undefined })
       setShowCreate(false); resetForm(); toast.success("Articolo creato")
     } catch (err: any) { toast.error(err.message) }
   }
@@ -39,7 +39,7 @@ export default function BlogAdminPage() {
   const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault(); if (!editId) return
     try {
-      await updatePost({ id: editId as any, ...form, readTime: form.readTime, tags: undefined })
+      await updatePost({ id: editId as any, organizationId: orgId!, userEmail: user?.email, ...form, readTime: form.readTime, tags: undefined })
       setEditId(null); resetForm(); toast.success("Articolo aggiornato")
     } catch (err: any) { toast.error(err.message) }
   }
@@ -50,13 +50,13 @@ export default function BlogAdminPage() {
   }
 
   const togglePublish = async (id: string, current: boolean) => {
-    try { await publishPost({ id: id as any, published: !current }); toast.success(!current ? "Pubblicato" : "Nascosto") }
+    try { await publishPost({ id: id as any, published: !current, organizationId: orgId!, userEmail: user?.email }); toast.success(!current ? "Pubblicato" : "Nascosto") }
     catch (err: any) { toast.error(err.message) }
   }
 
   const handleDelete = async (id: string) => {
     if (!confirm("Eliminare questo articolo?")) return
-    try { await removePost({ id: id as any }); toast.success("Eliminato") }
+    try { await removePost({ id: id as any, organizationId: orgId!, userEmail: user?.email }); toast.success("Eliminato") }
     catch (err: any) { toast.error(err.message) }
   }
 

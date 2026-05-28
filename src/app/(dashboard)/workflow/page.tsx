@@ -61,6 +61,8 @@ export default function WorkflowPage() {
     try {
       await updateOrder({
         id: editingOrderId,
+        organizationId: orgId!,
+        userEmail: user?.email,
         description: editFormData.description || undefined,
         orderNumber: editFormData.orderNumber || undefined,
         totalAmount: editFormData.totalAmount ? parseFloat(editFormData.totalAmount) : undefined,
@@ -73,19 +75,19 @@ export default function WorkflowPage() {
 
   const handleDelete = async (id: Id<"supplierOrders">) => {
     if (!confirm("Eliminare questo ordine?")) return
-    try { await removeOrder({ id }); toast.success("Ordine eliminato") } catch (e) { toast.error("Errore") }
+    try { await removeOrder({ id, organizationId: orgId!, userEmail: user?.email }); toast.success("Ordine eliminato") } catch (e) { toast.error("Errore") }
   }
 
   const handleCreate = async () => {
     if (!formData.supplierId || !orgId) { toast.error("Compila i campi obbligatori"); return }
-    try { await createOrder({ organizationId: orgId, supplierId: formData.supplierId as Id<"suppliers">, description: formData.description, orderNumber: formData.orderNumber, totalAmount: formData.totalAmount ? parseFloat(formData.totalAmount) : undefined, expectedDelivery: formData.expectedDelivery || undefined, cantiereId: formData.cantiereId ? formData.cantiereId as Id<"cantieri"> : undefined, quoteId: formData.quoteId ? formData.quoteId as Id<"quotes"> : undefined, status: "pending" }); setShowCreateDialog(false); toast.success("Ordine creato") } catch (e) { toast.error("Errore") }
+    try { await createOrder({ organizationId: orgId, userEmail: user?.email, supplierId: formData.supplierId as Id<"suppliers">, description: formData.description, orderNumber: formData.orderNumber, totalAmount: formData.totalAmount ? parseFloat(formData.totalAmount) : undefined, expectedDelivery: formData.expectedDelivery || undefined, cantiereId: formData.cantiereId ? formData.cantiereId as Id<"cantieri"> : undefined, quoteId: formData.quoteId ? formData.quoteId as Id<"quotes"> : undefined, status: "pending" }); setShowCreateDialog(false); toast.success("Ordine creato") } catch (e) { toast.error("Errore") }
   }
 
   const advanceStatus = async (id: Id<"supplierOrders">, currentStatus: string) => {
     const statusFlow: Record<string, string> = { pending: "confirmed", confirmed: "in_production", in_production: "shipped", shipped: "delivered" }
     const nextStatus = statusFlow[currentStatus]
     if (!nextStatus) return
-    try { await updateOrder({ id, status: nextStatus as any }); toast.success(`Stato aggiornato: ${nextStatus}`) } catch (e) { toast.error("Errore") }
+    try { await updateOrder({ id, organizationId: orgId!, userEmail: user?.email, status: nextStatus as any }); toast.success(`Stato aggiornato: ${nextStatus}`) } catch (e) { toast.error("Errore") }
   }
 
   const getStatusStep = (status: string): number => { const map: Record<string, number> = { pending: 1, confirmed: 2, in_production: 6, shipped: 7, delivered: 8, cancelled: 0 }; return map[status] || 0 }

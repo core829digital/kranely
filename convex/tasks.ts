@@ -83,6 +83,8 @@ export const create = mutation({
 export const update = mutation({
   args: {
     id: v.id("phaseTasks"),
+    organizationId: v.id("organizations"),
+    userEmail: v.optional(v.string()),
     title: v.optional(v.string()),
     description: v.optional(v.string()),
     status: v.optional(v.union(v.literal("da_fare"), v.literal("in_corso"), v.literal("completato"))),
@@ -92,14 +94,16 @@ export const update = mutation({
     completedDate: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const { id, ...data } = args
+    const { id, organizationId, userEmail, ...data } = args
+    await assertOrgAccess(ctx, userEmail, organizationId)
     const existing = await ctx.db.get(id)
+    if (!existing || existing.organizationId !== organizationId) throw new Error("Not found")
     await ctx.db.patch(id, data)
 
     if (existing) {
       await ctx.db.insert("activityLog", {
-        organizationId: existing.organizationId,
-        userEmail: "system",
+        organizationId,
+        userEmail: userEmail || "system",
         action: "updated",
         entityType: "task",
         entityId: id,
@@ -112,7 +116,7 @@ export const update = mutation({
       const statusLabels: Record<string, string> = { da_fare: "Da fare", in_corso: "In corso", completato: "Completato" }
       await ctx.scheduler.runAfter(0, internal.notifications.createNotification, {
         organizationId: existing.organizationId,
-        userEmail: existing.assignedTo || await resolveNotifTarget(ctx, existing.organizationId),
+        userEmail: existing.assignedTo || await resolveNotifTarget(ctx, existing.organizationId, userEmail),
         title: "Attività aggiornata",
         message: `L'attività "${existing.title}" è passata a "${statusLabels[data.status] || data.status}"`,
         type: "task_updated",
@@ -126,15 +130,17 @@ export const update = mutation({
 })
 
 export const remove = mutation({
-  args: { id: v.id("phaseTasks") },
+  args: { id: v.id("phaseTasks"), organizationId: v.id("organizations"), userEmail: v.optional(v.string()) },
   handler: async (ctx, args) => {
+    await assertOrgAccess(ctx, args.userEmail, args.organizationId)
     const existing = await ctx.db.get(args.id)
+    if (!existing || existing.organizationId !== args.organizationId) throw new Error("Not found")
     await ctx.db.delete(args.id)
 
     if (existing) {
       await ctx.db.insert("activityLog", {
-        organizationId: existing.organizationId,
-        userEmail: "system",
+        organizationId: args.organizationId,
+        userEmail: args.userEmail || "system",
         action: "deleted",
         entityType: "task",
         entityId: args.id,

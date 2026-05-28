@@ -41,6 +41,8 @@ export const create = mutation({
 export const update = mutation({
   args: {
     id: v.id("referralCodes"),
+    organizationId: v.id("organizations"),
+    userEmail: v.optional(v.string()),
     code: v.optional(v.string()),
     discountPercent: v.optional(v.number()),
     description: v.optional(v.string()),
@@ -48,14 +50,16 @@ export const update = mutation({
     maxUses: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const { id, ...data } = args
+    await assertOrgAccess(ctx, args.userEmail, args.organizationId)
+    const { id, organizationId, userEmail, ...data } = args
     const prev = await ctx.db.get(id)
+    if (!prev || prev.organizationId !== organizationId) throw new Error("Not found")
     await ctx.db.patch(id, data)
 
     if (prev) {
       await ctx.db.insert("activityLog", {
         organizationId: prev.organizationId,
-        userEmail: "system",
+        userEmail: userEmail || "system",
         action: "updated",
         entityType: "referralCode",
         entityId: id,
@@ -69,15 +73,17 @@ export const update = mutation({
 })
 
 export const remove = mutation({
-  args: { id: v.id("referralCodes") },
+  args: { id: v.id("referralCodes"), organizationId: v.id("organizations"), userEmail: v.optional(v.string()) },
   handler: async (ctx, args) => {
+    await assertOrgAccess(ctx, args.userEmail, args.organizationId)
     const prev = await ctx.db.get(args.id)
+    if (!prev || prev.organizationId !== args.organizationId) throw new Error("Not found")
     await ctx.db.delete(args.id)
 
     if (prev) {
       await ctx.db.insert("activityLog", {
-        organizationId: prev.organizationId,
-        userEmail: "system",
+        organizationId: args.organizationId,
+        userEmail: args.userEmail || "system",
         action: "deleted",
         entityType: "referralCode",
         entityId: args.id,

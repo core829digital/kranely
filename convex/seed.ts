@@ -171,6 +171,8 @@ export const seed = mutation({
       estimatedPrice: 45000,
       email: "mario.rossi@email.it",
       createdBy: adminId,
+      files: ["/docs/preventivo-001.pdf", "/docs/planimetria-facciata.pdf"],
+      attachmentPhotos: ["/docs/foto-facciata-1.jpg", "/docs/foto-facciata-2.jpg"],
     })
 
     const quote2 = await ctx.db.insert("quotes", {
@@ -224,13 +226,35 @@ export const seed = mutation({
       managerId: adminId,
     })
 
-    await ctx.db.insert("payments", {
+    // Documents — created before payments so payments can reference them
+    await ctx.db.insert("documents", {
+      organizationId: orgId, title: "Contratto Cantiere Via Roma",
+      type: "contract", fileUrl: "/docs/contratto-via-roma.pdf",
+      fileName: "contratto-via-roma.pdf", fileSize: 245000,
+      mimeType: "application/pdf", status: "final",
+      description: "Contratto firmato con Rossi Costruzioni",
+      clientId: client1, cantiereId: cantiere1, createdById: adminId,
+    })
+
+    const docPreventivo = await ctx.db.insert("documents", {
+      organizationId: orgId, title: "Preventivo #2026-001",
+      type: "quote", fileUrl: "/docs/preventivo-001.pdf",
+      fileName: "preventivo-001.pdf", fileSize: 180000,
+      mimeType: "application/pdf", status: "final",
+      description: "Preventivo ristrutturazione facciata",
+      clientId: client1, quoteId: quote1, createdById: adminId,
+    })
+
+    await ctx.db.patch(quote1, { clientSelectedVersionDocId: docPreventivo } as any)
+
+    const paymentAcconto = await ctx.db.insert("payments", {
       organizationId: orgId,
       type: "client",
       description: "Acconto Cantiere Via Roma",
       amount: 15000,
       status: "pagato", dueDate: "2026-03-01", paidDate: "2026-03-01",
       clientId: client1, cantiereId: cantiere1, method: "bonifico",
+      proofDocId: docPreventivo,
     })
 
     await ctx.db.insert("payments", {
@@ -295,24 +319,6 @@ export const seed = mutation({
       category: "sicurezza", status: "scaduto",
       issueDate: "2022-03-01", expiryDate: "2026-03-01",
       issuedBy: "Regione Lombardia", description: "Abilitazione piattaforma elevatrice",
-    })
-
-    await ctx.db.insert("documents", {
-      organizationId: orgId, title: "Contratto Cantiere Via Roma",
-      type: "contract", fileUrl: "/docs/contratto-via-roma.pdf",
-      fileName: "contratto-via-roma.pdf", fileSize: 245000,
-      mimeType: "application/pdf", status: "final",
-      description: "Contratto firmato con Rossi Costruzioni",
-      clientId: client1, cantiereId: cantiere1, createdById: adminId,
-    })
-
-    await ctx.db.insert("documents", {
-      organizationId: orgId, title: "Preventivo #2026-001",
-      type: "quote", fileUrl: "/docs/preventivo-001.pdf",
-      fileName: "preventivo-001.pdf", fileSize: 180000,
-      mimeType: "application/pdf", status: "final",
-      description: "Preventivo ristrutturazione facciata",
-      clientId: client1, quoteId: quote1, createdById: adminId,
     })
 
     await ctx.db.insert("appointments", {

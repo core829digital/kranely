@@ -18,6 +18,7 @@ import type * as cantieri from "../cantieri.js";
 import type * as certificates from "../certificates.js";
 import type * as chat from "../chat.js";
 import type * as cleanup from "../cleanup.js";
+import type * as clientDashboard from "../clientDashboard.js";
 import type * as clients from "../clients.js";
 import type * as collaborators from "../collaborators.js";
 import type * as companyTeams from "../companyTeams.js";
@@ -71,6 +72,7 @@ declare const fullApi: ApiFromModules<{
   certificates: typeof certificates;
   chat: typeof chat;
   cleanup: typeof cleanup;
+  clientDashboard: typeof clientDashboard;
   clients: typeof clients;
   collaborators: typeof collaborators;
   companyTeams: typeof companyTeams;

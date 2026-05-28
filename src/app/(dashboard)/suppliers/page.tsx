@@ -523,7 +523,7 @@ function OrdiniTab({ orgId, selectedSupplierId, userEmail }: { orgId: Id<"organi
   const handleUpdatePricing = async () => {
     if (!showEditPricing || !pricingAmount) return
     try {
-      await updateOrder({ id: showEditPricing, totalAmount: parseFloat(pricingAmount) })
+      await updateOrder({ id: showEditPricing, organizationId: orgId, userEmail, totalAmount: parseFloat(pricingAmount) })
       setShowEditPricing(null); toast.success("Prezzo aggiornato")
     } catch { toast.error("Errore") }
   }
@@ -620,6 +620,7 @@ function ProduzioneTab({ orgId, selectedSupplierId, userEmail }: { orgId: Id<"or
     try {
       await updateProduction({
         id: prodId,
+        organizationId: orgId!,
         phase: nextPhase as any,
         status: nextPhase === "pronto" ? "completed" : "in_progress",
         progressPercentage: ((currentIdx + 2) / phases.length) * 100,

@@ -80,7 +80,7 @@ export const create = mutation({
 
     await ctx.db.insert("activityLog", {
       organizationId: args.organizationId,
-      userEmail: "system",
+      userEmail: userEmail || "system",
       action: "created",
       entityType: "supplierProduction",
       entityId: id,
@@ -95,70 +95,49 @@ export const create = mutation({
 export const update = mutation({
   args: {
     id: v.id("supplierProduction"),
-    description: v.optional(v.string()),
-    quantity: v.optional(v.number()),
-    completed: v.optional(v.number()),
-    phase: v.optional(v.union(v.literal("materiali_ricevuti"), v.literal("taglio"), v.literal("assemblaggio"), v.literal("controllo_qualita"), v.literal("pronto"))),
-    status: v.optional(v.union(v.literal("pending"), v.literal("in_progress"), v.literal("completed"))),
-    startedDate: v.optional(v.string()),
-    completedDate: v.optional(v.string()),
-    estimatedCompletion: v.optional(v.string()),
-    notes: v.optional(v.string()),
+    organizationId: v.id("organizations"),
+    userEmail: v.optional(v.string()),
+    phase: v.optional(v.string()),
+    status: v.optional(v.string()),
     progressPercentage: v.optional(v.number()),
-    userEmail: v.string(),
   },
   handler: async (ctx, args) => {
-    const { id, userEmail, ...data } = args
+    await assertOrgAccess(ctx, args.userEmail, args.organizationId)
+    const { id, organizationId, userEmail, ...data } = args
     const record = await ctx.db.get(id)
     if (!record) throw new Error("Record produzione non trovato")
+    await ctx.db.patch(id, data as any)
 
-    await checkSupplierAccess(ctx, record.supplierId, userEmail)
-    await ctx.db.patch(id, data)
+    await ctx.db.insert("activityLog", {
+      organizationId: args.organizationId,
+      userEmail: args.userEmail || "system",
+      action: "updated",
+      entityType: "supplierProduction",
+      entityId: args.id,
+      details: `Produzione "${record.description}" aggiornata`,
+    })
 
-    if (data.phase === "pronto" && record.phase !== "pronto") {
-      const order = record.orderId ? await ctx.db.get(record.orderId) : null
-
-      await ctx.scheduler.runAfter(0, internal.notifications.createNotification, {
-        organizationId: record.organizationId,
-        userEmail: userEmail,
-        title: "Produzione completata!",
-        message: `L'ordine ${order?.orderNumber || "N/A"} è pronto in produzione per "${record.description}".`,
-        type: "production_ready",
-        priority: "high",
-        link: "/suppliers",
-      })
-
-      const existingDeliveries = await ctx.db.query("supplierDeliveries").collect()
-        .then((ds) => ds.filter((d) => d.orderId === record.orderId))
-
-      if (!existingDeliveries.length && record.orderId) {
-        await ctx.db.insert("supplierDeliveries", {
-          organizationId: record.organizationId,
-          supplierId: record.supplierId,
-          orderId: record.orderId,
-          productionId: id,
-          description: `Consegna: ${record.description}`,
-          status: "pending",
-          expectedDate: record.estimatedCompletion || undefined,
-          cantiereId: order?.cantiereId || undefined,
-        })
-      }
-
-      if (order && order.status !== "in_production") {
-        await ctx.db.patch(record.orderId!, { status: "in_production" })
-      }
-    }
-
-    return id
+    return args.id
   },
 })
 
 export const remove = mutation({
-  args: { id: v.id("supplierProduction") },
+  args: { id: v.id("supplierProduction"), organizationId: v.id("organizations"), userEmail: v.optional(v.string()) },
   handler: async (ctx, args) => {
+    await assertOrgAccess(ctx, args.userEmail, args.organizationId)
     const prod = await ctx.db.get(args.id)
     if (!prod) throw new Error("Production record not found")
     await ctx.db.delete(args.id)
+
+    await ctx.db.insert("activityLog", {
+      organizationId: args.organizationId,
+      userEmail: args.userEmail || "system",
+      action: "deleted",
+      entityType: "supplierProduction",
+      entityId: args.id,
+      details: "Produzione record rimosso",
+    })
+
     return args.id
   },
 })

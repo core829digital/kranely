@@ -38,14 +38,14 @@ export default function CompanyDashboardPage() {
     if (!formData.teamName || !formData.companyEmail || !orgId) { toast.error("Compila i campi obbligatori"); return }
     try {
       const membersArr = formData.members ? formData.members.split(",").map((m) => m.trim()).filter(Boolean) : []
-      await createTeam({ organizationId: orgId, companyEmail: formData.companyEmail, teamName: formData.teamName, companyName: formData.companyName || undefined, members: membersArr })
+      await createTeam({ organizationId: orgId, companyEmail: formData.companyEmail, teamName: formData.teamName, companyName: formData.companyName || undefined, members: membersArr, userEmail: user?.email })
       setShowCreateDialog(false); toast.success("Team creato")
     } catch (e) { toast.error("Errore") }
   }
 
   const handleDelete = async (id: Id<"companyTeams">) => {
     if (!confirm("Eliminare questo team?")) return
-    try { await removeTeam({ id }); toast.success("Team eliminato") } catch (e) { toast.error("Errore") }
+    try { await removeTeam({ id, organizationId: orgId!, userEmail: user?.email }); toast.success("Team eliminato") } catch (e) { toast.error("Errore") }
   }
 
   const filtered = teams?.filter((t) => { if (!search) return true; const s = search.toLowerCase(); return t.teamName.toLowerCase().includes(s) || (t.companyName || "").toLowerCase().includes(s) || t.companyEmail.toLowerCase().includes(s) }) || []

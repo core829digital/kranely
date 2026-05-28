@@ -7,10 +7,10 @@ import { api } from "../../../../convex/_generated/api"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Logo } from "@/components/Logo"
-import { Search, Users, Eye, MousePointerClick, Activity, Clock, ShieldOff, TrendingUp, BarChart3, LogIn } from "lucide-react"
+import { Search, Users, Eye, MousePointerClick, Activity, Clock, ShieldOff, TrendingUp, BarChart3, LogIn, Euro, ArrowUpCircle, ArrowDownCircle, AlertTriangle, PieChart as PieChartIcon } from "lucide-react"
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  LineChart, Line,
+  LineChart, Line, PieChart, Pie, Cell,
 } from "recharts"
 
 const ADMIN_EMAIL = "contact.core829@gmail.com"
@@ -33,7 +33,7 @@ function AdminDashboard() {
     )
   }
 
-  const { overview, topPages, topFeatures, dailyViews, dailySignIns } = adminData
+  const { overview, payments, paymentStatusDist, revenueTrend, topOrgsByRevenue, topPages, topFeatures, dailyViews, dailySignIns } = adminData
 
   const filteredUsers = adminUsers?.filter((u) => {
     if (!userSearch) return true
@@ -127,6 +127,118 @@ function AdminDashboard() {
                 <Line type="monotone" dataKey="count" name="Accessi unici" stroke="#4ADE80" strokeWidth={2} dot={{ fill: "#4ADE80", r: 4 }} />
               </LineChart>
             </ResponsiveContainer>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Revenue / Payments Section ── */}
+      <div>
+        <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2"><Euro className="w-5 h-5 text-green-400" />Revenue & Pagamenti</h2>
+
+        {/* Revenue overview cards */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
+          <div className="p-4 rounded-xl border border-white/10 bg-white/[0.02]">
+            <div className="flex items-center gap-2 mb-2"><ArrowUpCircle className="w-4 h-4 text-green-400" /><span className="text-xs text-white/40">Totale entrate</span></div>
+            <p className="text-2xl font-bold text-green-400">&euro;{payments.totalRevenue.toLocaleString("it-IT")}</p>
+          </div>
+          <div className="p-4 rounded-xl border border-white/10 bg-white/[0.02]">
+            <div className="flex items-center gap-2 mb-2"><ArrowDownCircle className="w-4 h-4 text-red-400" /><span className="text-xs text-white/40">Totale uscite</span></div>
+            <p className="text-2xl font-bold text-red-400">&euro;{payments.totalOutgoing.toLocaleString("it-IT")}</p>
+          </div>
+          <div className="p-4 rounded-xl border border-white/10 bg-white/[0.02]">
+            <div className="flex items-center gap-2 mb-2"><Euro className="w-4 h-4 text-kranely-accent" /><span className="text-xs text-white/40">Netto</span></div>
+            <p className="text-2xl font-bold text-kranely-accent">&euro;{payments.netRevenue.toLocaleString("it-IT")}</p>
+          </div>
+          <div className="p-4 rounded-xl border border-white/10 bg-white/[0.02]">
+            <div className="flex items-center gap-2 mb-2"><BarChart3 className="w-4 h-4 text-blue-400" /><span className="text-xs text-white/40">Pagati</span></div>
+            <p className="text-2xl font-bold text-blue-400">{payments.totalPaid}</p>
+          </div>
+          <div className="p-4 rounded-xl border border-white/10 bg-white/[0.02]">
+            <div className="flex items-center gap-2 mb-2"><Clock className="w-4 h-4 text-amber-400" /><span className="text-xs text-white/40">In attesa</span></div>
+            <p className="text-2xl font-bold text-amber-400">{payments.totalPending}</p>
+          </div>
+          <div className="p-4 rounded-xl border border-white/10 bg-white/[0.02]">
+            <div className="flex items-center gap-2 mb-2"><AlertTriangle className="w-4 h-4 text-red-400" /><span className="text-xs text-white/40">In ritardo</span></div>
+            <p className="text-2xl font-bold text-red-400">{payments.totalOverdue}</p>
+          </div>
+        </div>
+
+        {/* Revenue chart + Payment status pie + Top orgs */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="p-6 rounded-xl border border-white/10 bg-white/[0.02] lg:col-span-2">
+            <h3 className="text-sm font-semibold text-white/80 mb-4 flex items-center gap-2"><TrendingUp className="w-4 h-4 text-green-400" />Andamento entrate/uscite (mensile)</h3>
+            <div className="h-72">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={revenueTrend}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                  <XAxis dataKey="month" tick={{ fill: "rgba(255,255,255,0.4)", fontSize: 12 }} />
+                  <YAxis tick={{ fill: "rgba(255,255,255,0.4)", fontSize: 12 }} tickFormatter={(v) => `€${(v / 1000).toFixed(0)}k`} />
+                  <Tooltip content={<ChartTooltip />} formatter={(v: any) => `€${Number(v).toLocaleString("it-IT")}`} />
+                  <Bar dataKey="incoming" name="Entrate" fill="#4ADE80" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="outgoing" name="Uscite" fill="#F87171" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          <div className="space-y-6">
+            <div className="p-6 rounded-xl border border-white/10 bg-white/[0.02]">
+              <h3 className="text-sm font-semibold text-white/80 mb-4 flex items-center gap-2"><PieChartIcon className="w-4 h-4 text-purple-400" />Stato pagamenti</h3>
+              <div className="h-48">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie data={[
+                      { name: "Pagati", value: paymentStatusDist.pagato },
+                      { name: "In attesa", value: paymentStatusDist.in_attesa },
+                      { name: "In ritardo", value: paymentStatusDist.in_ritardo },
+                      { name: "In verifica", value: paymentStatusDist.in_verifica },
+                      { name: "Parziale", value: paymentStatusDist.parziale },
+                    ].filter((d) => d.value > 0)} cx="50%" cy="50%" innerRadius={50} outerRadius={70} dataKey="value" nameKey="name">
+                      {[
+                        { name: "Pagati", color: "#4ADE80" },
+                        { name: "In attesa", color: "#FBBF24" },
+                        { name: "In ritardo", color: "#F87171" },
+                        { name: "In verifica", color: "#60A5FA" },
+                        { name: "Parziale", color: "#A78BFA" },
+                      ].filter((_, i) => [paymentStatusDist.pagato, paymentStatusDist.in_attesa, paymentStatusDist.in_ritardo, paymentStatusDist.in_verifica, paymentStatusDist.parziale][i] > 0).map((entry, i) => (
+                        <Cell key={i} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip content={<ChartTooltip />} />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="flex flex-wrap gap-3 mt-2">
+                {[
+                  { label: "Pagati", value: paymentStatusDist.pagato, color: "bg-green-400" },
+                  { label: "In attesa", value: paymentStatusDist.in_attesa, color: "bg-amber-400" },
+                  { label: "In ritardo", value: paymentStatusDist.in_ritardo, color: "bg-red-400" },
+                  { label: "In verifica", value: paymentStatusDist.in_verifica, color: "bg-blue-400" },
+                  { label: "Parziale", value: paymentStatusDist.parziale, color: "bg-purple-400" },
+                ].filter((l) => l.value > 0).map((l) => (
+                  <div key={l.label} className="flex items-center gap-1.5 text-xs text-white/60">
+                    <span className={`w-2.5 h-2.5 rounded-full ${l.color}`} />
+                    {l.label}: {l.value}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="p-6 rounded-xl border border-white/10 bg-white/[0.02]">
+              <h3 className="text-sm font-semibold text-white/80 mb-4 flex items-center gap-2"><Euro className="w-4 h-4 text-kranely-accent" />Top organizzazioni</h3>
+              <div className="space-y-2">
+                {topOrgsByRevenue.map((org, i) => (
+                  <div key={org.name} className="flex items-center justify-between py-1.5 px-3 rounded-lg bg-white/[0.02]">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <span className="text-xs text-white/30 font-mono w-5 text-right">{i + 1}.</span>
+                      <span className="text-sm text-white/80 truncate">{org.name}</span>
+                    </div>
+                    <span className="text-sm font-semibold text-green-400 shrink-0 ml-2">&euro;{org.amount.toLocaleString("it-IT")}</span>
+                  </div>
+                ))}
+                {topOrgsByRevenue.length === 0 && <p className="text-sm text-white/40">Nessun dato ancora</p>}
+              </div>
+            </div>
           </div>
         </div>
       </div>

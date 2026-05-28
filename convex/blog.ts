@@ -84,6 +84,8 @@ export const create = mutation({
 export const update = mutation({
   args: {
     id: v.id("blogPosts"),
+    organizationId: v.id("organizations"),
+    userEmail: v.optional(v.string()),
     title: v.optional(v.string()),
     slug: v.optional(v.string()),
     excerpt: v.optional(v.string()),
@@ -95,14 +97,16 @@ export const update = mutation({
     tags: v.optional(v.array(v.string())),
   },
   handler: async (ctx, args) => {
-    const { id, ...data } = args
+    await assertOrgAccess(ctx, args.userEmail, args.organizationId)
+    const { id, organizationId, userEmail, ...data } = args
     const prev = await ctx.db.get(id)
+    if (!prev || prev.organizationId !== organizationId) throw new Error("Not found")
     await ctx.db.patch(id, data)
 
     if (prev) {
       await ctx.db.insert("activityLog", {
         organizationId: prev.organizationId,
-        userEmail: "system",
+        userEmail: userEmail || "system",
         action: "updated",
         entityType: "blogPost",
         entityId: id,
@@ -116,8 +120,11 @@ export const update = mutation({
 })
 
 export const publish = mutation({
-  args: { id: v.id("blogPosts"), published: v.boolean() },
+  args: { id: v.id("blogPosts"), published: v.boolean(), organizationId: v.id("organizations"), userEmail: v.optional(v.string()) },
   handler: async (ctx, args) => {
+    await assertOrgAccess(ctx, args.userEmail, args.organizationId)
+    const prev = await ctx.db.get(args.id)
+    if (!prev || prev.organizationId !== args.organizationId) throw new Error("Not found")
     const patch: { published: boolean; publishedDate?: string } = {
       published: args.published,
     }
@@ -125,20 +132,31 @@ export const publish = mutation({
       patch.publishedDate = new Date().toISOString()
     }
     await ctx.db.patch(args.id, patch)
+    await ctx.db.insert("activityLog", {
+      organizationId: args.organizationId,
+      userEmail: args.userEmail || "system",
+      action: args.published ? "published" : "unpublished",
+      entityType: "blogPost",
+      entityId: args.id,
+      entityName: prev.title,
+      details: `Articolo blog "${prev.title}" ${args.published ? "pubblicato" : "ritirato"}`,
+    })
     return args.id
   },
 })
 
 export const remove = mutation({
-  args: { id: v.id("blogPosts") },
+  args: { id: v.id("blogPosts"), organizationId: v.id("organizations"), userEmail: v.optional(v.string()) },
   handler: async (ctx, args) => {
+    await assertOrgAccess(ctx, args.userEmail, args.organizationId)
     const prev = await ctx.db.get(args.id)
+    if (!prev || prev.organizationId !== args.organizationId) throw new Error("Not found")
     await ctx.db.delete(args.id)
 
     if (prev) {
       await ctx.db.insert("activityLog", {
-        organizationId: prev.organizationId,
-        userEmail: "system",
+        organizationId: args.organizationId,
+        userEmail: args.userEmail || "system",
         action: "deleted",
         entityType: "blogPost",
         entityId: args.id,

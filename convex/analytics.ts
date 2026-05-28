@@ -103,30 +103,38 @@ export const trackSessionEvent = mutation({
 // ═══════════════════════════════════════════════════════
 
 export const getAdminDashboard = query({
-  args: { adminEmail: v.string() },
+  args: {
+    adminEmail: v.string(),
+    days: v.optional(v.number()),
+    pageLimit: v.optional(v.number()),
+  },
   handler: async (ctx, args) => {
     assertAdmin(args.adminEmail)
 
-    const allViews = await ctx.db.query("pageViews").collect()
-    const allEvents = await ctx.db.query("featureEvents").collect()
+    const days = Math.min(args.days ?? 30, 90)
+    const limit = Math.min(args.pageLimit ?? 100, 500)
+    const now = Date.now()
+    const cutoff = now - days * 24 * 60 * 60 * 1000
+
+    const recentViews = await ctx.db.query("pageViews").take(limit)
+    const recentEvents = await ctx.db.query("featureEvents").take(limit)
+
     const allSessions = await ctx.db.query("userSessions").collect()
     const allUsers = await ctx.db.query("users").collect()
+    const allPayments = await ctx.db.query("payments").collect()
+    const allOrganizations = await ctx.db.query("organizations").collect()
 
-    const now = Date.now()
     const todayStart = new Date()
     todayStart.setHours(0, 0, 0, 0)
     const todayTs = todayStart.getTime()
     const sevenDaysAgo = now - 7 * 24 * 60 * 60 * 1000
     const thirtyDaysAgo = now - 30 * 24 * 60 * 60 * 1000
 
-    // Page views stats
-    const viewsToday = allViews.filter((v) => v._creationTime >= todayTs / 1000).length
-    const views7d = allViews.filter((v) => v._creationTime >= sevenDaysAgo / 1000)
-    const views30d = allViews.filter((v) => v._creationTime >= thirtyDaysAgo / 1000)
+    const viewsToday = recentViews.filter((v) => v._creationTime >= todayTs / 1000).length
+    const views7d = recentViews.filter((v) => v._creationTime >= sevenDaysAgo / 1000)
 
-    // Most visited pages
     const pageCounts: Record<string, number> = {}
-    for (const view of allViews) {
+    for (const view of recentViews) {
       pageCounts[view.path] = (pageCounts[view.path] || 0) + 1
     }
     const topPages = Object.entries(pageCounts)
@@ -134,13 +142,11 @@ export const getAdminDashboard = query({
       .slice(0, 20)
       .map(([path, count]) => ({ path, count }))
 
-    // Unique visitors (by email or session)
     const uniqueUsers7d = new Set(views7d.filter((v) => v.userEmail).map((v) => v.userEmail)).size
     const uniqueSessions7d = new Set(views7d.map((v) => v.sessionId).filter(Boolean)).size
 
-    // Feature usage
     const eventCounts: Record<string, number> = {}
-    for (const evt of allEvents) {
+    for (const evt of recentEvents) {
       eventCounts[evt.eventName] = (eventCounts[evt.eventName] || 0) + 1
     }
     const topFeatures = Object.entries(eventCounts)
@@ -148,24 +154,20 @@ export const getAdminDashboard = query({
       .slice(0, 20)
       .map(([eventName, count]) => ({ eventName, count }))
 
-    // Feature events today
-    const eventsToday = allEvents.filter((e) => e._creationTime >= todayTs / 1000).length
+    const eventsToday = recentEvents.filter((e) => e._creationTime >= todayTs / 1000).length
 
-    // Sessions stats
     const activeSessions = allSessions.filter((s) => s.signedOutAt === undefined || !s.signedOutAt)
     const sessionsToday = allSessions.filter((s) => s.signedInAt >= todayTs)
     const sessions7d = allSessions.filter((s) => s.signedInAt >= sevenDaysAgo)
 
-    // Sign-ins today (unique users)
     const uniqueSignInsToday = new Set(sessionsToday.map((s) => s.userEmail)).size
 
-    // Daily page views for chart (last 7 days)
     const dailyViews: { date: string; count: number }[] = []
     for (let i = 6; i >= 0; i--) {
       const day = new Date(now - i * 24 * 60 * 60 * 1000)
       const dayStart = new Date(day.getFullYear(), day.getMonth(), day.getDate()).getTime()
       const dayEnd = dayStart + 24 * 60 * 60 * 1000
-      const count = allViews.filter(
+      const count = recentViews.filter(
         (v) => v._creationTime >= dayStart / 1000 && v._creationTime < dayEnd / 1000,
       ).length
       dailyViews.push({
@@ -174,7 +176,6 @@ export const getAdminDashboard = query({
       })
     }
 
-    // Daily sign-ins for chart (last 7 days)
     const dailySignIns: { date: string; count: number }[] = []
     for (let i = 6; i >= 0; i--) {
       const day = new Date(now - i * 24 * 60 * 60 * 1000)
@@ -191,25 +192,88 @@ export const getAdminDashboard = query({
       })
     }
 
+    const paidPayments = allPayments.filter((p) => p.status === "pagato")
+    const pendingPayments = allPayments.filter((p) => p.status === "in_attesa")
+    const overduePayments = allPayments.filter((p) => p.status === "in_ritardo")
+
+    const totalRevenue = paidPayments
+      .filter((p) => p.type === "client")
+      .reduce((s, p) => s + p.amount, 0)
+    const totalOutgoing = paidPayments
+      .filter((p) => p.type === "supplier" || p.type === "collaborator")
+      .reduce((s, p) => s + p.amount, 0)
+
+    const monthlyRevenue: Record<string, { incoming: number; outgoing: number }> = {}
+    for (const p of paidPayments) {
+      const date = p.paidDate || p.dueDate
+      if (!date) continue
+      const key = date.slice(0, 7)
+      if (!monthlyRevenue[key]) monthlyRevenue[key] = { incoming: 0, outgoing: 0 }
+      if (p.type === "client") monthlyRevenue[key].incoming += p.amount
+      else monthlyRevenue[key].outgoing += p.amount
+    }
+    const revenueTrend = Object.entries(monthlyRevenue)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .slice(-12)
+      .map(([month, data]) => ({ month, ...data }))
+
+    const paymentStatusDist = {
+      pagato: paidPayments.length,
+      in_attesa: pendingPayments.length,
+      in_ritardo: overduePayments.length,
+      in_verifica: allPayments.filter((p) => p.status === "in_verifica").length,
+      parziale: allPayments.filter((p) => p.status === "parziale").length,
+    }
+
+    const orgRevenue: Record<string, number> = {}
+    for (const p of paidPayments.filter((p) => p.type === "client")) {
+      orgRevenue[p.organizationId] = (orgRevenue[p.organizationId] || 0) + p.amount
+    }
+    const orgMap = new Map<string, string>(allOrganizations.map((o) => [o._id, o.name]))
+    const topOrgsByRevenue = Object.entries(orgRevenue)
+      .sort(([, a], [, b]) => b - a)
+      .slice(0, 10)
+      .map(([orgId, amount]) => ({ name: orgMap.get(orgId as any) || "N/D", amount }))
+
     return {
       overview: {
-        totalViews: allViews.length,
+        totalViews: recentViews.length,
         viewsToday,
         views7d: views7d.length,
-        views30d: views30d.length,
+        views30d: recentViews.length,
         uniqueUsers7d,
         uniqueSessions7d,
-        totalEvents: allEvents.length,
+        totalEvents: recentEvents.length,
         eventsToday,
         totalSessions: allSessions.length,
         activeSessions: activeSessions.length,
         uniqueSignInsToday,
         totalUsers: allUsers.length,
       },
+      payments: {
+        totalPayments: allPayments.length,
+        totalPaid: paidPayments.length,
+        totalPending: pendingPayments.length,
+        totalOverdue: overduePayments.length,
+        totalRevenue,
+        totalOutgoing,
+        netRevenue: totalRevenue - totalOutgoing,
+        totalPendingAmount: pendingPayments.reduce((s, p) => s + p.amount, 0),
+        totalOverdueAmount: overduePayments.reduce((s, p) => s + p.amount, 0),
+      },
+      paymentStatusDist,
+      revenueTrend,
+      topOrgsByRevenue,
       topPages,
       topFeatures,
       dailyViews,
       dailySignIns,
+      pagination: {
+        days,
+        pageLimit: limit,
+        hasMoreViews: recentViews.length === limit,
+        hasMoreEvents: recentEvents.length === limit,
+      },
     }
   },
 })
