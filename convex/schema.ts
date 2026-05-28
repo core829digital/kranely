@@ -839,4 +839,54 @@ export default defineSchema({
     processed: v.boolean(),
     processedAt: v.optional(v.number()),
   }).index("by_stripeEventId", ["stripeEventId"]),
+
+  // ═══════════════════════════════════════════════════════
+  // ANALYTICS — PAGE VIEWS
+  // ═══════════════════════════════════════════════════════
+
+  pageViews: defineTable({
+    userEmail: v.optional(v.string()),
+    path: v.string(),
+    title: v.optional(v.string()),
+    referrer: v.optional(v.string()),
+    userAgent: v.optional(v.string()),
+    sessionId: v.optional(v.string()),
+    duration: v.optional(v.number()),
+    isAuthenticated: v.boolean(),
+  })
+    .index("by_path", ["path"])
+    .index("by_user", ["userEmail"])
+    .index("by_session", ["sessionId"]),
+
+  // ═══════════════════════════════════════════════════════
+  // ANALYTICS — FEATURE EVENTS
+  // ═══════════════════════════════════════════════════════
+
+  featureEvents: defineTable({
+    userEmail: v.optional(v.string()),
+    eventName: v.string(),
+    eventData: v.optional(v.any()),
+    page: v.optional(v.string()),
+    sessionId: v.optional(v.string()),
+    isAuthenticated: v.boolean(),
+  })
+    .index("by_event", ["eventName"])
+    .index("by_user", ["userEmail"])
+    .index("by_session", ["sessionId"]),
+
+  // ═══════════════════════════════════════════════════════
+  // ANALYTICS — USER SESSIONS
+  // ═══════════════════════════════════════════════════════
+
+  userSessions: defineTable({
+    userEmail: v.string(),
+    signedInAt: v.number(),
+    lastActiveAt: v.optional(v.number()),
+    signedOutAt: v.optional(v.number()),
+    ip: v.optional(v.string()),
+    userAgent: v.optional(v.string()),
+    sessionId: v.string(),
+  })
+    .index("by_user", ["userEmail"])
+    .index("by_session", ["sessionId"]),
 })

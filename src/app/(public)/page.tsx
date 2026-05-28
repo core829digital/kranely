@@ -1,4 +1,5 @@
 import Link from "next/link"
+import { Logo } from "@/components/Logo"
 import { Button } from "@/components/ui/button"
 import {
   FileText,
@@ -96,10 +97,7 @@ export default function HomePage() {
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="flex h-16 items-center justify-between">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-kranely-accent flex items-center justify-center">
-                <span className="text-kranely-app-bg font-bold text-lg">K</span>
-              </div>
-              <span className="text-white font-semibold text-lg">Kranely</span>
+              <Logo />
             </div>
             <div className="hidden md:flex items-center gap-8">
               <Link href="/about" className="text-sm text-white/60 hover:text-white transition-colors">
@@ -285,10 +283,7 @@ export default function HomePage() {
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col md:flex-row items-center justify-between gap-6">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-kranely-accent flex items-center justify-center">
-                <span className="text-kranely-app-bg font-bold text-lg">K</span>
-              </div>
-              <span className="text-white font-semibold">Kranely</span>
+              <Logo />
             </div>
             <div className="flex items-center gap-6">
               <Link href="/privacy" className="text-sm text-white/40 hover:text-white/60 transition-colors">

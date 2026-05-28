@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { Logo } from "@/components/Logo"
 import { useMutation } from "convex/react"
 import { api } from "../../../convex/_generated/api"
 import { Button } from "@/components/ui/button"
@@ -31,8 +32,8 @@ export default function ForgotPasswordPage() {
     <div className="min-h-screen flex items-center justify-center bg-kranely-app-bg">
       <div className="w-full max-w-md px-4">
         <div className="text-center mb-8">
-          <div className="w-12 h-12 rounded-xl bg-kranely-accent flex items-center justify-center mx-auto mb-4">
-            <span className="text-kranely-app-bg font-bold text-2xl">K</span>
+          <div className="flex justify-center mb-4">
+            <Logo size="lg" showText={false} />
           </div>
           <h1 className="text-2xl font-bold text-white">Recupera password</h1>
           <p className="text-white/60 mt-2">Inserisci la tua email per ricevere il link di reset</p>

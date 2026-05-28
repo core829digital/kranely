@@ -1,4 +1,6 @@
-﻿export default function ReviewsPage() {
+﻿import { Logo } from "@/components/Logo"
+
+export default function ReviewsPage() {
   const reviews = [
     { name: "Marco Bianchi", company: "EdilBianchi SRL", text: "Kranely ha rivoluzionato il modo in cui gestiamo i preventivi. Ora tutto è digitalizzato e tracciabile.", rating: 5 },
     { name: "Laura Verdi", company: "Verdi Serramenti", text: "Finalmente una piattaforma pensata per il nostro settore. La gestione fornitori è eccezionale.", rating: 5 },
@@ -12,10 +14,7 @@
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="flex h-16 items-center justify-between">
             <a href="/" className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-kranely-accent flex items-center justify-center">
-                <span className="text-kranely-app-bg font-bold text-lg">K</span>
-              </div>
-              <span className="text-white font-semibold text-lg">Kranely</span>
+              <Logo />
             </a>
             <a href="/" className="text-sm text-white/60 hover:text-white transition-colors">Torna alla Home</a>
           </div>

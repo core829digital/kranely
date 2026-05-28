@@ -1,189 +1,292 @@
 ﻿"use client"
 
 import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Badge } from "@/components/ui/badge"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
-import { Label } from "@/components/ui/input"
-import { Plus, Search, Shield, User, Building2, Mail, Phone, Trash2, Ban, CheckCircle2, AlertTriangle, Edit2, Eye } from "lucide-react"
-import { toast } from "sonner"
-import { useQuery, useMutation } from "convex/react"
-import { api } from "../../../../convex/_generated/api"
-import { Id } from "../../../../convex/_generated/dataModel"
 import { useAuth } from "@/lib/auth/auth-context"
-import { useOrgId } from "@/hooks/useOrgId"
-import { PageSkeleton } from "@/components/Skeletons"
+import { useQuery } from "convex/react"
+import { api } from "../../../../convex/_generated/api"
+import { Badge } from "@/components/ui/badge"
+import { Input } from "@/components/ui/input"
+import { Logo } from "@/components/Logo"
+import { Search, Users, Eye, MousePointerClick, Activity, Clock, ShieldOff, TrendingUp, BarChart3, LogIn } from "lucide-react"
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  LineChart, Line,
+} from "recharts"
 
-const roleLabels: Record<string, string> = { superadmin: "Super Admin", admin: "Admin", supplier: "Fornitore", collaborator: "Collaboratore", client: "Cliente", driver: "Autista" }
+const ADMIN_EMAIL = "contact.core829@gmail.com"
 
-export default function AdminPage() {
-  const orgId = useOrgId()
-  const { user } = useAuth()
-  const [search, setSearch] = useState("")
-  const [filterRole, setFilterRole] = useState<string>("all")
-  const [showCreateDialog, setShowCreateDialog] = useState(false)
-  const [showEditDialog, setShowEditDialog] = useState(false)
-  const [showDetailDialog, setShowDetailDialog] = useState(false)
-  const [showUserManagement, setShowUserManagement] = useState(true)
-  const [editingUserId, setEditingUserId] = useState<Id<"users"> | null>(null)
-  const [selectedUserId, setSelectedUserId] = useState<Id<"users"> | null>(null)
-  const [formData, setFormData] = useState({ email: "", fullName: "", role: "collaborator", companyRole: "", workSector: "", subrole: "" })
-  const [editFormData, setEditFormData] = useState({ fullName: "", role: "collaborator" as string, subrole: "" as string, companyRole: "", workSector: "", blocked: false, phone: "" })
+function AdminDashboard() {
+  const adminData = useQuery(api.analytics.getAdminDashboard, { adminEmail: ADMIN_EMAIL })
+  const adminUsers = useQuery(api.analytics.getAdminUsers, { adminEmail: ADMIN_EMAIL })
+  const recentActivity = useQuery(api.analytics.getAdminRecentActivity, { adminEmail: ADMIN_EMAIL, limit: 30 })
 
-  const org = useQuery(api.organizations.get, orgId ? { id: orgId } : "skip")
-  const users = useQuery(api.organizations.listUsers, orgId ? { organizationId: orgId, userEmail: user?.email } : "skip")
-  const selectedUser = useQuery(api.organizations.listUsers, orgId && selectedUserId ? { organizationId: orgId, userEmail: user?.email } : "skip")
+  const [userSearch, setUserSearch] = useState("")
 
-  const createUser = useMutation(api.clients.createOrUpdateUser)
-  const updateUser = useMutation(api.organizations.updateUser)
-  const removeUser = useMutation(api.organizations.removeUser)
-
-  const openCreate = () => { setFormData({ email: "", fullName: "", role: "collaborator", companyRole: "", workSector: "", subrole: "" }); setShowCreateDialog(true) }
-
-  const openEdit = (u: any) => {
-    setEditFormData({ fullName: u.fullName || "", role: u.role, subrole: u.subrole || "", companyRole: u.companyRole || "", workSector: u.workSector || "", blocked: u.blocked || false, phone: u.phone || "" })
-    setEditingUserId(u._id)
-    setShowEditDialog(true)
+  if (!adminData) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="text-center">
+          <Logo size="lg" showText={false} />
+          <p className="text-white/60 mt-4">Caricamento dati...</p>
+        </div>
+      </div>
+    )
   }
 
-  const openDetail = (u: any) => { setSelectedUserId(u._id); setShowDetailDialog(true) }
+  const { overview, topPages, topFeatures, dailyViews, dailySignIns } = adminData
 
-  const handleCreate = async () => {
-    if (!formData.email || !orgId) { toast.error("Compila i campi obbligatori"); return }
-    try { await createUser({ email: formData.email, fullName: formData.fullName || undefined, role: formData.role as any, organizationId: orgId }); setShowCreateDialog(false); toast.success("Utente creato") } catch (e) { toast.error("Errore") }
+  const filteredUsers = adminUsers?.filter((u) => {
+    if (!userSearch) return true
+    const s = userSearch.toLowerCase()
+    return u.email.toLowerCase().includes(s) || (u.fullName || "").toLowerCase().includes(s)
+  })
+
+  const roleLabels: Record<string, string> = {
+    superadmin: "Super Admin", admin: "Admin", supplier: "Fornitore",
+    collaborator: "Collaboratore", client: "Cliente", driver: "Autista",
   }
 
-  const SUBROLE_LABELS: Record<string, string> = { serramenti: "Serramenti", edilizia: "Edilizia", generale: "Generale" }
-
-  const handleEdit = async () => {
-    if (!editingUserId) return
-    try { await updateUser({ id: editingUserId, fullName: editFormData.fullName || undefined, role: editFormData.role as any, subrole: (editFormData.subrole || undefined) as any, companyRole: editFormData.companyRole || undefined, workSector: editFormData.workSector || undefined, phone: editFormData.phone || undefined, blocked: editFormData.blocked }); setShowEditDialog(false); toast.success("Utente aggiornato") } catch (e) { toast.error("Errore") }
+  const ChartTooltip = ({ active, payload, label }: any) => {
+    if (active && payload?.length) {
+      return (
+        <div className="bg-[#2a2826] border border-white/10 rounded-lg p-3 text-sm">
+          <p className="text-white/60 mb-1">{label}</p>
+          {payload.map((p: any, i: number) => (
+            <p key={i} style={{ color: p.color }} className="font-semibold">
+              {p.name}: {p.value}
+            </p>
+          ))}
+        </div>
+      )
+    }
+    return null
   }
-
-  const handleDelete = async (id: Id<"users">) => {
-    if (!confirm("Eliminare questo utente?")) return
-    try { await removeUser({ id }); toast.success("Utente eliminato") } catch (e) { toast.error("Errore") }
-  }
-
-  const filtered = users?.filter((u) => {
-    if (filterRole !== "all" && u.role !== filterRole) return false
-    if (search) { const s = search.toLowerCase(); return u.email.toLowerCase().includes(s) || (u.fullName || "").toLowerCase().includes(s) }
-    return true
-  }) || []
-
-  if (!orgId || !org) return <PageSkeleton />
 
   return (
-    <div className="space-y-6">
-      <div><h1 className="text-2xl font-bold text-white">Amministrazione</h1><p className="text-white/60 mt-1">Gestisci utenti e impostazioni organizzazione</p></div>
-
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <div className="p-4 rounded-xl border border-white/10 bg-white/[0.02]"><div className="flex items-center gap-2 mb-2"><Shield className="w-4 h-4 text-kranely-accent" /><span className="text-sm text-white/60">Piano</span></div><p className="text-lg font-bold text-kranely-accent capitalize">{org.plan}</p></div>
-        <div className="p-4 rounded-xl border border-white/10 bg-white/[0.02]"><div className="flex items-center gap-2 mb-2"><CheckCircle2 className="w-4 h-4 text-green-400" /><span className="text-sm text-white/60">Stato</span></div><Badge variant="success" className="mt-1 capitalize">{org.status}</Badge></div>
-        <div className="p-4 rounded-xl border border-white/10 bg-white/[0.02]"><div className="flex items-center gap-2 mb-2"><User className="w-4 h-4 text-blue-400" /><span className="text-sm text-white/60">Utenti</span></div><p className="text-xl font-bold text-blue-400">{users?.length || 0}</p></div>
-        <div className="p-4 rounded-xl border border-white/10 bg-white/[0.02]"><div className="flex items-center gap-2 mb-2"><AlertTriangle className="w-4 h-4 text-red-400" /><span className="text-sm text-white/60">Bloccati</span></div><p className="text-xl font-bold text-red-400">{users?.filter((u) => u.blocked).length || 0}</p></div>
+    <div className="space-y-8">
+      {/* Header */}
+      <div>
+        <h1 className="text-2xl font-bold text-white">Pannello di Controllo</h1>
+        <p className="text-white/60 mt-1">Monitoraggio completo della piattaforma — solo per amministratori</p>
       </div>
 
-      <div className="p-6 rounded-xl border border-white/10 bg-white/[0.02]">
-        <h2 className="text-lg font-semibold text-white mb-4">Informazioni Organizzazione</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div><Label>Nome</Label><p className="text-white mt-1">{org.name}</p></div>
-          <div><Label>Slug</Label><p className="text-white mt-1">{org.slug}</p></div>
-          <div><Label>Email Owner</Label><p className="text-white mt-1">{org.ownerEmail}</p></div>
-          <div><Label>Creato il</Label><p className="text-white mt-1">{new Date(org._creationTime).toLocaleDateString("it-IT")}</p></div>
+      {/* Overview Cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+        <div className="p-4 rounded-xl border border-white/10 bg-white/[0.02]">
+          <div className="flex items-center gap-2 mb-2"><Eye className="w-4 h-4 text-blue-400" /><span className="text-xs text-white/40">Visualizzazioni oggi</span></div>
+          <p className="text-2xl font-bold text-blue-400">{overview.viewsToday}</p>
+        </div>
+        <div className="p-4 rounded-xl border border-white/10 bg-white/[0.02]">
+          <div className="flex items-center gap-2 mb-2"><Users className="w-4 h-4 text-green-400" /><span className="text-xs text-white/40">Accessi unici oggi</span></div>
+          <p className="text-2xl font-bold text-green-400">{overview.uniqueSignInsToday}</p>
+        </div>
+        <div className="p-4 rounded-xl border border-white/10 bg-white/[0.02]">
+          <div className="flex items-center gap-2 mb-2"><MousePointerClick className="w-4 h-4 text-purple-400" /><span className="text-xs text-white/40">Eventi oggi</span></div>
+          <p className="text-2xl font-bold text-purple-400">{overview.eventsToday}</p>
+        </div>
+        <div className="p-4 rounded-xl border border-white/10 bg-white/[0.02]">
+          <div className="flex items-center gap-2 mb-2"><LogIn className="w-4 h-4 text-cyan-400" /><span className="text-xs text-white/40">Utenti registrati</span></div>
+          <p className="text-2xl font-bold text-cyan-400">{overview.totalUsers}</p>
+        </div>
+        <div className="p-4 rounded-xl border border-white/10 bg-white/[0.02]">
+          <div className="flex items-center gap-2 mb-2"><Activity className="w-4 h-4 text-amber-400" /><span className="text-xs text-white/40">Sessioni attive</span></div>
+          <p className="text-2xl font-bold text-amber-400">{overview.activeSessions}</p>
+        </div>
+        <div className="p-4 rounded-xl border border-white/10 bg-white/[0.02]">
+          <div className="flex items-center gap-2 mb-2"><BarChart3 className="w-4 h-4 text-kranely-accent" /><span className="text-xs text-white/40">Visite totali</span></div>
+          <p className="text-2xl font-bold text-kranely-accent">{overview.totalViews}</p>
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="relative flex-1 min-w-[200px] max-w-md"><Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" /><Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Cerca utenti..." className="pl-10" /></div>
-        <select value={filterRole} onChange={(e) => setFilterRole(e.target.value)} className="h-10 rounded-lg border border-white/10 bg-white/5 px-3 text-sm text-white"><option value="all">Tutti i Ruoli</option><option value="superadmin">Super Admin</option><option value="admin">Admin</option><option value="supplier">Fornitore</option><option value="collaborator">Collaboratore</option><option value="client">Cliente</option></select>
-        <Button onClick={openCreate} className="bg-kranely-accent text-kranely-app-bg hover:bg-kranely-accent/90"><Plus className="w-4 h-4 mr-2" />Nuovo Utente</Button>
+      {/* Charts */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="p-6 rounded-xl border border-white/10 bg-white/[0.02]">
+          <h3 className="text-sm font-semibold text-white/80 mb-4 flex items-center gap-2"><TrendingUp className="w-4 h-4 text-blue-400" />Visualizzazioni giornaliere (7 giorni)</h3>
+          <div className="h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={dailyViews}>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                <XAxis dataKey="date" tick={{ fill: "rgba(255,255,255,0.4)", fontSize: 12 }} />
+                <YAxis tick={{ fill: "rgba(255,255,255,0.4)", fontSize: 12 }} />
+                <Tooltip content={<ChartTooltip />} />
+                <Bar dataKey="count" name="Visite" fill="#60A5FA" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        <div className="p-6 rounded-xl border border-white/10 bg-white/[0.02]">
+          <h3 className="text-sm font-semibold text-white/80 mb-4 flex items-center gap-2"><LogIn className="w-4 h-4 text-green-400" />Accessi giornalieri (7 giorni)</h3>
+          <div className="h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={dailySignIns}>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                <XAxis dataKey="date" tick={{ fill: "rgba(255,255,255,0.4)", fontSize: 12 }} />
+                <YAxis tick={{ fill: "rgba(255,255,255,0.4)", fontSize: 12 }} />
+                <Tooltip content={<ChartTooltip />} />
+                <Line type="monotone" dataKey="count" name="Accessi unici" stroke="#4ADE80" strokeWidth={2} dot={{ fill: "#4ADE80", r: 4 }} />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
       </div>
 
-      <div className="rounded-xl border border-white/10 overflow-hidden">
-        <table className="w-full">
-          <thead className="bg-white/5">
-            <tr>
-              <th className="text-left p-3 text-xs font-semibold text-white/60 uppercase">Utente</th>
-              <th className="text-left p-3 text-xs font-semibold text-white/60 uppercase">Ruolo</th>
-              <th className="text-left p-3 text-xs font-semibold text-white/60 uppercase">Sotto-Ruolo</th>
-              <th className="text-left p-3 text-xs font-semibold text-white/60 uppercase">Stato</th>
-              <th className="text-left p-3 text-xs font-semibold text-white/60 uppercase">Azienda</th>
-              <th className="w-24"></th>
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.map((user) => (
-              <tr key={user._id} className="border-t border-white/5 hover:bg-white/[0.02]">
-                <td className="p-3">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-kranely-accent/10 flex items-center justify-center"><span className="text-kranely-accent text-xs font-semibold">{user.email.charAt(0).toUpperCase()}</span></div>
-                    <div><p className="text-sm text-white">{user.fullName || user.email}</p><p className="text-xs text-white/40">{user.email}</p></div>
-                  </div>
-                </td>
-                <td className="p-3"><Badge variant="secondary">{roleLabels[user.role] || user.role}</Badge></td>
-                <td className="p-3"><span className="text-sm text-white/60">{user.subrole ? (SUBROLE_LABELS[user.subrole] || user.subrole) : "-"}</span></td>
-                <td className="p-3">{user.blocked ? <Badge variant="destructive"><Ban className="w-3 h-3 mr-1" />Bloccato</Badge> : <Badge variant="success">Attivo</Badge>}</td>
-                <td className="p-3 text-sm text-white/60">{user.companyRole || "-"}</td>
-                <td className="p-3"><div className="flex items-center gap-1"><button onClick={() => openDetail(user)} className="p-1.5 rounded bg-white text-black hover:bg-white/80"><Eye className="w-4 h-4" /></button><button onClick={() => openEdit(user)} className="p-1.5 rounded bg-white text-black hover:bg-white/80"><Edit2 className="w-4 h-4" /></button><button onClick={() => handleDelete(user._id)} className="p-1.5 rounded bg-white text-black hover:bg-red-100 hover:text-red-600"><Trash2 className="w-4 h-4" /></button></div></td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      {filtered.length === 0 && <div className="p-12 text-center text-white/40"><User className="w-12 h-12 mx-auto mb-4 opacity-50" /><p>Nessun utente trovato</p></div>}
-
-      <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-        <DialogContent><DialogHeader><DialogTitle>Nuovo Utente</DialogTitle></DialogHeader>
-          <div className="space-y-4 py-4">
-            <div><Label>Email *</Label><Input type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} /></div>
-            <div><Label>Nome Completo</Label><Input value={formData.fullName} onChange={(e) => setFormData({ ...formData, fullName: e.target.value })} /></div>
-            <div><Label>Ruolo</Label><select value={formData.role} onChange={(e) => setFormData({ ...formData, role: e.target.value })} className="h-10 w-full rounded-lg border border-white/10 bg-white/5 px-3 text-sm text-white"><option value="superadmin">Super Admin</option><option value="admin">Admin</option><option value="supplier">Fornitore</option><option value="collaborator">Collaboratore</option><option value="client">Cliente</option><option value="driver">Autista</option></select></div>
-            {formData.role === "supplier" && <div><Label>Sotto-Ruolo</Label><select value={formData.subrole} onChange={(e) => setFormData({ ...formData, subrole: e.target.value })} className="h-10 w-full rounded-lg border border-white/10 bg-white/5 px-3 text-sm text-white"><option value="">Nessuno</option><option value="serramenti">Serramenti</option><option value="edilizia">Edilizia</option><option value="generale">Generale</option></select></div>}
-          </div>
-          <DialogFooter><Button variant="outline" onClick={() => setShowCreateDialog(false)} className="border-white/10">Annulla</Button><Button onClick={handleCreate} className="bg-kranely-accent text-kranely-app-bg">Crea</Button></DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
-        <DialogContent><DialogHeader><DialogTitle>Modifica Utente</DialogTitle></DialogHeader>
-          <div className="space-y-4 py-4">
-            <div><Label>Nome Completo</Label><Input value={editFormData.fullName} onChange={(e) => setEditFormData({ ...editFormData, fullName: e.target.value })} /></div>
-            <div><Label>Ruolo</Label><select value={editFormData.role} onChange={(e) => setEditFormData({ ...editFormData, role: e.target.value })} className="h-10 w-full rounded-lg border border-white/10 bg-white/5 px-3 text-sm text-white"><option value="superadmin">Super Admin</option><option value="admin">Admin</option><option value="supplier">Fornitore</option><option value="collaborator">Collaboratore</option><option value="client">Cliente</option><option value="driver">Autista</option></select></div>
-            {editFormData.role === "supplier" && <div><Label>Sotto-Ruolo</Label><select value={editFormData.subrole} onChange={(e) => setEditFormData({ ...editFormData, subrole: e.target.value })} className="h-10 w-full rounded-lg border border-white/10 bg-white/5 px-3 text-sm text-white"><option value="">Nessuno</option><option value="serramenti">Serramenti</option><option value="edilizia">Edilizia</option><option value="generale">Generale</option></select></div>}
-            <div><Label>Telefono</Label><Input value={editFormData.phone} onChange={(e) => setEditFormData({ ...editFormData, phone: e.target.value })} /></div>
-            <div><Label>Ruolo Aziendale</Label><Input value={editFormData.companyRole} onChange={(e) => setEditFormData({ ...editFormData, companyRole: e.target.value })} /></div>
-            <div><Label>Settore</Label><Input value={editFormData.workSector} onChange={(e) => setEditFormData({ ...editFormData, workSector: e.target.value })} /></div>
-            <div className="flex items-center gap-2"><input type="checkbox" checked={editFormData.blocked} onChange={(e) => setEditFormData({ ...editFormData, blocked: e.target.checked })} className="w-4 h-4" /><Label>Bloccato</Label></div>
-          </div>
-          <DialogFooter><Button variant="outline" onClick={() => setShowEditDialog(false)} className="border-white/10">Annulla</Button><Button onClick={handleEdit} className="bg-kranely-accent text-kranely-app-bg">Salva</Button></DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={showDetailDialog} onOpenChange={setShowDetailDialog}>
-        <DialogContent className="max-w-2xl"><DialogHeader><DialogTitle>Dettaglio Utente</DialogTitle></DialogHeader>
-          {selectedUser && (() => {
-            const u = users?.find((u) => u._id === selectedUserId)
-            if (!u) return null
-            return (
-              <div className="space-y-4 py-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div><span className="text-xs text-white/40">Email</span><p className="text-white">{u.email}</p></div>
-                  <div><span className="text-xs text-white/40">Nome</span><p className="text-white">{u.fullName || "-"}</p></div>
-                  <div><span className="text-xs text-white/40">Ruolo</span><Badge variant="secondary">{roleLabels[u.role] || u.role}</Badge></div>
-                  <div><span className="text-xs text-white/40">Sotto-Ruolo</span><p className="text-white">{u.subrole ? (SUBROLE_LABELS[u.subrole] || u.subrole) : "-"}</p></div>
-                  <div><span className="text-xs text-white/40">Telefono</span><p className="text-white">{u.phone || "-"}</p></div>
-                  <div><span className="text-xs text-white/40">Stato</span>{u.blocked ? <Badge variant="destructive">Bloccato</Badge> : <Badge variant="success">Attivo</Badge>}</div>
-                  {u.companyRole && <div><span className="text-xs text-white/40">Ruolo Aziendale</span><p className="text-white">{u.companyRole}</p></div>}
-                  {u.workSector && <div><span className="text-xs text-white/40">Settore</span><p className="text-white">{u.workSector}</p></div>}
+      {/* Top Pages & Top Features */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="p-6 rounded-xl border border-white/10 bg-white/[0.02]">
+          <h3 className="text-sm font-semibold text-white/80 mb-4 flex items-center gap-2"><Eye className="w-4 h-4 text-blue-400" />Pagine più visitate</h3>
+          <div className="space-y-2">
+            {topPages.slice(0, 10).map((page, i) => (
+              <div key={page.path} className="flex items-center justify-between py-1.5 px-3 rounded-lg bg-white/[0.02]">
+                <div className="flex items-center gap-3 min-w-0">
+                  <span className="text-xs text-white/30 font-mono w-5 text-right">{i + 1}.</span>
+                  <span className="text-sm text-white/80 truncate">{page.path || "/"}</span>
                 </div>
+                <Badge variant="secondary" className="shrink-0 ml-2">{page.count}</Badge>
               </div>
-            )
-          })()}
-        </DialogContent>
-      </Dialog>
+            ))}
+            {topPages.length === 0 && <p className="text-sm text-white/40">Nessun dato ancora</p>}
+          </div>
+        </div>
+
+        <div className="p-6 rounded-xl border border-white/10 bg-white/[0.02]">
+          <h3 className="text-sm font-semibold text-white/80 mb-4 flex items-center gap-2"><MousePointerClick className="w-4 h-4 text-purple-400" />Funzioni più utilizzate</h3>
+          <div className="space-y-2">
+            {topFeatures.slice(0, 10).map((feat, i) => (
+              <div key={feat.eventName} className="flex items-center justify-between py-1.5 px-3 rounded-lg bg-white/[0.02]">
+                <div className="flex items-center gap-3 min-w-0">
+                  <span className="text-xs text-white/30 font-mono w-5 text-right">{i + 1}.</span>
+                  <span className="text-sm text-white/80 truncate">{feat.eventName}</span>
+                </div>
+                <Badge variant="secondary" className="shrink-0 ml-2">{feat.count}</Badge>
+              </div>
+            ))}
+            {topFeatures.length === 0 && <p className="text-sm text-white/40">Nessun dato ancora</p>}
+          </div>
+        </div>
+      </div>
+
+      {/* Users Table */}
+      <div className="p-6 rounded-xl border border-white/10 bg-white/[0.02]">
+        <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+          <h2 className="text-lg font-semibold text-white flex items-center gap-2"><Users className="w-5 h-5" />Tutti gli utenti ({filteredUsers?.length || 0})</h2>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
+            <Input value={userSearch} onChange={(e) => setUserSearch(e.target.value)} placeholder="Cerca utente..." className="pl-10 w-64" />
+          </div>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead>
+              <tr className="text-xs text-white/40 uppercase border-b border-white/10">
+                <th className="text-left p-3 font-semibold">Utente</th>
+                <th className="text-left p-3 font-semibold">Ruolo</th>
+                <th className="text-left p-3 font-semibold">Online</th>
+                <th className="text-left p-3 font-semibold">Accessi</th>
+                <th className="text-left p-3 font-semibold">Visite (7g)</th>
+                <th className="text-left p-3 font-semibold">Ultima attività</th>
+                <th className="text-left p-3 font-semibold">Stato</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredUsers?.map((u) => (
+                <tr key={u._id} className="border-b border-white/5 hover:bg-white/[0.02]">
+                  <td className="p-3">
+                    <div>
+                      <p className="text-sm text-white">{u.fullName || "—"}</p>
+                      <p className="text-xs text-white/40">{u.email}</p>
+                    </div>
+                  </td>
+                  <td className="p-3"><Badge variant="secondary">{roleLabels[u.role] || u.role}</Badge></td>
+                  <td className="p-3">
+                    {u.isOnline ? (
+                      <span className="flex items-center gap-1 text-green-400 text-xs">
+                        <span className="w-2 h-2 rounded-full bg-green-400" /> Online
+                      </span>
+                    ) : (
+                      <span className="text-white/30 text-xs">Offline</span>
+                    )}
+                  </td>
+                  <td className="p-3 text-sm text-white/60">{u.sessionCount}</td>
+                  <td className="p-3 text-sm text-white/60">{u.pageViewsLast7d}</td>
+                  <td className="p-3 text-sm text-white/60">
+                    {u.lastActive ? new Date(u.lastActive).toLocaleString("it-IT") : "Mai"}
+                  </td>
+                  <td className="p-3">
+                    {u.blocked ? (
+                      <Badge variant="destructive">Bloccato</Badge>
+                    ) : (
+                      <Badge variant="success">Attivo</Badge>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        {(!filteredUsers || filteredUsers.length === 0) && (
+          <div className="p-8 text-center text-white/40">
+            <Users className="w-8 h-8 mx-auto mb-2 opacity-50" />
+            <p className="text-sm">Nessun utente trovato</p>
+          </div>
+        )}
+      </div>
+
+      {/* Recent Activity */}
+      <div className="p-6 rounded-xl border border-white/10 bg-white/[0.02]">
+        <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2"><Activity className="w-5 h-5" />Attività recenti</h2>
+        <div className="space-y-1 max-h-96 overflow-y-auto">
+          {recentActivity?.map((a, i) => (
+            <div key={i} className="flex items-center gap-3 py-2 px-3 rounded-lg hover:bg-white/[0.02] text-sm">
+              {a.type === "page_view" && <Eye className="w-3.5 h-3.5 text-blue-400 shrink-0" />}
+              {a.type === "feature_event" && <MousePointerClick className="w-3.5 h-3.5 text-purple-400 shrink-0" />}
+              {a.type === "sign_in" && <LogIn className="w-3.5 h-3.5 text-green-400 shrink-0" />}
+              {a.type === "sign_out" && <LogIn className="w-3.5 h-3.5 text-red-400 shrink-0 rotate-180" />}
+              <span className="text-white/60 min-w-[120px] text-xs">
+                {new Date(a.timestamp).toLocaleString("it-IT")}
+              </span>
+              <span className="text-white/80 min-w-[160px]">{a.userEmail || "Anonimo"}</span>
+              <span className="text-white/60">{a.description}</span>
+            </div>
+          ))}
+          {(!recentActivity || recentActivity.length === 0) && (
+            <p className="text-sm text-white/40 text-center py-4">Nessuna attività recente</p>
+          )}
+        </div>
+      </div>
     </div>
   )
+}
+
+export default function AdminPage() {
+  const { user } = useAuth()
+
+  if (!user) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="text-center">
+          <Logo size="lg" showText={false} />
+          <p className="text-white/60 mt-4">Caricamento...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (user.email !== ADMIN_EMAIL) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="text-center max-w-md">
+          <div className="flex justify-center mb-6">
+            <ShieldOff className="w-16 h-16 text-red-400" />
+          </div>
+          <h1 className="text-2xl font-bold text-white mb-2">Accesso Negato</h1>
+          <p className="text-white/60">
+            Solo l'amministratore della piattaforma può accedere a questa sezione.
+          </p>
+        </div>
+      </div>
+    )
+  }
+
+  return <AdminDashboard />
 }

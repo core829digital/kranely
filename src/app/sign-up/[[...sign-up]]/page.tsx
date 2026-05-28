@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { Logo } from "@/components/Logo"
 import { useAuth, type UserRole, type UserSubrole } from "@/lib/auth/auth-context"
 import { Button } from "@/components/ui/button"
 import { toast } from "sonner"
@@ -44,8 +45,8 @@ export default function SignUpPage() {
     <div className="min-h-screen flex items-center justify-center bg-kranely-app-bg">
       <div className="w-full max-w-md px-4">
         <div className="text-center mb-8">
-          <div className="w-12 h-12 rounded-xl bg-kranely-accent flex items-center justify-center mx-auto mb-4">
-            <span className="text-kranely-app-bg font-bold text-2xl">K</span>
+          <div className="flex justify-center mb-4">
+            <Logo size="lg" showText={false} />
           </div>
           <h1 className="text-2xl font-bold text-white">Crea il tuo account</h1>
           <p className="text-white/60 mt-2">Inizia a gestire la tua azienda con Kranely</p>

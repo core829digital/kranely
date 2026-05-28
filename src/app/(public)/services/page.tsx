@@ -1,3 +1,5 @@
+import { Logo } from "@/components/Logo"
+
 export default function ServicesPage() {
   const services = [
     { title: "Gestione Preventivi", desc: "Calcolatori integrati per infissi e edilizia con preventivi professionali automatici" },
@@ -15,10 +17,7 @@ export default function ServicesPage() {
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="flex h-16 items-center justify-between">
             <a href="/" className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-kranely-accent flex items-center justify-center">
-                <span className="text-kranely-app-bg font-bold text-lg">K</span>
-              </div>
-              <span className="text-white font-semibold text-lg">Kranely</span>
+              <Logo />
             </a>
             <a href="/" className="text-sm text-white/60 hover:text-white transition-colors">Torna alla Home</a>
           </div>

@@ -1,6 +1,7 @@
 "use client"
 
 import React, { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from "react"
+import { Logo } from "@/components/Logo"
 import { useMutation } from "convex/react"
 import { api } from "../../../convex/_generated/api"
 import { Id } from "../../../convex/_generated/dataModel"
@@ -83,6 +84,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const loginMutation = useMutation(api.auth.login)
   const registerMutation = useMutation(api.auth.register)
+  const trackSession = useMutation(api.analytics.trackSessionEvent)
 
   useEffect(() => {
     const session = getSession()
@@ -119,6 +121,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(u)
       setSession({ email: u.email, fullName: u.fullName, role: u.role, subrole: u.subrole, organizationId: u.organizationId || "", userId: u.id })
       setSessionCookie(u.email)
+      trackSession({ userEmail: u.email, sessionId: crypto.randomUUID(), event: "sign_in", userAgent: navigator.userAgent })
       setIsLoading(false)
       return true
     } catch (e: any) {
@@ -158,18 +161,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [signIn, registerMutation])
 
   const signOut = useCallback(() => {
+    if (user) {
+      trackSession({ userEmail: user.email, sessionId: crypto.randomUUID(), event: "sign_out" })
+    }
     setUser(null)
     clearSession()
     clearSessionCookie()
-  }, [])
+  }, [user, trackSession])
 
   if (!initialized) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-kranely-app-bg">
         <div className="text-center">
-          <div className="w-8 h-8 rounded-lg bg-kranely-accent flex items-center justify-center mx-auto mb-4 animate-pulse">
-            <span className="text-kranely-app-bg font-bold text-lg">K</span>
-          </div>
+          <Logo size="md" showText={false} />
         </div>
       </div>
     )

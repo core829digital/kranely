@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
 import { useQuery, useMutation } from "convex/react"
 import { api } from "../../../../convex/_generated/api"
+import { Logo } from "@/components/Logo"
 import { useAuth } from "@/lib/auth/auth-context"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -96,9 +97,7 @@ export default function OnboardingPage() {
     <div className="min-h-screen flex items-center justify-center bg-kranely-app-bg">
       <div className="w-full max-w-md px-4">
         <div className="text-center mb-8">
-          <div className="w-12 h-12 rounded-xl bg-kranely-accent flex items-center justify-center mx-auto mb-4">
-            <span className="text-kranely-app-bg font-bold text-2xl">K</span>
-          </div>
+          <Logo size="lg" showText={false} />
           <h1 className="text-2xl font-bold text-white">Completa registrazione</h1>
           <p className="text-white/60 mt-2">Imposta i tuoi dati per attivare l'account</p>
         </div>

@@ -1,5 +1,6 @@
 "use client"
 
+import { Logo } from "@/components/Logo"
 import { Sidebar } from "@/components/dashboard/sidebar"
 import { Header } from "@/components/dashboard/header"
 import { useAuth } from "@/lib/auth/auth-context"
@@ -25,9 +26,7 @@ export default function DashboardLayout({
     return (
       <div className="min-h-screen flex items-center justify-center bg-kranely-app-bg">
         <div className="text-center">
-          <div className="w-8 h-8 rounded-lg bg-kranely-accent flex items-center justify-center mx-auto mb-4 animate-pulse">
-            <span className="text-kranely-app-bg font-bold text-lg">K</span>
-          </div>
+          <Logo size="md" showText={false} />
           <p className="text-white/60">Reindirizzamento...</p>
         </div>
       </div>

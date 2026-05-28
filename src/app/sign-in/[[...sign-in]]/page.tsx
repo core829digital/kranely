@@ -3,6 +3,7 @@
 import { useState, Suspense, useEffect } from "react"
 import { useAuth } from "@/lib/auth/auth-context"
 import { Button } from "@/components/ui/button"
+import { Logo } from "@/components/Logo"
 
 function SignInForm() {
   const { signIn, isLoading } = useAuth()
@@ -28,8 +29,8 @@ function SignInForm() {
   return (
     <div className="w-full max-w-md px-4">
       <div className="text-center mb-8">
-        <div className="w-12 h-12 rounded-xl bg-kranely-accent flex items-center justify-center mx-auto mb-4">
-          <span className="text-kranely-app-bg font-bold text-2xl">K</span>
+        <div className="flex justify-center mb-4">
+          <Logo size="lg" showText={false} />
         </div>
         <h1 className="text-2xl font-bold text-white">Bentornato</h1>
         <p className="text-white/60 mt-2">Accedi alla tua dashboard Kranely</p>
@@ -95,8 +96,8 @@ export default function SignInPage() {
     <div className="min-h-screen flex items-center justify-center bg-kranely-app-bg">
       <Suspense fallback={
         <div className="text-center">
-          <div className="w-8 h-8 rounded-lg bg-kranely-accent flex items-center justify-center mx-auto mb-4 animate-pulse">
-            <span className="text-kranely-app-bg font-bold text-lg">K</span>
+          <div className="flex justify-center mb-4">
+            <Logo size="sm" showText={false} />
           </div>
         </div>
       }>

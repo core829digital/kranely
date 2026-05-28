@@ -3,6 +3,7 @@
 import { useQuery } from "convex/react"
 import { api } from "../../../../convex/_generated/api"
 import Link from "next/link"
+import { Logo } from "@/components/Logo"
 import { Calendar, Clock, ArrowRight } from "lucide-react"
 
 export default function BlogPage() {
@@ -14,10 +15,7 @@ export default function BlogPage() {
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="flex h-16 items-center justify-between">
             <Link href="/" className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-kranely-accent flex items-center justify-center">
-                <span className="text-kranely-app-bg font-bold text-lg">K</span>
-              </div>
-              <span className="text-white font-semibold text-lg">Kranely</span>
+              <Logo />
             </Link>
             <Link href="/" className="text-sm text-white/60 hover:text-white transition-colors">Torna alla Home</Link>
           </div>

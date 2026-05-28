@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
+import { Logo } from "@/components/Logo"
 import { useAuth } from "@/lib/auth/auth-context"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -41,9 +42,7 @@ export default function OnboardingStaffPage() {
     <div className="min-h-screen bg-kranely-app-bg flex items-center justify-center px-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <div className="w-12 h-12 rounded-xl bg-kranely-accent flex items-center justify-center mx-auto mb-4">
-            <span className="text-kranely-app-bg font-bold text-2xl">K</span>
-          </div>
+          <Logo size="lg" showText={false} />
           <h1 className="text-2xl font-bold text-white">Registrazione Staff</h1>
           <p className="text-white/60 mt-2">Crea il tuo account per accedere alla piattaforma</p>
         </div>

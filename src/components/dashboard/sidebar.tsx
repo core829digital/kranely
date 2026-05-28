@@ -3,6 +3,7 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
+import { LogoLink } from "@/components/Logo"
 import {
   LayoutDashboard,
   Users,
@@ -61,8 +62,6 @@ export function Sidebar() {
 
   const role = user?.role || "client"
   const isAdmin = role === "admin" || role === "superadmin"
-
-  const KRANELY_ACCENT = "#FFC703"
 
   const sections: NavSection[] = [
     {
@@ -145,14 +144,7 @@ export function Sidebar() {
       )}
     >
       <div className="flex h-16 items-center justify-between px-4 border-b border-white/10 flex-shrink-0">
-        {!collapsed && (
-          <Link href="/dashboard" className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: KRANELY_ACCENT }}>
-              <span className="text-[#1C1A18] font-bold text-lg">K</span>
-            </div>
-            <span className="text-white font-semibold text-lg">Kranely</span>
-          </Link>
-        )}
+        {!collapsed && <LogoLink href="/dashboard" />}
         <button
           onClick={() => setCollapsed(!collapsed)}
           className="p-1.5 rounded-lg hover:bg-white/10 text-white/60 hover:text-white transition-colors"
