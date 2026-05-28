@@ -197,6 +197,17 @@ export const remove = mutation({
     const existing = await ctx.db.get(args.id)
     if (!existing || existing.organizationId !== args.organizationId) throw new Error("Richiesta non trovata")
     await ctx.db.delete(args.id)
+
+    await ctx.db.insert("activityLog", {
+      organizationId: args.organizationId,
+      userEmail: args.userEmail || "system",
+      action: "deleted",
+      entityType: "supplierRequest",
+      entityId: args.id,
+      entityName: existing.title,
+      details: `Richiesta fornitore "${existing.title}" eliminata`,
+    })
+
     return args.id
   },
 })

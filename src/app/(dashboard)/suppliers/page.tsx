@@ -610,6 +610,7 @@ function ProduzioneTab({ orgId, selectedSupplierId, userEmail }: { orgId: Id<"or
 
   const updateProduction = useMutation(api.supplierProduction.update)
   const createProduction = useMutation(api.supplierProduction.create)
+  const updateOrder = useMutation(api.supplierOrders.update)
 
   const handleAdvancePhase = async (prodId: Id<"supplierProduction">, currentPhase: string | undefined) => {
     const phases = ["materiali_ricevuti", "taglio", "assemblaggio", "controllo_qualita", "pronto"]
@@ -653,7 +654,7 @@ function ProduzioneTab({ orgId, selectedSupplierId, userEmail }: { orgId: Id<"or
 
   const updateOrderStatus = async (id: Id<"supplierOrders">, status: string) => {
     try {
-      toast.error("Funzione non ancora implementata")
+      await updateOrder({ id, organizationId: orgId, userEmail, status: status as any })
     } catch { toast.error("Errore aggiornamento ordine") }
   }
 

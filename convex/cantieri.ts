@@ -137,6 +137,17 @@ export const remove = mutation({
     const cantiere = await ctx.db.get(args.id)
     if (!cantiere || cantiere.organizationId !== args.organizationId) throw new Error("Not found")
     await ctx.db.delete(args.id)
+
+    await ctx.db.insert("activityLog", {
+      organizationId: args.organizationId,
+      userEmail: args.userEmail || "system",
+      action: "deleted",
+      entityType: "cantiere",
+      entityId: args.id,
+      entityName: cantiere.name,
+      details: `Cantiere "${cantiere.name}" eliminato`,
+    })
+
     return args.id
   },
 })

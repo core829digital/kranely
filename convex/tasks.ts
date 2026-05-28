@@ -8,20 +8,11 @@ export const list = query({
   args: { organizationId: v.id("organizations"), cantiereId: v.optional(v.id("cantieri")), assignedTo: v.optional(v.string()), phase: v.optional(v.union(v.literal("in_lavorazione"), v.literal("posa_in_opera"), v.literal("completato"))), userEmail: v.optional(v.string()) },
   handler: async (ctx, args) => {
     const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
-    let items
-    const cantiereId = args.cantiereId
-    if (cantiereId) {
-      items = await ctx.db
-        .query("phaseTasks")
-        .withIndex("by_cantiere", (q) => q.eq("cantiereId", cantiereId))
-        .collect()
-    } else {
-      items = await ctx.db
-        .query("phaseTasks")
-        .collect()
-      items = items.filter((t) => t.organizationId === args.organizationId)
-    }
-
+    let items = await ctx.db
+      .query("phaseTasks")
+      .withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId))
+      .collect()
+    if (args.cantiereId) items = items.filter((t) => t.cantiereId === args.cantiereId)
     let filtered = items.sort((a, b) => b._creationTime - a._creationTime)
     if (args.assignedTo) filtered = filtered.filter((t) => t.assignedTo === args.assignedTo)
     if (args.phase) filtered = filtered.filter((t) => t.phase === args.phase)
@@ -162,15 +153,15 @@ export const stats = query({
     const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
     const tasks = await ctx.db
       .query("phaseTasks")
+      .withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId))
       .collect()
-    const filtered = tasks.filter((t) => t.organizationId === args.organizationId)
 
     return {
-      total: filtered.length,
-      daFare: filtered.filter((t) => t.status === "da_fare").length,
-      inCorso: filtered.filter((t) => t.status === "in_corso").length,
-      completato: filtered.filter((t) => t.status === "completato").length,
-      altaPriorita: filtered.filter((t) => t.priority === "alta" && t.status !== "completato").length,
+      total: tasks.length,
+      daFare: tasks.filter((t) => t.status === "da_fare").length,
+      inCorso: tasks.filter((t) => t.status === "in_corso").length,
+      completato: tasks.filter((t) => t.status === "completato").length,
+      altaPriorita: tasks.filter((t) => t.priority === "alta" && t.status !== "completato").length,
     }
   },
 })

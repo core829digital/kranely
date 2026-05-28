@@ -33,12 +33,8 @@ export const list = query({
   args: { organizationId: v.id("organizations"), supplierId: v.optional(v.id("suppliers")), orderId: v.optional(v.id("supplierOrders")), status: v.optional(v.string()), userEmail: v.optional(v.string()) },
   handler: async (ctx, args) => {
     const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
-    let items
-    if (args.supplierId) {
-      items = await ctx.db.query("supplierProduction").withIndex("by_supplier", (q) => q.eq("supplierId", args.supplierId!)).collect()
-    } else {
-      items = await ctx.db.query("supplierProduction").withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId)).collect()
-    }
+    let items = await ctx.db.query("supplierProduction").withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId)).collect()
+    if (args.supplierId) items = items.filter((p) => p.supplierId === args.supplierId)
     let filtered = items.sort((a, b) => b._creationTime - a._creationTime)
     if (args.orderId) filtered = filtered.filter((p) => p.orderId === args.orderId)
     if (args.status && args.status !== "all") filtered = filtered.filter((p) => p.status === args.status)
@@ -105,7 +101,7 @@ export const update = mutation({
     await assertOrgAccess(ctx, args.userEmail, args.organizationId)
     const { id, organizationId, userEmail, ...data } = args
     const record = await ctx.db.get(id)
-    if (!record) throw new Error("Record produzione non trovato")
+    if (!record || record.organizationId !== organizationId) throw new Error("Record produzione non trovato")
     await ctx.db.patch(id, data as any)
 
     await ctx.db.insert("activityLog", {
@@ -126,7 +122,7 @@ export const remove = mutation({
   handler: async (ctx, args) => {
     await assertOrgAccess(ctx, args.userEmail, args.organizationId)
     const prod = await ctx.db.get(args.id)
-    if (!prod) throw new Error("Production record not found")
+    if (!prod || prod.organizationId !== args.organizationId) throw new Error("Production record not found")
     await ctx.db.delete(args.id)
 
     await ctx.db.insert("activityLog", {
@@ -148,8 +144,8 @@ export const stats = query({
     const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
     const production = await ctx.db
       .query("supplierProduction")
+      .withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId))
       .collect()
-      .then((items) => items.filter((p) => p.organizationId === args.organizationId))
 
     return {
       total: production.length,

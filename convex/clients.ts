@@ -186,6 +186,16 @@ export const update = mutation({
     if (!prev || prev.organizationId !== organizationId) throw new Error("Not found")
     await ctx.db.patch(id, { ...data, clientType: type })
 
+    await ctx.db.insert("activityLog", {
+      organizationId,
+      userEmail: userEmail || "system",
+      action: "updated",
+      entityType: "client",
+      entityId: id,
+      entityName: prev.fullName,
+      details: `Cliente "${prev.fullName}" aggiornato`,
+    })
+
     if (data.status && data.status !== prev.status) {
       await ctx.scheduler.runAfter(0, internal.notifications.createNotification, {
         organizationId: prev.organizationId,

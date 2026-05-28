@@ -196,10 +196,14 @@ export const stats = query({
 })
 
 export const listByProduction = query({
-  args: { productionId: v.id("supplierProduction") },
+  args: { productionId: v.id("supplierProduction"), organizationId: v.id("organizations"), userEmail: v.optional(v.string()) },
   handler: async (ctx, args) => {
+    await assertOrgAccess(ctx, args.userEmail, args.organizationId)
+    const production = await ctx.db.get(args.productionId)
+    if (!production || production.organizationId !== args.organizationId) throw new Error("Production not found")
     const items = await ctx.db
       .query("supplierDeliveries")
+      .withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId))
       .collect()
     const filtered = items.filter((d) => d.productionId === args.productionId)
     return filtered.sort((a, b) => b._creationTime - a._creationTime)

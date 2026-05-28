@@ -30,9 +30,8 @@ export default function OnboardingPage() {
   const completeOnboarding = useMutation(api.collaborators.completeOnboarding)
 
   useEffect(() => {
-    if (collaboratorData && !collaboratorData.expired) {
-      if (collaboratorData.fullName) setFullName(collaboratorData.fullName)
-      if (collaboratorData.phone) setPhone(collaboratorData.phone)
+    if (collaboratorData?.valid && collaboratorData.fullName) {
+      setFullName(collaboratorData.fullName)
     }
   }, [collaboratorData])
 
@@ -52,10 +51,10 @@ export default function OnboardingPage() {
     )
   }
 
-  if (!collaboratorData || collaboratorData.expired) {
+  if (!collaboratorData?.valid) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-kranely-app-bg">
-        <div className="text-center p-12"><Key className="w-12 h-12 mx-auto mb-4 text-red-400" /><p className="text-white/60">{collaboratorData?.expired ? "Token scaduto. Contatta l'amministratore." : "Token non valido"}</p></div>
+        <div className="text-center p-12"><Key className="w-12 h-12 mx-auto mb-4 text-red-400" /><p className="text-white/60">{collaboratorData?.reason === "expired" ? "Token scaduto. Contatta l'amministratore." : "Token non valido"}</p></div>
       </div>
     )
   }
@@ -66,7 +65,7 @@ export default function OnboardingPage() {
     if (password.length < 6) { toast.error("La password deve essere almeno 6 caratteri"); return }
     setSaving(true)
     try {
-      await completeOnboarding({ token, fullName: fullName.trim(), phone: phone.trim() || undefined, newPassword: password })
+      await completeOnboarding({ token, organizationId: collaboratorData.organizationId as any, fullName: fullName.trim(), phone: phone.trim() || undefined, newPassword: password })
       toast.success("Onboarding completato con successo!")
       setDone(true)
     } catch (err: any) {

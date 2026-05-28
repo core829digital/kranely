@@ -93,6 +93,16 @@ export const update = mutation({
     if (!prev || prev.organizationId !== organizationId) throw new Error("Not found")
     await ctx.db.patch(id, data)
 
+    await ctx.db.insert("activityLog", {
+      organizationId,
+      userEmail: userEmail || "system",
+      action: "updated",
+      entityType: "appointment",
+      entityId: id,
+      entityName: prev.title,
+      details: `Appuntamento "${prev.title}" aggiornato`,
+    })
+
     if (data.status && data.status !== prev.status) {
       await ctx.scheduler.runAfter(0, internal.notifications.createNotification, {
         organizationId: prev.organizationId,
@@ -116,6 +126,17 @@ export const remove = mutation({
     const appt = await ctx.db.get(args.id)
     if (!appt || appt.organizationId !== args.organizationId) throw new Error("Not found")
     await ctx.db.delete(args.id)
+
+    await ctx.db.insert("activityLog", {
+      organizationId: args.organizationId,
+      userEmail: args.userEmail || "system",
+      action: "deleted",
+      entityType: "appointment",
+      entityId: args.id,
+      entityName: appt.title,
+      details: `Appuntamento "${appt.title}" eliminato`,
+    })
+
     return args.id
   },
 })

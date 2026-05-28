@@ -83,7 +83,7 @@ export const update = mutation({
     await assertOrgAccess(ctx, args.userEmail, args.organizationId)
     const { id, organizationId, userEmail, ...data } = args
     const prev = await ctx.db.get(id)
-    if (!prev) throw new Error("Ordine non trovato")
+    if (!prev || prev.organizationId !== organizationId) throw new Error("Ordine non trovato")
     await ctx.db.patch(id, data)
 
     await ctx.db.insert("activityLog", {
@@ -173,6 +173,17 @@ export const remove = mutation({
     const order = await ctx.db.get(args.id)
     if (!order || order.organizationId !== args.organizationId) throw new Error("Supplier order not found")
     await ctx.db.delete(args.id)
+
+    await ctx.db.insert("activityLog", {
+      organizationId: args.organizationId,
+      userEmail: args.userEmail || "system",
+      action: "deleted",
+      entityType: "supplierOrder",
+      entityId: args.id,
+      entityName: order.orderNumber || order.description,
+      details: `Ordine fornitore "${order.orderNumber || order.description}" eliminato`,
+    })
+
     return args.id
   },
 })

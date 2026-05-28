@@ -125,7 +125,7 @@ export const deleteMessage = mutation({
   handler: async (ctx, args) => {
     await assertOrgAccess(ctx, args.userEmail, args.organizationId)
     const msg = await ctx.db.get(args.id)
-    if (!msg) throw new Error("Message not found")
+    if (!msg || msg.organizationId !== args.organizationId) throw new Error("Message not found")
     await ctx.db.delete(args.id)
     return args.id
   },

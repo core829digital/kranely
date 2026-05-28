@@ -301,17 +301,15 @@ export const getByOnboardingToken = query({
   handler: async (ctx, args) => {
     const all = await ctx.db.query("collaborators").collect()
     const collab = all.find((c) => c.onboardingToken === args.token)
-    if (!collab) return null
+    if (!collab) return { valid: false }
     if (collab.onboardingExpires && new Date(collab.onboardingExpires) < new Date()) {
-      return { expired: true, fullName: collab.fullName }
+      return { valid: false, reason: "expired" }
     }
     return {
+      valid: true,
+      organizationId: collab.organizationId,
       _id: collab._id,
       fullName: collab.fullName,
-      email: collab.email,
-      phone: collab.phone,
-      userId: collab.userId,
-      expired: false,
     }
   },
 })
@@ -319,13 +317,17 @@ export const getByOnboardingToken = query({
 export const completeOnboarding = mutation({
   args: {
     token: v.string(),
+    organizationId: v.id("organizations"),
     fullName: v.string(),
     phone: v.optional(v.string()),
     newPassword: v.string(),
   },
   handler: async (ctx, args) => {
-    const all = await ctx.db.query("collaborators").collect()
-    const collab = all.find((c) => c.onboardingToken === args.token)
+    const collab = await ctx.db
+      .query("collaborators")
+      .withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId))
+      .collect()
+      .then((all) => all.find((c) => c.onboardingToken === args.token))
     if (!collab) throw new Error("Token non valido")
     if (collab.onboardingExpires && new Date(collab.onboardingExpires) < new Date()) {
       throw new Error("Token scaduto")
