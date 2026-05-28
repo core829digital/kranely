@@ -45,3 +45,8 @@ next-env.d.ts
 
 # agent hub
 **/.agenthub/
+
+# legacy directories (old project artifacts)
+/kranely.app/
+/_extract/
+/_extract2/

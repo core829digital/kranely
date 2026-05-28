@@ -41,7 +41,6 @@ export const createOrUpdateUser = mutation({
     fullName: v.optional(v.string()),
     role: v.optional(v.union(v.literal("superadmin"), v.literal("admin"), v.literal("supplier"), v.literal("collaborator"), v.literal("client"))),
     organizationId: v.optional(v.id("organizations")),
-    clerkId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const existing = await ctx.db
@@ -54,7 +53,6 @@ export const createOrUpdateUser = mutation({
       if (args.fullName !== undefined) patch.fullName = args.fullName
       if (args.role !== undefined) patch.role = args.role
       if (args.organizationId !== undefined) patch.organizationId = args.organizationId
-      if (args.clerkId !== undefined) patch.clerkId = args.clerkId
       await ctx.db.patch(existing._id, patch)
       return existing._id
     }
@@ -64,7 +62,6 @@ export const createOrUpdateUser = mutation({
       fullName: args.fullName,
       role: args.role || "client",
       organizationId: args.organizationId,
-      clerkId: args.clerkId,
     })
   },
 })

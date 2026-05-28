@@ -1,6 +1,0 @@
-{
-  "buildCommand": "mkdir -p Backend/convex/_generated && cp _convex_generated/* Backend/convex/_generated/ && cd Frontend/iwhome.app-base44sdk && npm install && npm run build",
-  "outputDirectory": "Frontend/iwhome.app-base44sdk/dist",
-  "installCommand": "git config --global url.\"https://${GH_SUBMODULE_TOKEN}@github.com/\".insteadOf \"https://github.com/\" && rm -rf Frontend && git clone https://github.com/Core829-Digital/iwhome.app-frontend.git Frontend",
-  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
-}

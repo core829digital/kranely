@@ -44,7 +44,6 @@ export default defineSchema({
   // ═══════════════════════════════════════════════════════
 
   users: defineTable({
-    clerkId: v.optional(v.string()),
     email: v.string(),
     fullName: v.optional(v.string()),
     role: v.union(v.literal("superadmin"), v.literal("admin"), v.literal("supplier"), v.literal("driver"), v.literal("collaborator"), v.literal("client")),
@@ -65,7 +64,6 @@ export default defineSchema({
     passwordResetToken: v.optional(v.string()),
     passwordResetExpires: v.optional(v.number()),
   })
-    .index("by_clerk", ["clerkId"])
     .index("by_email", ["email"])
     .index("by_role", ["role"])
     .index("by_organization", ["organizationId"])
