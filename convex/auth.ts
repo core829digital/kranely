@@ -338,14 +338,14 @@ export async function assertOrgAccess(
   ctx: MutationCtx | QueryCtx,
   userEmail: string | undefined,
   organizationId: Id<"organizations">,
-): Promise<{ userId: Id<"users"> | undefined; role: string; fullName: string }> {
-  if (!userEmail) return { userId: undefined, role: "anonymous", fullName: "anonymous" }
+): Promise<{ userId: Id<"users"> | undefined; role: string; fullName: string; email: string }> {
+  if (!userEmail) return { userId: undefined, role: "anonymous", fullName: "anonymous", email: "" }
   const user = await ctx.db
     .query("users")
     .withIndex("by_email", (q: any) => q.eq("email", userEmail))
     .first()
-  if (!user) return { userId: undefined, role: "anonymous", fullName: "anonymous" }
-  if (user.blocked) return { userId: undefined, role: "blocked", fullName: user.email }
-  if (user.organizationId && user.organizationId !== organizationId) return { userId: undefined, role: "anonymous", fullName: "anonymous" }
-  return { userId: user._id, role: user.role, fullName: user.fullName || user.email }
+  if (!user) return { userId: undefined, role: "anonymous", fullName: "anonymous", email: "" }
+  if (user.blocked) return { userId: undefined, role: "blocked", fullName: user.email, email: user.email }
+  if (user.organizationId && user.organizationId !== organizationId) return { userId: undefined, role: "anonymous", fullName: "anonymous", email: "" }
+  return { userId: user._id, role: user.role, fullName: user.fullName || user.email, email: user.email }
 }

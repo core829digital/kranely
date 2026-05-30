@@ -32,6 +32,7 @@ import {
   Activity,
   ChevronUp,
   User as UserIcon,
+  X,
 } from "lucide-react"
 import { useState, useCallback } from "react"
 import { useAuth } from "@/lib/auth/auth-context"
@@ -52,7 +53,12 @@ interface NavSection {
   roles?: string[]
 }
 
-export function Sidebar() {
+interface SidebarProps {
+  mobileOpen?: boolean
+  onMobileClose?: () => void
+}
+
+export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
   const pathname = usePathname()
   const [collapsed, setCollapsed] = useState(false)
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({})
@@ -136,7 +142,7 @@ export function Sidebar() {
     setExpandedSections((prev) => ({ ...prev, [title]: !prev[title] }))
   }
 
-  return (
+  const sidebarContent = (
     <aside
       className={cn(
         "h-screen flex flex-col border-r border-white/10 bg-[#1C1A18] transition-all duration-300 flex-shrink-0 z-30",
@@ -190,6 +196,7 @@ export function Sidebar() {
                       <Link
                         key={item.href}
                         href={item.href}
+                        onClick={onMobileClose}
                         className={cn(
                           "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200",
                           collapsed ? "justify-center mx-auto" : "",
@@ -219,5 +226,27 @@ export function Sidebar() {
         </div>
       )}
     </aside>
+  )
+
+  return (
+    <>
+      {/* Desktop sidebar */}
+      <div className="hidden md:block flex-shrink-0">
+        {sidebarContent}
+      </div>
+
+      {/* Mobile sidebar overlay */}
+      {mobileOpen && (
+        <>
+          <div
+            className="md:hidden fixed inset-0 z-40 bg-black/60 backdrop-blur-sm"
+            onClick={onMobileClose}
+          />
+          <div className="md:hidden fixed inset-y-0 left-0 z-50">
+            {sidebarContent}
+          </div>
+        </>
+      )}
+    </>
   )
 }

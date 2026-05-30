@@ -1,6 +1,5 @@
 "use client"
 
-import { useEffect, useRef } from "react"
 import { useAuth } from "@/lib/auth/auth-context"
 import { Users, FileText, Building2, CreditCard, ArrowUpRight, ArrowDownRight, Plus, Clock, CheckCircle2, AlertCircle, Truck } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -46,27 +45,13 @@ export default function DashboardPage() {
   const quoteStatus = useQuery(api.dashboard.quoteStatus, orgId ? { organizationId: orgId, userEmail: user?.email } : "skip")
   const recentActivity = useQuery(api.dashboard.recentActivity, orgId ? { organizationId: orgId, limit: 10, userEmail: user?.email } : "skip")
 
-  const hasError = useRef(false)
-
-  useEffect(() => {
-    if (orgId && overview === undefined && !hasError.current) {
-      const timeout = setTimeout(() => {
-        if (overview === undefined && !hasError.current) {
-          hasError.current = true
-          toast.error("Errore nel caricamento")
-        }
-      }, 15000)
-      return () => clearTimeout(timeout)
-    }
-  }, [orgId, overview])
-
   if (!orgId || !overview) return <PageSkeleton />
 
   const stats = [
-    { label: "Clienti Totali", value: overview.clients.total.toString(), change: `${overview.clients.active > 0 ? "+" : ""}${overview.clients.active}`, trend: overview.clients.active > overview.clients.leads ? "up" : "down", icon: Users, href: "/clients" },
-    { label: "Preventivi", value: overview.quotes.total.toString(), change: `${overview.quotes.accepted} accettati`, trend: overview.quotes.accepted > overview.quotes.pending ? "up" : "down", icon: FileText, href: "/quotes" },
-    { label: "Cantieri Attivi", value: overview.cantieri.inCorso.toString(), change: `${overview.cantieri.completati} completati`, trend: overview.cantieri.inCorso > 0 ? "up" : "down", icon: Building2, href: "/cantieri" },
-    { label: "Pagamenti in Attesa", value: `EUR${overview.payments.pending.toLocaleString("it-IT")}`, change: overview.payments.overdue > 0 ? `EUR${overview.payments.overdue.toLocaleString("it-IT")} scaduti` : "Nessun scaduto", trend: overview.payments.overdue > 0 ? "down" : "up", icon: CreditCard, href: "/payments" },
+    { label: "Clienti Totali", value: overview?.clients?.total?.toString() ?? "—", change: `${(overview?.clients?.active ?? 0) > 0 ? "+" : ""}${overview?.clients?.active ?? 0}`, trend: (overview?.clients?.active ?? 0) > (overview?.clients?.leads ?? 0) ? "up" : "down", icon: Users, href: "/clients" },
+    { label: "Preventivi", value: overview?.quotes?.total?.toString() ?? "—", change: `${overview?.quotes?.accepted ?? 0} accettati`, trend: (overview?.quotes?.accepted ?? 0) > (overview?.quotes?.pending ?? 0) ? "up" : "down", icon: FileText, href: "/quotes" },
+    { label: "Cantieri Attivi", value: overview?.cantieri?.inCorso?.toString() ?? "—", change: `${overview?.cantieri?.completati ?? 0} completati`, trend: (overview?.cantieri?.inCorso ?? 0) > 0 ? "up" : "down", icon: Building2, href: "/cantieri" },
+    { label: "Pagamenti in Attesa", value: overview ? `EUR${overview.payments.pending.toLocaleString("it-IT")}` : "—", change: (overview?.payments?.overdue ?? 0) > 0 ? `EUR${(overview?.payments?.overdue ?? 0).toLocaleString("it-IT")} scaduti` : "Nessun scaduto", trend: (overview?.payments?.overdue ?? 0) > 0 ? "down" : "up", icon: CreditCard, href: "/payments" },
   ]
 
   let revenueChartData: { month: string; revenue: number; expenses: number }[] = []

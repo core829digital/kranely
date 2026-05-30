@@ -94,7 +94,7 @@ export const getByOrganization = query({
 export const list = query({
   args: { organizationId: v.id("organizations"), search: v.optional(v.string()), type: v.optional(v.string()), status: v.optional(v.string()), userEmail: v.optional(v.string()) },
   handler: async (ctx, args) => {
-    const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
+    const requestingUser = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
     let filtered = await ctx.db.query("clients").withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId)).collect()
     filtered = filtered.sort((a, b) => b._creationTime - a._creationTime)
     if (args.search) {
@@ -103,6 +103,11 @@ export const list = query({
     }
     if (args.type && args.type !== "all") filtered = filtered.filter((c) => c.clientType === args.type)
     if (args.status && args.status !== "all") filtered = filtered.filter((c) => c.status === args.status)
+
+    const isAdmin = requestingUser.role === "admin" || requestingUser.role === "superadmin"
+    if (!isAdmin && requestingUser.role !== "anonymous") {
+      filtered = filtered.filter((c) => c.email === requestingUser.email)
+    }
 
     return filtered
   },

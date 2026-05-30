@@ -1,11 +1,15 @@
 "use client"
 
 import { useAuth } from "@/lib/auth/auth-context"
-import { LogOut } from "lucide-react"
+import { LogOut, Menu } from "lucide-react"
 import { NotificationBell } from "@/components/NotificationBell"
 import GlobalSearch from "@/components/GlobalSearch"
 
-export function Header() {
+interface HeaderProps {
+  onMenuToggle?: () => void
+}
+
+export function Header({ onMenuToggle }: HeaderProps) {
   const { user, signOut } = useAuth()
 
   const handleSignOut = () => {
@@ -16,6 +20,13 @@ export function Header() {
   return (
     <header className="sticky top-0 z-50 flex h-16 items-center justify-between border-b border-white/10 bg-kranely-app-bg/80 px-4 md:px-6 backdrop-blur-xl">
       <div className="flex items-center gap-4 flex-1">
+        <button
+          onClick={onMenuToggle}
+          className="md:hidden p-2 rounded-lg hover:bg-white/10 text-white/60 hover:text-white transition-colors touch-manipulation"
+          aria-label="Apri menu"
+        >
+          <Menu className="w-5 h-5" />
+        </button>
         <div className="hidden md:block">
           <GlobalSearch />
         </div>

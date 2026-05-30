@@ -5,7 +5,7 @@ import { Sidebar } from "@/components/dashboard/sidebar"
 import { Header } from "@/components/dashboard/header"
 import { useAuth } from "@/lib/auth/auth-context"
 import { useRouter } from "next/navigation"
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 import { ErrorBoundary } from "@/components/ErrorBoundary"
 
 export default function DashboardLayout({
@@ -15,6 +15,7 @@ export default function DashboardLayout({
 }) {
   const { user } = useAuth()
   const router = useRouter()
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   useEffect(() => {
     if (!user) {
@@ -35,9 +36,12 @@ export default function DashboardLayout({
 
   return (
     <div className="flex h-screen overflow-hidden bg-kranely-app-bg">
-      <Sidebar />
+      <Sidebar
+        mobileOpen={mobileMenuOpen}
+        onMobileClose={() => setMobileMenuOpen(false)}
+      />
       <div className="flex-1 flex flex-col min-w-0">
-        <Header />
+        <Header onMenuToggle={() => setMobileMenuOpen((v) => !v)} />
         <main className="flex-1 p-4 md:p-6 lg:p-8 overflow-y-auto relative">
           <ErrorBoundary>
             {children}

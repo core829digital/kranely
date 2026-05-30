@@ -7,7 +7,7 @@ import { assertOrgAccess } from "./auth"
 export const list = query({
   args: { organizationId: v.id("organizations"), cantiereId: v.optional(v.id("cantieri")), assignedTo: v.optional(v.string()), phase: v.optional(v.union(v.literal("in_lavorazione"), v.literal("posa_in_opera"), v.literal("completato"))), userEmail: v.optional(v.string()) },
   handler: async (ctx, args) => {
-    const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
+    const requestingUser = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
     let items = await ctx.db
       .query("phaseTasks")
       .withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId))
@@ -16,6 +16,11 @@ export const list = query({
     let filtered = items.sort((a, b) => b._creationTime - a._creationTime)
     if (args.assignedTo) filtered = filtered.filter((t) => t.assignedTo === args.assignedTo)
     if (args.phase) filtered = filtered.filter((t) => t.phase === args.phase)
+
+    const isAdmin = requestingUser.role === "admin" || requestingUser.role === "superadmin"
+    if (!isAdmin && requestingUser.role !== "anonymous" && requestingUser.role !== "blocked") {
+      filtered = filtered.filter((t) => t.assignedTo === requestingUser.email)
+    }
 
     return filtered
   },

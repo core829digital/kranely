@@ -11,15 +11,20 @@ import { assertOrgAccess } from "./auth"
 export const list = query({
   args: { organizationId: v.id("organizations"), search: v.optional(v.string()), type: v.optional(v.string()), status: v.optional(v.string()), userEmail: v.optional(v.string()) },
   handler: async (ctx, args) => {
-    const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
+    const requestingUser = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
     let filtered = await ctx.db.query("suppliers").withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId)).collect()
     filtered = filtered.sort((a, b) => b._creationTime - a._creationTime)
     if (args.search) {
       const s = args.search.toLowerCase()
-      filtered = filtered.filter((sp) => (sp.companyName || sp.name || "").toLowerCase().includes(s) || sp.email.toLowerCase().includes(s))
+      filtered = filtered.filter((supplier) => supplier.name?.toLowerCase().includes(s) || supplier.email.toLowerCase().includes(s) || (supplier.companyName && supplier.companyName.toLowerCase().includes(s)))
     }
-    if (args.type && args.type !== "all") filtered = filtered.filter((sp) => sp.type === args.type)
-    if (args.status && args.status !== "all") filtered = filtered.filter((sp) => sp.status === args.status)
+    if (args.type && args.type !== "all") filtered = filtered.filter((supplier) => supplier.type === args.type)
+    if (args.status && args.status !== "all") filtered = filtered.filter((supplier) => supplier.status === args.status)
+
+    const isAdmin = requestingUser.role === "admin" || requestingUser.role === "superadmin"
+    if (!isAdmin && requestingUser.role !== "anonymous") {
+      filtered = filtered.filter((supplier) => supplier.email === requestingUser.email)
+    }
 
     return filtered
   },

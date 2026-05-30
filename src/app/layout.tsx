@@ -1,4 +1,4 @@
-import type { Metadata } from "next"
+import type { Metadata, Viewport } from "next"
 import { Inter } from "next/font/google"
 import { AuthProvider } from "@/lib/auth/auth-context"
 import { ConvexClientProvider } from "./ConvexClientProvider"
@@ -10,11 +10,24 @@ export const dynamic = "force-dynamic"
 
 const inter = Inter({ subsets: ["latin"] })
 
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+  userScalable: true,
+  themeColor: "#1C1A18",
+}
+
 export const metadata: Metadata = {
   title: "Kranely — Piattaforma Gestionale per Serramentisti",
   description: "Gestisci preventivi, fornitori, cantieri e pagamenti in un unico posto",
   icons: {
     icon: "/favicon.ico",
+  },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Kranely",
   },
 }
 

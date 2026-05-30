@@ -6,7 +6,7 @@ import { hashPassword, assertOrgAccess } from "./auth"
 export const list = query({
   args: { organizationId: v.id("organizations"), search: v.optional(v.string()), type: v.optional(v.string()), status: v.optional(v.string()), userEmail: v.optional(v.string()) },
   handler: async (ctx, args) => {
-    const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
+    const requestingUser = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
     let filtered = await ctx.db.query("collaborators").withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId)).collect()
     filtered = filtered.sort((a, b) => b._creationTime - a._creationTime)
     if (args.search) {
@@ -15,6 +15,11 @@ export const list = query({
     }
     if (args.type && args.type !== "all") filtered = filtered.filter((c) => c.type === args.type)
     if (args.status && args.status !== "all") filtered = filtered.filter((c) => c.status === args.status)
+
+    const isAdmin = requestingUser.role === "admin" || requestingUser.role === "superadmin"
+    if (!isAdmin && requestingUser.role !== "anonymous") {
+      filtered = filtered.filter((c) => c.email === requestingUser.email)
+    }
 
     return filtered
   },
@@ -172,6 +177,15 @@ export const addHours = mutation({
     const { userEmail, ...rest } = args
     const id = await ctx.db.insert("collaboratorHours", { ...rest, approved: false })
 
+    await ctx.db.insert("activityLog", {
+      organizationId: args.organizationId,
+      userEmail: userEmail || "system",
+      action: "created",
+      entityType: "collaboratorHours",
+      entityId: id,
+      details: `Ore collaboratore registrate: ${args.hours}h per il ${args.date}`,
+    })
+
     await ctx.scheduler.runAfter(0, internal.notifications.createNotification, {
       organizationId: args.organizationId,
       userEmail: userEmail || "system",
@@ -282,7 +296,7 @@ export const generateOnboardingLink = mutation({
   handler: async (ctx, args) => {
     const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
     const collab = await ctx.db.get(args.collaboratorId)
-    if (!collab) throw new Error("Collaboratore non trovato")
+    if (!collab || collab.organizationId !== args.organizationId) throw new Error("Collaboratore non trovato")
 
     const tokenBytes = crypto.getRandomValues(new Uint8Array(24))
     const token = Array.from(tokenBytes).map((b) => b.toString(16).padStart(2, "0")).join("")
@@ -290,6 +304,16 @@ export const generateOnboardingLink = mutation({
     await ctx.db.patch(args.collaboratorId, {
       onboardingToken: token,
       onboardingExpires: expires,
+    })
+
+    await ctx.db.insert("activityLog", {
+      organizationId: args.organizationId,
+      userEmail: args.userEmail || "system",
+      action: "generated",
+      entityType: "collaboratorOnboardingLink",
+      entityId: args.collaboratorId,
+      entityName: collab.fullName,
+      details: `Link onboarding generato per "${collab.fullName}"`,
     })
 
     return { token, expires }
