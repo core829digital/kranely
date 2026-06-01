@@ -13,6 +13,7 @@ import { useOrgId } from "@/hooks/useOrgId"
 import { PageSkeleton } from "@/components/Skeletons"
 import { Doc } from "../../../../convex/_generated/dataModel"
 import { useAuth } from "@/lib/auth/auth-context"
+import { safeWindowOpen } from "@/lib/utils"
 
 const statusColors: Record<string, string> = {
   draft: "text-white/40", sent: "text-kranely-accent", accepted: "text-green-400",
@@ -116,7 +117,7 @@ export default function PrivateAreaPage() {
                 </div>
                 <div className="flex items-center gap-2">
                   {doc.entityType && <Badge variant="secondary">{entityTypeLabels[doc.entityType] || doc.entityType}</Badge>}
-                  <Button size="sm" variant="outline" className="border-white/10 bg-white text-black hover:bg-white/90" title="Scarica" aria-label="Scarica" onClick={() => doc.fileUrl && window.open(doc.fileUrl, "_blank")}><Download className="w-4 h-4" /></Button>
+                  <Button size="sm" variant="outline" className="border-white/10 bg-white text-black hover:bg-white/90" title="Scarica" aria-label="Scarica" onClick={() => safeWindowOpen(doc.fileUrl)}><Download className="w-4 h-4" /></Button>
                 </div>
               </div>
             </div>

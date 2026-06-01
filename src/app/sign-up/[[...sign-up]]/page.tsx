@@ -9,7 +9,6 @@ import { Button } from "@/components/ui/button"
 import { toast } from "sonner"
 
 const ROLE_LABELS: Record<string, string> = {
-  admin: "Amministratore",
   supplier: "Fornitore",
   collaborator: "Collaboratore",
   client: "Cliente",
@@ -35,7 +34,7 @@ export default function SignUpPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    const success = await signUp(email, password, fullName, role, subrole, phone)
+    const success = await signUp(email, password, fullName, role as "supplier" | "collaborator" | "client" | "driver", subrole, phone)
     if (success) {
       toast.success("Account creato con successo")
       router.replace("/dashboard")

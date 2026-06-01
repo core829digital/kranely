@@ -23,7 +23,7 @@ export default function CompanyDashboardPage() {
   const [formData, setFormData] = useState({ companyEmail: "", teamName: "", companyName: "", members: "" })
 
   const teams = useQuery(api.companyTeams.list, orgId ? { organizationId: orgId, userEmail: user?.email } : "skip")
-  const org = useQuery(api.organizations.get, orgId ? { id: orgId } : "skip")
+  const org = useQuery(api.organizations.get, orgId ? { id: orgId, userEmail: user?.email } : "skip")
   const clients = useQuery(api.clients.list, orgId ? { organizationId: orgId, userEmail: user?.email } : "skip")
   const quotes = useQuery(api.quotes.list, orgId ? { organizationId: orgId, userEmail: user?.email } : "skip")
   const cantieri = useQuery(api.cantieri.list, orgId ? { organizationId: orgId, userEmail: user?.email } : "skip")

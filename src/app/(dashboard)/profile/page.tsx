@@ -23,7 +23,7 @@ const subroleLabels: Record<string, string> = {
 export default function ProfilePage() {
   const { user } = useAuth()
   const orgId = useOrgId()
-  const org = useQuery(api.organizations.get, orgId ? { id: orgId } : "skip")
+  const org = useQuery(api.organizations.get, orgId ? { id: orgId, userEmail: user?.email } : "skip")
   const users = useQuery(api.organizations.listUsers, orgId ? { organizationId: orgId, userEmail: user?.email } : "skip")
   const [fullName, setFullName] = useState("")
   const [phone, setPhone] = useState("")

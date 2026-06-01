@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { useQuery, useMutation } from "convex/react"
 import { api } from "../../convex/_generated/api"
 import { Id } from "../../convex/_generated/dataModel"
-import { cn } from "@/lib/utils"
+import { cn, isSafeUrl } from "@/lib/utils"
 import { toast } from "sonner"
 import { useOrgId } from "@/hooks/useOrgId"
 
@@ -125,8 +125,8 @@ export function NotificationBell({ userEmail }: NotificationBellProps) {
                           <p className="text-xs text-white/50 mt-0.5 line-clamp-2">{n.message}</p>
                           <div className="flex items-center gap-2 mt-1">
                             <span className="text-[10px] text-white/30">{formatTime(n._creationTime)}</span>
-                            {n.link && (
-                              <a href={n.link} className="text-[10px] text-kranely-accent hover:underline flex items-center gap-0.5">
+                            {n.link && isSafeUrl(n.link) && (
+                              <a href={n.link} rel="noopener noreferrer" className="text-[10px] text-kranely-accent hover:underline flex items-center gap-0.5">
                                 <ExternalLink className="w-2.5 h-2.5" /> Vai
                               </a>
                             )}

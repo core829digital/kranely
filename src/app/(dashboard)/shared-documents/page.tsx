@@ -15,6 +15,7 @@ import Link from "next/link"
 import { useAuth } from "@/lib/auth/auth-context"
 import { useOrgId } from "@/hooks/useOrgId"
 import { PageSkeleton } from "@/components/Skeletons"
+import { safeWindowOpen } from "@/lib/utils"
 
 export default function SharedDocumentsPage() {
   const orgId = useOrgId()
@@ -89,8 +90,8 @@ export default function SharedDocumentsPage() {
                 {doc.entityType && <div className="flex items-center gap-1"><LinkIcon className="w-3 h-3" />{doc.entityType}: {entityName || doc.entityId}</div>}
               </div>
               <div className="flex items-center gap-2 pt-3 border-t border-white/10">
-                <Button size="sm" variant="outline" className="flex-1 border-white/10 bg-white text-black hover:bg-white/90" onClick={() => doc.fileUrl && window.open(doc.fileUrl, "_blank")}><Eye className="w-3 h-3 mr-1" />Visualizza</Button>
-                <Button size="sm" variant="outline" className="border-white/10 bg-white text-black hover:bg-white/90" title="Scarica" aria-label="Scarica" onClick={() => doc.fileUrl && window.open(doc.fileUrl, "_blank")}><Download className="w-3 h-3" /></Button>
+                <Button size="sm" variant="outline" className="flex-1 border-white/10 bg-white text-black hover:bg-white/90" onClick={() => safeWindowOpen(doc.fileUrl)}><Eye className="w-3 h-3 mr-1" />Visualizza</Button>
+                <Button size="sm" variant="outline" className="border-white/10 bg-white text-black hover:bg-white/90" title="Scarica" aria-label="Scarica" onClick={() => safeWindowOpen(doc.fileUrl)}><Download className="w-3 h-3" /></Button>
                 <Button size="sm" variant="destructive" onClick={() => handleDelete(doc._id)}><Trash2 className="w-3 h-3" /></Button>
               </div>
             </div>

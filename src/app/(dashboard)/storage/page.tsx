@@ -14,6 +14,7 @@ import { Id } from "../../../../convex/_generated/dataModel"
 import { useAuth } from "@/lib/auth/auth-context"
 import { useOrgId } from "@/hooks/useOrgId"
 import { PageSkeleton } from "@/components/Skeletons"
+import { safeWindowOpen } from "@/lib/utils"
 
 export default function StoragePage() {
   const orgId = useOrgId()
@@ -47,7 +48,7 @@ export default function StoragePage() {
     if (!selectedFile) { toast.error("Seleziona un file"); return }
     setUploading(true)
     try {
-      const uploadUrl = await generateUploadUrl()
+      const uploadUrl = await generateUploadUrl({ organizationId: orgId, userEmail: user?.email || "" })
       const result = await fetch(uploadUrl, {
         method: "POST",
         headers: { "Content-Type": selectedFile.type },
@@ -139,8 +140,8 @@ export default function StoragePage() {
               {doc.quoteId && <Badge variant="secondary" className="text-xs"><FileSpreadsheet className="w-3 h-3 mr-1" />Preventivo</Badge>}
             </div>
             <div className="flex items-center gap-2 pt-3 border-t border-white/10">
-              <Button size="sm" variant="outline" className="flex-1 border-white/10 bg-white text-black hover:bg-white/90" onClick={() => doc.fileUrl && window.open(doc.fileUrl, "_blank")}><Eye className="w-3 h-3 mr-1" />Apri</Button>
-              <Button size="sm" variant="outline" className="border-white/10 bg-white text-black hover:bg-white/90" title="Scarica" aria-label="Scarica" onClick={() => doc.fileUrl && window.open(doc.fileUrl, "_blank")}><Download className="w-3 h-3" /></Button>
+              <Button size="sm" variant="outline" className="flex-1 border-white/10 bg-white text-black hover:bg-white/90" onClick={() => safeWindowOpen(doc.fileUrl)}><Eye className="w-3 h-3 mr-1" />Apri</Button>
+              <Button size="sm" variant="outline" className="border-white/10 bg-white text-black hover:bg-white/90" title="Scarica" aria-label="Scarica" onClick={() => safeWindowOpen(doc.fileUrl)}><Download className="w-3 h-3" /></Button>
               <Button size="sm" variant="destructive" onClick={() => handleDelete(doc._id)}><Trash2 className="w-3 h-3" /></Button>
             </div>
           </div>

@@ -1,13 +1,6 @@
 import { v } from "convex/values"
 import { mutation, query } from "./_generated/server"
-
-const ADMIN_EMAIL = "contact.core829@gmail.com"
-
-function assertAdmin(email: string | null | undefined): void {
-  if (!email || email.toLowerCase().trim() !== ADMIN_EMAIL) {
-    throw new Error("Accesso negato — solo l'amministratore può visualizzare queste informazioni")
-  }
-}
+import { assertAdmin } from "./auth"
 
 // ═══════════════════════════════════════════════════════
 // TRACKING

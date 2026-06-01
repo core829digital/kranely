@@ -16,7 +16,7 @@ import { useAuth } from "@/lib/auth/auth-context"
 export default function SettingsPage() {
   const { user } = useAuth()
   const orgId = useOrgId()
-  const org = useQuery(api.organizations.get, orgId ? { id: orgId } : "skip")
+  const org = useQuery(api.organizations.get, orgId ? { id: orgId, userEmail: user?.email } : "skip")
   const notifications = useQuery(api.notifications.stats, orgId && user?.email ? { organizationId: orgId, userEmail: user.email } : "skip")
 
   const updateOrg = useMutation(api.organizations.update)

@@ -14,6 +14,7 @@ import Link from "next/link"
 import { useAuth } from "@/lib/auth/auth-context"
 import { useOrgId } from "@/hooks/useOrgId"
 import { PageSkeleton } from "@/components/Skeletons"
+import { safeWindowOpen } from "@/lib/utils"
 
 export default function DocumentsPage() {
   const orgId = useOrgId()
@@ -64,7 +65,7 @@ export default function DocumentsPage() {
     setUploading(true)
     try {
       if (selectedFile) {
-        const uploadUrl = await generateUploadUrl()
+        const uploadUrl = await generateUploadUrl({ organizationId: orgId!, userEmail: user?.email || "" })
         const result = await fetch(uploadUrl, { method: "POST", headers: { "Content-Type": selectedFile.type }, body: selectedFile })
         if (!result.ok) throw new Error("Upload fallito")
         const { storageId } = await result.json()
@@ -211,7 +212,7 @@ export default function DocumentsPage() {
                 {selectedDoc.quoteId && <div className="md:col-span-2"><span className="text-xs text-white/40">Preventivo</span><Link href="/quotes" className="text-kranely-accent hover:underline">{quotes?.find((q) => q._id === selectedDoc.quoteId)?.title}</Link></div>}
               </div>
               {selectedDoc.description && <div><span className="text-xs text-white/40">Descrizione</span><p className="text-white/80 mt-1">{selectedDoc.description}</p></div>}
-              {selectedDoc.fileUrl && <div className="pt-4"><Button onClick={() => window.open(selectedDoc.fileUrl, "_blank")} className="bg-kranely-accent text-kranely-app-bg"><Download className="w-4 h-4 mr-2" /> Apri File</Button></div>}
+              {selectedDoc.fileUrl && <div className="pt-4"><Button onClick={() => safeWindowOpen(selectedDoc.fileUrl)} className="bg-kranely-accent text-kranely-app-bg"><Download className="w-4 h-4 mr-2" /> Apri File</Button></div>}
             </div>
           )}
         </DialogContent>

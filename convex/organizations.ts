@@ -1,17 +1,19 @@
 import { v } from "convex/values"
 import { mutation, query } from "./_generated/server"
-import { assertOrgAccess } from "./auth"
+import { assertOrgAccess, assertAdmin } from "./auth"
 
 export const list = query({
-  args: {},
+  args: { userEmail: v.string() },
   handler: async (ctx, args) => {
+    assertAdmin(args.userEmail)
     return await ctx.db.query("organizations").collect().then((items) => items.sort((a, b) => b._creationTime - a._creationTime))
   },
 })
 
 export const get = query({
-  args: { id: v.id("organizations") },
+  args: { id: v.id("organizations"), userEmail: v.optional(v.string()) },
   handler: async (ctx, args) => {
+    if (args.userEmail) await assertOrgAccess(ctx, args.userEmail, args.id)
     return await ctx.db.get(args.id)
   },
 })

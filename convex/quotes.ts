@@ -36,10 +36,15 @@ export const get = query({
 })
 
 export const getWithDocuments = query({
-  args: { id: v.id("quotes"), organizationId: v.id("organizations") },
+  args: { id: v.id("quotes"), organizationId: v.id("organizations"), userEmail: v.optional(v.string()) },
   handler: async (ctx, args) => {
+    const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
     const quote = await ctx.db.get(args.id)
     if (!quote || quote.organizationId !== args.organizationId) throw new Error("Not found")
+    if (user.role === "client" && quote.clientId !== user.userId) {
+      const client = user.userId ? await ctx.db.get(user.userId) : null
+      if (!client) throw new Error("Not found")
+    }
 
     const documents = await ctx.db
       .query("documents")

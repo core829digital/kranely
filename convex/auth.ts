@@ -110,7 +110,7 @@ export const register = mutation({
     email: v.string(),
     password: v.string(),
     fullName: v.string(),
-    role: v.union(v.literal("admin"), v.literal("supplier"), v.literal("collaborator"), v.literal("client"), v.literal("driver")),
+    role: v.union(v.literal("supplier"), v.literal("collaborator"), v.literal("client"), v.literal("driver")),
     subrole: v.optional(v.union(v.literal("serramenti"), v.literal("edilizia"), v.literal("generale"))),
     organizationId: v.optional(v.id("organizations")),
     phone: v.optional(v.string()),
@@ -348,4 +348,12 @@ export async function assertOrgAccess(
   if (user.blocked) return { userId: undefined, role: "blocked", fullName: user.email, email: user.email }
   if (user.organizationId && user.organizationId !== organizationId) return { userId: undefined, role: "anonymous", fullName: "anonymous", email: "" }
   return { userId: user._id, role: user.role, fullName: user.fullName || user.email, email: user.email }
+}
+
+export const ADMIN_EMAIL = "contact.core829@gmail.com"
+
+export function assertAdmin(email: string | null | undefined): void {
+  if (!email || email.toLowerCase().trim() !== ADMIN_EMAIL) {
+    throw new Error("Accesso negato — solo l'amministratore può eseguire questa operazione")
+  }
 }

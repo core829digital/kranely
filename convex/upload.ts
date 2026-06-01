@@ -3,8 +3,14 @@ import { mutation } from "./_generated/server"
 import { internal } from "./_generated/api"
 import { assertOrgAccess } from "./auth"
 
-export const generateUploadUrl = mutation(async (ctx) => {
-  return await ctx.storage.generateUploadUrl()
+const MAX_FILE_SIZE_BYTES = 50 * 1024 * 1024
+
+export const generateUploadUrl = mutation({
+  args: { organizationId: v.id("organizations"), userEmail: v.string() },
+  handler: async (ctx, args) => {
+    await assertOrgAccess(ctx, args.userEmail, args.organizationId)
+    return await ctx.storage.generateUploadUrl()
+  },
 })
 
 export const saveFile = mutation({
@@ -22,6 +28,7 @@ export const saveFile = mutation({
   },
   handler: async (ctx, args) => {
     const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
+    if (args.fileSize > MAX_FILE_SIZE_BYTES) throw new Error(`File troppo grande (max ${MAX_FILE_SIZE_BYTES / 1024 / 1024}MB)`)
     const { userEmail, organizationId, storageId, fileName, type, fileSize, description, clientId, cantiereId, quoteId } = args
     const url = await ctx.storage.getUrl(storageId)
     if (!url) throw new Error("URL non generabile")

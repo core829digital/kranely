@@ -1,8 +1,11 @@
+import { v } from "convex/values"
 import { mutation } from "./_generated/server"
+import { assertAdmin } from "./auth"
 
 export const fixUnderscoreFields = mutation({
-  args: {},
-  handler: async (ctx) => {
+  args: { userEmail: v.string() },
+  handler: async (ctx, args) => {
+    assertAdmin(args.userEmail)
     const allUsers = await ctx.db.query("users").collect()
     for (const user of allUsers) {
       const patch: Record<string, undefined> = {}

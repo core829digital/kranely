@@ -22,7 +22,7 @@ interface User {
 interface AuthContextType {
   user: User | null
   signIn: (email: string, password: string) => Promise<boolean>
-  signUp: (email: string, password: string, fullName: string, role: UserRole, subrole?: UserSubrole, phone?: string) => Promise<boolean>
+  signUp: (email: string, password: string, fullName: string, role: "supplier" | "collaborator" | "client" | "driver", subrole?: UserSubrole, phone?: string) => Promise<boolean>
   signOut: () => void
   isLoading: boolean
   error: string | null
@@ -34,19 +34,28 @@ const SESSION_KEY = "kranely_session"
 const SESSION_EXPIRY = 7 * 24 * 60 * 60 * 1000
 const SESSION_DATA_COOKIE = "kranely_session_data"
 
+function secureFlag(): string {
+  if (typeof window === "undefined") return ""
+  return window.location.protocol === "https:" ? "; Secure" : ""
+}
+
 function setSessionCookie(email: string) {
-  try { document.cookie = `kranely_session=${encodeURIComponent(email)}; path=/; max-age=${7 * 24 * 60 * 60}; SameSite=Lax` } catch {}
+  try { document.cookie = `kranely_session=${encodeURIComponent(email)}; path=/; max-age=${7 * 24 * 60 * 60}; SameSite=Lax${secureFlag()}` } catch {}
 }
 
 function setSessionDataCookie(role: string, organizationId: string) {
   try {
     const data = encodeURIComponent(JSON.stringify({ role, organizationId }))
-    document.cookie = `${SESSION_DATA_COOKIE}=${data}; path=/; max-age=${7 * 24 * 60 * 60}; SameSite=Lax`
+    document.cookie = `${SESSION_DATA_COOKIE}=${data}; path=/; max-age=${7 * 24 * 60 * 60}; SameSite=Lax${secureFlag()}`
   } catch {}
 }
 
 function clearSessionCookie() {
-  try { document.cookie = "kranely_session=; path=/; max-age=0"; document.cookie = `${SESSION_DATA_COOKIE}=; path=/; max-age=0` } catch {}
+  try {
+    const s = secureFlag()
+    document.cookie = `kranely_session=; path=/; max-age=0${s}`
+    document.cookie = `${SESSION_DATA_COOKIE}=; path=/; max-age=0${s}`
+  } catch {}
 }
 
 interface SessionData {
@@ -157,7 +166,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         email: email.toLowerCase().trim(),
         password,
         fullName,
-        role: role as "admin" | "supplier" | "collaborator" | "client" | "driver",
+        role: role as "supplier" | "collaborator" | "client" | "driver",
         subrole: subrole || undefined,
         organizationId: undefined,
         phone: phone || undefined,

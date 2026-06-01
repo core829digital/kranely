@@ -14,6 +14,7 @@ import Link from "next/link"
 import { useAuth } from "@/lib/auth/auth-context"
 import { useOrgId } from "@/hooks/useOrgId"
 import { PageSkeleton } from "@/components/Skeletons"
+import { safeWindowOpen } from "@/lib/utils"
 
 export default function PaymentsPage() {
   const orgId = useOrgId()
@@ -93,7 +94,7 @@ export default function PaymentsPage() {
     try {
       let proofDocId: Id<"documents"> | undefined
       if (proofFile) {
-        const uploadUrl = await generateUploadUrl()
+        const uploadUrl = await generateUploadUrl({ organizationId: orgId!, userEmail: user?.email || "" })
         const result = await fetch(uploadUrl, { method: "POST", headers: { "Content-Type": proofFile.type }, body: proofFile })
         if (!result.ok) throw new Error("Upload ricevuta fallito")
         const { storageId } = await result.json()
@@ -269,7 +270,7 @@ export default function PaymentsPage() {
                 {proofDoc && (
                   <div className="pt-2 border-t border-white/10">
                     <span className="text-xs text-white/40 block mb-2">Ricevuta di pagamento</span>
-                    <Button onClick={() => window.open(proofDoc.fileUrl, "_blank")} className="bg-kranely-accent text-kranely-app-bg w-full">
+                    <Button onClick={() => safeWindowOpen(proofDoc.fileUrl)} className="bg-kranely-accent text-kranely-app-bg w-full">
                       <FileText className="w-4 h-4 mr-2" /> {proofDoc.fileName || "Apri ricevuta"}
                     </Button>
                   </div>

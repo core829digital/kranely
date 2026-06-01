@@ -6,7 +6,7 @@ const PUBLIC_PATHS = [
   "/sign-in", "/sign-up", "/forgot-password", "/reset-password",
   "/onboarding", "/onboarding-staff",
   "/", "/about", "/services", "/contact",
-  "/blog", "/pricing", "/public-pricing", "/privacy", "/terms", "/cookies", "/reviews", "/calculator",
+  "/blog", "/pricing", "/public-pricing", "/privacy", "/terms", "/cookie", "/cookies", "/reviews", "/calculator",
   "/rent-your-app", "/pdf-editor",
   "/api", "/_next",
 ]
