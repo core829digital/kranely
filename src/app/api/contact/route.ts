@@ -1,12 +1,24 @@
 import { NextResponse } from "next/server"
+import { rateLimit, clientIp } from "@/lib/rate-limit"
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const MAX_NAME = 200
 const MAX_EMAIL = 320
 const MAX_MESSAGE = 5000
+const LIMIT_MAX = 5
+const LIMIT_WINDOW_MS = 60_000
 
 export async function POST(req: Request) {
   try {
+    const ip = clientIp(req)
+    const rl = rateLimit(`contact:${ip}`, LIMIT_MAX, LIMIT_WINDOW_MS)
+    if (!rl.ok) {
+      return NextResponse.json(
+        { error: "Troppi tentativi. Riprova più tardi." },
+        { status: 429, headers: { "Retry-After": String(Math.ceil(rl.resetMs / 1000)) } }
+      )
+    }
+
     const body = await req.json().catch(() => null)
     if (!body || typeof body !== "object") {
       return NextResponse.json({ error: "Invalid payload" }, { status: 400 })
@@ -23,7 +35,6 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Messaggio non valido (min 10 caratteri)" }, { status: 400 })
     }
 
-    const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown"
     const ua = req.headers.get("user-agent") || "unknown"
 
     console.log("[contact]", {
@@ -35,7 +46,10 @@ export async function POST(req: Request) {
       at: new Date().toISOString(),
     })
 
-    return NextResponse.json({ ok: true })
+    return NextResponse.json(
+      { ok: true },
+      { headers: { "X-RateLimit-Limit": String(LIMIT_MAX), "X-RateLimit-Remaining": String(rl.remaining) } }
+    )
   } catch (err) {
     console.error("[contact] error", err)
     return NextResponse.json({ error: "Errore interno" }, { status: 500 })

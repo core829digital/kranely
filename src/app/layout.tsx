@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next"
 import { Inter } from "next/font/google"
 import { AuthProvider } from "@/lib/auth/auth-context"
 import { ConvexClientProvider } from "./ConvexClientProvider"
+import { ResourceHints } from "@/components/ResourceHints"
 import { OrgProvisioner } from "./OrgProvisioner"
 import { Toaster } from "sonner"
 import "./globals.css"
@@ -65,14 +66,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="it" suppressHydrationWarning>
-      <head>
-        <link rel="preconnect" href="https://hushed-kiwi-35.convex.cloud" crossOrigin="anonymous" />
-        <link rel="dns-prefetch" href="https://hushed-kiwi-35.convex.cloud" />
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-      </head>
       <body className={`${inter.className} bg-kranely-app-bg text-white antialiased`}>
         <a href="#main-content" className="skip-link">Salta al contenuto principale</a>
+        <ResourceHints />
         <ConvexClientProvider>
           <OrgProvisioner>
             <AuthProvider>
