@@ -48,26 +48,14 @@ export default function DashboardPage() {
   if (!orgId || !overview) return <PageSkeleton />
 
   const stats = [
-    { label: "Clienti Totali", value: overview?.clients?.total?.toString() ?? "—", change: `${(overview?.clients?.active ?? 0) > 0 ? "+" : ""}${overview?.clients?.active ?? 0}`, trend: (overview?.clients?.active ?? 0) > (overview?.clients?.leads ?? 0) ? "up" : "down", icon: Users, href: "/clients" },
+    { label: "Clienti Totali", value: overview?.clients?.total?.toString() ?? "—", change: `${overview?.clients?.active ?? 0} attivi`, trend: (overview?.clients?.active ?? 0) > 0 ? "up" : "down", icon: Users, href: "/clients" },
     { label: "Preventivi", value: overview?.quotes?.total?.toString() ?? "—", change: `${overview?.quotes?.accepted ?? 0} accettati`, trend: (overview?.quotes?.accepted ?? 0) > (overview?.quotes?.pending ?? 0) ? "up" : "down", icon: FileText, href: "/quotes" },
     { label: "Cantieri Attivi", value: overview?.cantieri?.inCorso?.toString() ?? "—", change: `${overview?.cantieri?.completati ?? 0} completati`, trend: (overview?.cantieri?.inCorso ?? 0) > 0 ? "up" : "down", icon: Building2, href: "/cantieri" },
     { label: "Pagamenti in Attesa", value: overview ? `EUR${overview.payments.pending.toLocaleString("it-IT")}` : "—", change: (overview?.payments?.overdue ?? 0) > 0 ? `EUR${(overview?.payments?.overdue ?? 0).toLocaleString("it-IT")} scaduti` : "Nessun scaduto", trend: (overview?.payments?.overdue ?? 0) > 0 ? "down" : "up", icon: CreditCard, href: "/payments" },
   ]
 
-  let revenueChartData: { month: string; revenue: number; expenses: number }[] = []
-  let quoteChartData: { name: string; value: number; color: string }[] = []
-
-  try {
-    revenueChartData = revenueTrend?.map((item) => ({ month: item.month, revenue: item.incoming, expenses: item.outgoing })) || []
-  } catch {
-    toast.error("Errore nel caricamento")
-  }
-
-  try {
-    quoteChartData = quoteStatus?.map((item, i) => ({ name: item.name, value: item.value, color: COLORS[i % COLORS.length] })) || []
-  } catch {
-    toast.error("Errore nel caricamento")
-  }
+  const revenueChartData: { month: string; revenue: number; expenses: number }[] = (revenueTrend || []).map((item) => ({ month: item.month, revenue: item.incoming, expenses: item.outgoing }))
+  const quoteChartData: { name: string; value: number; color: string }[] = (quoteStatus || []).map((item, i) => ({ name: item.name, value: item.value, color: COLORS[i % COLORS.length] }))
 
   const activityIcons: Record<string, React.ReactNode> = {
     quote: <FileText className="w-3.5 h-3.5 text-blue-400" />,

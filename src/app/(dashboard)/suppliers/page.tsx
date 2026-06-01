@@ -603,7 +603,7 @@ function OrdiniTab({ orgId, selectedSupplierId, userEmail }: { orgId: Id<"organi
 
 function ProduzioneTab({ orgId, selectedSupplierId, userEmail }: { orgId: Id<"organizations">; selectedSupplierId: Id<"suppliers"> | null; userEmail?: string }) {
   const [selectedOrderId, setSelectedOrderId] = useState<Id<"supplierOrders"> | null>(null)
-  const [adminEmail] = useState(() => { if (typeof window !== "undefined") return localStorage.getItem("kranely_user_email") || ""; return "" })
+  const [adminEmail] = useState(() => { if (typeof window !== "undefined") return localStorage.getItem("kranely_session") || ""; return "" })
 
   const orders = useQuery(api.supplierOrders.list, { organizationId: orgId, supplierId: selectedSupplierId || undefined, userEmail })
   const production = useQuery(api.supplierProduction.list, { organizationId: orgId, supplierId: selectedSupplierId || undefined, orderId: selectedOrderId || undefined, userEmail })
@@ -939,7 +939,7 @@ function ConsegnaTab({ orgId, selectedSupplierId, userEmail }: { orgId: Id<"orga
 
 function ChatTab({ orgId, selectedSupplierId, userEmail }: { orgId: Id<"organizations">; selectedSupplierId: Id<"suppliers"> | null; userEmail?: string }) {
   const [message, setMessage] = useState("")
-  const adminEmail = typeof window !== "undefined" ? localStorage.getItem("kranely_user_email") || "" : ""
+  const adminEmail = typeof window !== "undefined" ? localStorage.getItem("kranely_session") || "" : ""
 
   const channels = useQuery(api.chat.listChannels, orgId && userEmail ? { organizationId: orgId, userEmail } : "skip")
   const supplierChannel = channels?.find((ch) =>

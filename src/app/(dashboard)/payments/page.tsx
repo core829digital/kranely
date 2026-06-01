@@ -19,7 +19,7 @@ export default function PaymentsPage() {
   const orgId = useOrgId()
   const { user } = useAuth()
   const [search, setSearch] = useState("")
-  const [filterStatus, setFilterStatus] = useState<"all" | "pending" | "pagato" | "in_ritardo" | "in_verifica" | "cancellato">("all")
+  const [filterStatus, setFilterStatus] = useState<"all" | "in_attesa" | "pagato" | "in_ritardo" | "in_verifica" | "parziale">("all")
   const [filterType, setFilterType] = useState<"all" | "incoming" | "outgoing">("all")
   const [showCreateDialog, setShowCreateDialog] = useState(false)
   const [showEditDialog, setShowEditDialog] = useState(false)

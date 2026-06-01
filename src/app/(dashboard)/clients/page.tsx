@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input, Label, Textarea } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
@@ -30,6 +30,16 @@ export default function ClientsPage() {
   })
 
   const clients = useQuery(api.clients.list, orgId ? { organizationId: orgId!, search: search || undefined, type: filterType !== "all" ? filterType : undefined, status: filterStatus !== "all" ? filterStatus : undefined, userEmail: user?.email } : "skip")
+  const allPayments = useQuery(api.payments.list, orgId ? { organizationId: orgId!, userEmail: user?.email } : "skip")
+  const spentByClient = useMemo(() => {
+    const map: Record<string, number> = {}
+    for (const p of allPayments || []) {
+      if (p.status === "pagato" && p.clientId) {
+        map[p.clientId] = (map[p.clientId] || 0) + p.amount
+      }
+    }
+    return map
+  }, [allPayments])
   const selectedClient = useQuery(api.clients.get, selectedClientId ? { id: selectedClientId, organizationId: orgId! } : "skip")
   const clientQuotes = useQuery(api.quotes.list, selectedClientId ? { organizationId: orgId!!, clientId: selectedClientId, userEmail: user?.email } : "skip")
   const clientPayments = useQuery(api.payments.list, selectedClientId ? { organizationId: orgId!!, clientId: selectedClientId, userEmail: user?.email } : "skip")
@@ -131,7 +141,7 @@ export default function ClientsPage() {
                   <td className="px-4 py-3 hidden lg:table-cell"><Badge variant={client.clientType === "b2b" ? "default" : "secondary"}>{client.clientType.toUpperCase()}</Badge></td>
                   <td className="px-4 py-3">{statusBadge(client.status)}</td>
                   <td className="px-4 py-3 hidden lg:table-cell"><Link href="/quotes" className="text-sm text-kranely-accent hover:underline">Vedi preventivi</Link></td>
-                  <td className="px-4 py-3 text-sm text-white font-medium hidden lg:table-cell">-</td>
+                  <td className="px-4 py-3 text-sm text-white font-medium hidden lg:table-cell">{spentByClient[client._id] ? `EUR${spentByClient[client._id].toLocaleString("it-IT")}` : "—"}</td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-1">
                       <button onClick={() => openDetail(client)} className="p-1.5 rounded bg-white text-black hover:bg-white/80"><Eye className="w-4 h-4" /></button>
