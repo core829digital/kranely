@@ -49,24 +49,24 @@ export default function OnboardingStaffPage() {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-white/80 mb-1 flex items-center gap-2"><User className="w-3.5 h-3.5" /> Nome completo</label>
-            <Input value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Il tuo nome" required />
+            <label htmlFor="staff-name" className="block text-sm font-medium text-white/80 mb-1 flex items-center gap-2"><User className="w-3.5 h-3.5" /> Nome completo</label>
+            <Input id="staff-name" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Il tuo nome" required autoComplete="name" />
           </div>
           <div>
-            <label className="block text-sm font-medium text-white/80 mb-1 flex items-center gap-2"><Mail className="w-3.5 h-3.5" /> Email</label>
-            <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="nome@esempio.it" required />
+            <label htmlFor="staff-email" className="block text-sm font-medium text-white/80 mb-1 flex items-center gap-2"><Mail className="w-3.5 h-3.5" /> Email</label>
+            <Input id="staff-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="nome@esempio.it" required autoComplete="email" />
           </div>
           <div>
-            <label className="block text-sm font-medium text-white/80 mb-1 flex items-center gap-2"><Phone className="w-3.5 h-3.5" /> Telefono (opzionale)</label>
-            <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+39 000 000 0000" />
+            <label htmlFor="staff-phone" className="block text-sm font-medium text-white/80 mb-1 flex items-center gap-2"><Phone className="w-3.5 h-3.5" /> Telefono (opzionale)</label>
+            <Input id="staff-phone" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+39 000 000 0000" autoComplete="tel" />
           </div>
           <div>
-            <label className="block text-sm font-medium text-white/80 mb-1 flex items-center gap-2"><Key className="w-3.5 h-3.5" /> Password</label>
-            <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Minimo 6 caratteri" required minLength={6} />
+            <label htmlFor="staff-password" className="block text-sm font-medium text-white/80 mb-1 flex items-center gap-2"><Key className="w-3.5 h-3.5" /> Password</label>
+            <Input id="staff-password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Minimo 6 caratteri" required minLength={6} autoComplete="new-password" />
           </div>
           <div>
-            <label className="block text-sm font-medium text-white/80 mb-1 flex items-center gap-2"><Key className="w-3.5 h-3.5" /> Conferma Password</label>
-            <Input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="Ripeti la password" required minLength={6} />
+            <label htmlFor="staff-confirm" className="block text-sm font-medium text-white/80 mb-1 flex items-center gap-2"><Key className="w-3.5 h-3.5" /> Conferma Password</label>
+            <Input id="staff-confirm" type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="Ripeti la password" required minLength={6} autoComplete="new-password" />
           </div>
           <Button type="submit" disabled={isLoading} className="w-full bg-kranely-accent text-kranely-app-bg hover:bg-kranely-accent/90 font-semibold">
             {isLoading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Registrazione...</> : "Registrati"}

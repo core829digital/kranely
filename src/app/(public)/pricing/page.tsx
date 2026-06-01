@@ -4,12 +4,13 @@ import { useMutation } from "convex/react"
 import { api } from "../../../../convex/_generated/api"
 import { useAuth } from "@/lib/auth/auth-context"
 import { Button } from "@/components/ui/button"
-import { Logo } from "@/components/Logo"
 import { CheckCircle2 } from "lucide-react"
 import { toast } from "sonner"
+import Link from "next/link"
+import { PublicNav } from "@/components/PublicNav"
 
 const plans = [
-  { name: "Free", price: "0", period: "/mese", features: ["1 organizzazione", "Fino a 5 utenti", "Funzionalità base", "Supporto email"], cta: "Inizia Gratis", planId: null },
+  { name: "Free", price: "0", period: "/mese", features: ["1 organizzazione", "Fino a 5 utenti", "Funzionalità base", "Supporto email"], cta: "Inizia Gratis", planId: null as null | "pro" | "enterprise" },
   { name: "Pro", price: "97", period: "/mese", features: ["Utenti illimitati", "White-label base", "Tutti i moduli", "Chat integrata", "Calcolatore edilizia", "Supporto prioritario"], cta: "Scegli Pro", highlighted: true, planId: "pro" as const },
   { name: "Enterprise", price: "Custom", period: "", features: ["White-label completo", "Custom domain", "API access", "SLA garantito", "Supporto dedicato", "Formazione inclusa"], cta: "Contattaci", planId: "enterprise" as const },
 ]
@@ -37,18 +38,9 @@ export default function PricingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-kranely-app-bg">
-      <nav className="fixed top-0 left-0 right-0 z-50 border-b border-white/10 bg-kranely-app-bg/80 backdrop-blur-xl">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="flex h-16 items-center justify-between">
-            <a href="/" className="flex items-center gap-2">
-              <Logo />
-            </a>
-            <a href="/" className="text-sm text-white/60 hover:text-white transition-colors">Torna alla Home</a>
-          </div>
-        </div>
-      </nav>
-      <div className="pt-24 pb-20">
+    <div className="min-h-screen bg-kranely-app-bg flex flex-col">
+      <PublicNav />
+      <main className="flex-1 pt-24 pb-20">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <h1 className="text-4xl font-bold text-white mb-4">Piani e Prezzi</h1>
@@ -63,13 +55,13 @@ export default function PricingPage() {
                 {plan.planId ? (
                   <Button onClick={() => handleSubscribe(plan.planId!)} className={`w-full ${plan.highlighted ? "bg-kranely-accent text-kranely-app-bg hover:bg-kranely-accent/90" : "bg-white/10 text-white hover:bg-white/20"}`}>{plan.cta}</Button>
                 ) : (
-                  <a href="/sign-up"><Button className="w-full bg-white/10 text-white hover:bg-white/20">{plan.cta}</Button></a>
+                  <Link href="/sign-up" className="block"><Button className="w-full bg-white/10 text-white hover:bg-white/20">{plan.cta}</Button></Link>
                 )}
               </div>
             ))}
           </div>
         </div>
-      </div>
+      </main>
     </div>
   )
 }

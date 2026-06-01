@@ -8,12 +8,13 @@ import { useAuth } from "@/lib/auth/auth-context"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { PageSkeleton } from "@/components/Skeletons"
-import { Search, Activity, User as UserIcon, FileText, Building2, Truck, Shield, CreditCard, HardHat, Package } from "lucide-react"
+import { Search, Activity, User as UserIcon, FileText, Building2, Truck, Shield, CreditCard, HardHat, Package, FileSignature, ClipboardList, Calendar } from "lucide-react"
 
 const entityIcons: Record<string, any> = {
   client: UserIcon, cantiere: Building2, quote: FileText,
   supplier: Truck, certificate: Shield, payment: CreditCard,
   collaborator: HardHat, delivery: Package,
+  contract: FileSignature, order: ClipboardList, appointment: Calendar,
 }
 
 const entityLabels: Record<string, string> = {

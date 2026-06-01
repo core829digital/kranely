@@ -26,18 +26,15 @@ export default function CollaboratorDashboardPage() {
   const myProfile = collaborators?.find((c) => c.email === user.email) || null
 
   const myCantiereIds = new Set(myProfile?.assignedCantieri || [])
-  const myCantieri = cantieri?.filter((c) => myCantiereIds.has(c._id)) || []
-
-  if (myCantieri.length === 0 && myProfile == null) {
-    if (user.role === "collaborator") {
-      const byName = cantieri?.filter((c) => {
-        if (c.managerId === user._id) return true
-        if (c.teamAssegnato?.includes(user.fullName || "")) return true
-        return false
-      }) || []
-      myCantieri.push(...byName)
-    }
-  }
+  const myCantieri = (() => {
+    const direct = cantieri?.filter((c) => myCantiereIds.has(c._id)) || []
+    if (direct.length > 0 || myProfile != null || user.role !== "collaborator") return direct
+    return cantieri?.filter((c) => {
+      if (c.managerId === user._id) return true
+      if (c.teamAssegnato?.includes(user.fullName || "")) return true
+      return false
+    }) || []
+  })()
 
   const myCertificates = certificates?.filter((c) => {
     if (myProfile && c.collaboratorId === myProfile._id) return true

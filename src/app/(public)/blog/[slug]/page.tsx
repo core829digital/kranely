@@ -3,7 +3,7 @@
 import { useQuery } from "convex/react"
 import { api } from "../../../../../convex/_generated/api"
 import Link from "next/link"
-import { Logo } from "@/components/Logo"
+import { PublicNav } from "@/components/PublicNav"
 
 const fallbackPosts: Record<string, { title: string; date: string; category: string; content: string }> = {
   "guida-serramenti-pvc": {
@@ -40,21 +40,12 @@ export default function BlogPostPage({ params }: { params: { slug: string } }) {
   const title = post?.title ?? "Articolo non trovato"
 
   return (
-    <div className="min-h-screen bg-kranely-app-bg">
-      <nav className="fixed top-0 left-0 right-0 z-50 border-b border-white/10 bg-kranely-app-bg/80 backdrop-blur-xl">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="flex h-16 items-center justify-between">
-            <Link href="/" className="flex items-center gap-2">
-              <Logo />
-            </Link>
-            <Link href="/blog" className="text-sm text-white/60 hover:text-white transition-colors">Torna al Blog</Link>
-          </div>
-        </div>
-      </nav>
-      <div className="pt-24 pb-20">
+    <div className="min-h-screen bg-kranely-app-bg flex flex-col">
+      <PublicNav backLabel="Torna al Blog" backHref="/blog" />
+      <main className="flex-1 pt-24 pb-20">
         <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
           {post ? (
-            <>
+            <article>
               <div className="flex items-center gap-3 mb-4">
                 <span className="text-xs font-medium text-kranely-accent bg-kranely-accent/10 px-2 py-1 rounded">{post.category}</span>
                 <span className="text-xs text-white/40">{"publishedDate" in post ? new Date(post.publishedDate ?? "").toLocaleDateString("it-IT") : (post as any).date}</span>
@@ -63,15 +54,15 @@ export default function BlogPostPage({ params }: { params: { slug: string } }) {
               <div className="prose prose-invert max-w-none">
                 <p className="text-lg text-white/70 leading-relaxed">{post.content}</p>
               </div>
-            </>
+            </article>
           ) : (
             <>
-              <h1 className="text-4xl font-bold text-white mb-8">Articolo non trovato</h1>
-              <p className="text-white/60">Il contenuto richiesto non è disponibile.</p>
+              <h1 className="text-4xl font-bold text-white mb-8">{title}</h1>
+              <p className="text-white/60">Il contenuto richiesto non è disponibile. <Link href="/blog" className="text-kranely-accent hover:underline">Torna al blog</Link>.</p>
             </>
           )}
         </div>
-      </div>
+      </main>
     </div>
   )
 }
