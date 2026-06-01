@@ -2,7 +2,9 @@
   "name": "kranely",
   "version": "0.1.0",
   "private": true,
-  "engines": { "node": ">=20" },
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -40,6 +42,7 @@
     "@radix-ui/react-toggle": "^1.1.10",
     "@radix-ui/react-toggle-group": "^1.1.11",
     "@radix-ui/react-tooltip": "^1.2.8",
+    "@sentry/nextjs": "^10.55.0",
     "@stripe/stripe-js": "^9.6.0",
     "@tanstack/react-query": "^5.100.11",
     "class-variance-authority": "^0.7.1",
@@ -65,6 +68,7 @@
     "zustand": "^5.0.13"
   },
   "devDependencies": {
+    "@playwright/test": "^1.60.0",
     "@react-three/drei": "^10.7.7",
     "@react-three/fiber": "^9.6.1",
     "@tailwindcss/postcss": "^4",
@@ -74,7 +78,6 @@
     "@types/react-dom": "^19",
     "@types/react-leaflet": "^2.8.3",
     "@types/three": "^0.184.1",
-    "@playwright/test": "^1.60.0",
     "eslint": "^9",
     "eslint-config-next": "16.2.6",
     "leaflet": "^1.9.4",
