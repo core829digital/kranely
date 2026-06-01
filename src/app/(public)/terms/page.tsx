@@ -1,4 +1,4 @@
-﻿import type { Metadata } from "next"
+import type { Metadata } from "next"
 import { PublicNav } from "@/components/PublicNav"
 
 export const metadata: Metadata = {
@@ -10,7 +10,7 @@ export default function TermsPage() {
   return (
     <div className="min-h-screen bg-kranely-app-bg flex flex-col">
       <PublicNav />
-      <main className="flex-1 pt-24 pb-20">
+      <main id="main-content" className="flex-1 pt-24 pb-20">
         <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
           <h1 className="text-4xl font-bold text-white mb-8">Termini e Condizioni</h1>
           <div className="prose prose-invert max-w-none">

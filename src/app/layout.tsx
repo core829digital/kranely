@@ -39,6 +39,7 @@ export default function RootLayout({
   return (
     <html lang="it" suppressHydrationWarning>
       <body className={`${inter.className} bg-kranely-app-bg text-white antialiased`}>
+        <a href="#main-content" className="skip-link">Salta al contenuto principale</a>
         <ConvexClientProvider>
           <OrgProvisioner>
             <AuthProvider>

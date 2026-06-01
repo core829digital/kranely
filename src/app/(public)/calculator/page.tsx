@@ -1,4 +1,4 @@
-﻿"use client"
+"use client"
 
 import { useState } from "react"
 import { PublicNav } from "@/components/PublicNav"
@@ -28,7 +28,7 @@ export default function CalculatorPage() {
   return (
     <div className="min-h-screen bg-kranely-app-bg flex flex-col">
       <PublicNav />
-      <main className="flex-1 pt-24 pb-20">
+      <main id="main-content" className="flex-1 pt-24 pb-20">
         <div className="mx-auto max-w-2xl px-4 sm:px-6 lg:px-8">
           <h1 className="text-4xl font-bold text-white mb-4">Calcolatore Volumi</h1>
           <p className="text-lg text-white/70 mb-8">

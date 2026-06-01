@@ -133,3 +133,58 @@ select option {
   background-color: #2a2826;
   color: #F0EBE8;
 }
+
+@layer a11y {
+  .skip-link {
+    position: absolute;
+    left: 0;
+    top: -100px;
+    z-index: 9999;
+    padding: 12px 20px;
+    background: #FFC703;
+    color: #1C1A18;
+    font-weight: 600;
+    border-radius: 0 0 8px 0;
+    text-decoration: none;
+    transition: top 0.2s ease;
+  }
+  .skip-link:focus,
+  .skip-link:focus-visible {
+    top: 0;
+    outline: 2px solid #FFC703;
+    outline-offset: 2px;
+  }
+
+  :focus-visible {
+    outline: 2px solid #FFC703;
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  button:focus-visible,
+  a:focus-visible,
+  [role="button"]:focus-visible {
+    outline: 2px solid #FFC703;
+    outline-offset: 2px;
+  }
+
+  button,
+  [role="button"],
+  a[href],
+  input[type="button"],
+  input[type="submit"] {
+    min-height: 24px;
+    min-width: 24px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

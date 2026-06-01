@@ -40,7 +40,7 @@ export default function PricingPage() {
   return (
     <div className="min-h-screen bg-kranely-app-bg flex flex-col">
       <PublicNav />
-      <main className="flex-1 pt-24 pb-20">
+      <main id="main-content" className="flex-1 pt-24 pb-20">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <h1 className="text-4xl font-bold text-white mb-4">Piani e Prezzi</h1>

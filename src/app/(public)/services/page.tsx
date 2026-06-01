@@ -21,7 +21,7 @@ export default function ServicesPage() {
   return (
     <div className="min-h-screen bg-kranely-app-bg flex flex-col">
       <PublicNav />
-      <main className="flex-1 pt-24 pb-20">
+      <main id="main-content" className="flex-1 pt-24 pb-20">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <h1 className="text-4xl font-bold text-white mb-4">Servizi</h1>
           <p className="text-lg text-white/60 mb-12 max-w-2xl">Tutto ciò che serve per gestire la tua azienda di serramenti o edilizia</p>

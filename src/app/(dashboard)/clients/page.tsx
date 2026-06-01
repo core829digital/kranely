@@ -144,9 +144,9 @@ export default function ClientsPage() {
                   <td className="px-4 py-3 text-sm text-white font-medium hidden lg:table-cell">{spentByClient[client._id] ? `EUR${spentByClient[client._id].toLocaleString("it-IT")}` : "—"}</td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-1">
-                      <button onClick={() => openDetail(client)} className="p-1.5 rounded bg-white text-black hover:bg-white/80"><Eye className="w-4 h-4" /></button>
-                      <button onClick={() => openEdit(client)} className="p-1.5 rounded bg-white text-black hover:bg-white/80"><Edit2 className="w-4 h-4" /></button>
-                      <button onClick={() => handleDelete(client._id)} className="p-1.5 rounded bg-white text-black hover:bg-red-100 hover:text-red-600"><Trash2 className="w-4 h-4" /></button>
+                      <button onClick={() => openDetail(client)} aria-label={`Visualizza ${client.fullName}`} className="p-1.5 rounded bg-white text-black hover:bg-white/80"><Eye className="w-4 h-4" /></button>
+                      <button onClick={() => openEdit(client)} aria-label={`Modifica ${client.fullName}`} className="p-1.5 rounded bg-white text-black hover:bg-white/80"><Edit2 className="w-4 h-4" /></button>
+                      <button onClick={() => handleDelete(client._id)} aria-label={`Elimina ${client.fullName}`} className="p-1.5 rounded bg-white text-black hover:bg-red-100 hover:text-red-600"><Trash2 className="w-4 h-4" /></button>
                     </div>
                   </td>
                 </tr>

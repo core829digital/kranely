@@ -1,4 +1,4 @@
-﻿"use client"
+"use client"
 
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
@@ -38,7 +38,7 @@ export default function ContactPage() {
   return (
     <div className="min-h-screen bg-kranely-app-bg flex flex-col">
       <PublicNav />
-      <main className="flex-1 pt-24 pb-20">
+      <main id="main-content" className="flex-1 pt-24 pb-20">
         <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
           <h1 className="text-4xl font-bold text-white mb-8">Contattaci</h1>
           <p className="text-lg text-white/70 mb-8 max-w-2xl">
@@ -49,11 +49,11 @@ export default function ContactPage() {
             <div className="space-y-4 mb-8">
               <div>
                 <Label htmlFor="name" className="block text-sm font-medium text-white mb-1">Nome completo</Label>
-                <Input id="name" type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="Mario Rossi" required className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-sm text-white" />
+                <Input id="name" type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="Mario Rossi" required autoComplete="name" className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-sm text-white" />
               </div>
               <div>
                 <Label htmlFor="email" className="block text-sm font-medium text-white mb-1">Email</Label>
-                <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="mario@example.com" required className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-sm text-white" />
+                <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="mario@example.com" required autoComplete="email" className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-sm text-white" />
               </div>
               <div>
                 <Label htmlFor="message" className="block text-sm font-medium text-white mb-1">Messaggio</Label>

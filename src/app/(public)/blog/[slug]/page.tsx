@@ -42,7 +42,7 @@ export default function BlogPostPage({ params }: { params: { slug: string } }) {
   return (
     <div className="min-h-screen bg-kranely-app-bg flex flex-col">
       <PublicNav backLabel="Torna al Blog" backHref="/blog" />
-      <main className="flex-1 pt-24 pb-20">
+      <main id="main-content" className="flex-1 pt-24 pb-20">
         <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
           {post ? (
             <article>
