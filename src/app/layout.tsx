@@ -19,8 +19,12 @@ export const viewport: Viewport = {
 }
 
 export const metadata: Metadata = {
-  title: "Kranely — Piattaforma Gestionale per Serramentisti",
+  title: {
+    default: "Kranely — Piattaforma Gestionale per Serramentisti",
+    template: "%s | Kranely",
+  },
   description: "Gestisci preventivi, fornitori, cantieri e pagamenti in un unico posto",
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://kranely.it"),
   icons: {
     icon: "/favicon.ico",
   },
@@ -28,6 +32,29 @@ export const metadata: Metadata = {
     capable: true,
     statusBarStyle: "default",
     title: "Kranely",
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
+  },
+  openGraph: {
+    type: "website",
+    locale: "it_IT",
+    url: "/",
+    siteName: "Kranely",
+    title: "Kranely — Piattaforma Gestionale per Serramentisti",
+    description: "Gestisci preventivi, fornitori, cantieri e pagamenti in un unico posto",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Kranely — Piattaforma Gestionale per Serramentisti",
+    description: "Gestisci preventivi, fornitori, cantieri e pagamenti in un unico posto",
   },
 }
 
@@ -38,6 +65,12 @@ export default function RootLayout({
 }) {
   return (
     <html lang="it" suppressHydrationWarning>
+      <head>
+        <link rel="preconnect" href="https://hushed-kiwi-35.convex.cloud" crossOrigin="anonymous" />
+        <link rel="dns-prefetch" href="https://hushed-kiwi-35.convex.cloud" />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+      </head>
       <body className={`${inter.className} bg-kranely-app-bg text-white antialiased`}>
         <a href="#main-content" className="skip-link">Salta al contenuto principale</a>
         <ConvexClientProvider>
