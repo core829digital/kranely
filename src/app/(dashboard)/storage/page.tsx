@@ -24,7 +24,7 @@ export default function StoragePage() {
   const DOC_TYPES = ["contract", "quote", "invoice", "technical", "certificate", "photo", "other"] as const
   type DocType = typeof DOC_TYPES[number]
   const [showUploadDialog, setShowUploadDialog] = useState(false)
-  const [formData, setFormData] = useState({ name: "", category: "documenti", description: "", clientId: "", cantiereId: "", quoteId: "" })
+  const [formData, setFormData] = useState({ name: "", category: "contract", description: "", clientId: "", cantiereId: "", quoteId: "" })
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [uploading, setUploading] = useState(false)
 
@@ -37,7 +37,7 @@ export default function StoragePage() {
   const saveFile = useMutation(api.upload.saveFile)
 
   const openUpload = () => {
-    setFormData({ name: "", category: "documenti", description: "", clientId: "", cantiereId: "", quoteId: "" })
+    setFormData({ name: "", category: "contract", description: "", clientId: "", cantiereId: "", quoteId: "" })
     setSelectedFile(null)
     setShowUploadDialog(true)
   }
@@ -91,14 +91,17 @@ export default function StoragePage() {
   const totalSize = totalBytes > 0 ? (totalBytes / (1024 * 1024)) : 0
   const categories = [
     { value: "all", label: "Tutti", count: documents?.length || 0 },
-    { value: "documento", label: "Documenti", count: documents?.filter((d) => d.type === "documento").length || 0 },
-    { value: "foto", label: "Foto", count: documents?.filter((d) => d.type === "foto").length || 0 },
-    { value: "preventivo", label: "Preventivi", count: documents?.filter((d) => d.type === "preventivo").length || 0 },
-    { value: "fattura", label: "Fatture", count: documents?.filter((d) => d.type === "fattura").length || 0 },
+    { value: "contract", label: "Contratti", count: documents?.filter((d) => d.type === "contract").length || 0 },
+    { value: "quote", label: "Preventivi", count: documents?.filter((d) => d.type === "quote" || d.type === "preventivo").length || 0 },
+    { value: "invoice", label: "Fatture", count: documents?.filter((d) => d.type === "invoice" || d.type === "fattura").length || 0 },
+    { value: "technical", label: "Tecnici", count: documents?.filter((d) => d.type === "technical").length || 0 },
+    { value: "certificate", label: "Certificati", count: documents?.filter((d) => d.type === "certificate").length || 0 },
+    { value: "photo", label: "Foto", count: documents?.filter((d) => d.type === "photo" || d.type === "foto").length || 0 },
+    { value: "other", label: "Altri", count: documents?.filter((d) => d.type === "other" || d.type === "altro" || d.type === "documento").length || 0 },
   ]
 
   const fileIcon = (type: string) => {
-    if (type.includes("foto") || type.includes("image")) return <Image className="w-8 h-8 text-green-400" />
+    if (type.includes("photo") || type.includes("foto") || type.includes("image")) return <Image className="w-8 h-8 text-green-400" />
     if (type.includes("pdf")) return <FileText className="w-8 h-8 text-red-400" />
     return <File className="w-8 h-8 text-blue-400" />
   }
@@ -112,7 +115,7 @@ export default function StoragePage() {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <div className="p-4 rounded-xl border border-white/10 bg-white/[0.02]"><div className="flex items-center gap-2 mb-2"><HardDrive className="w-4 h-4 text-kranely-accent" /><span className="text-sm text-white/60">File Totali</span></div><p className="text-xl font-bold text-white">{documents.length}</p></div>
         <div className="p-4 rounded-xl border border-white/10 bg-white/[0.02]"><div className="flex items-center gap-2 mb-2"><FileText className="w-4 h-4 text-blue-400" /><span className="text-sm text-white/60">Dimensione Totale</span></div><p className="text-xl font-bold text-blue-400">{totalSize.toFixed(1)} MB</p></div>
-        <div className="p-4 rounded-xl border border-white/10 bg-white/[0.02]"><div className="flex items-center gap-2 mb-2"><Image className="w-4 h-4 text-green-400" /><span className="text-sm text-white/60">Foto</span></div><p className="text-xl font-bold text-green-400">{documents.filter((d) => d.type === "foto").length}</p></div>
+        <div className="p-4 rounded-xl border border-white/10 bg-white/[0.02]"><div className="flex items-center gap-2 mb-2"><Image className="w-4 h-4 text-green-400" /><span className="text-sm text-white/60">Foto</span></div><p className="text-xl font-bold text-green-400">{documents.filter((d) => d.type === "photo" || d.type === "foto").length}</p></div>
         <div className="p-4 rounded-xl border border-white/10 bg-white/[0.02]"><div className="flex items-center gap-2 mb-2"><Folder className="w-4 h-4 text-purple-400" /><span className="text-sm text-white/60">Categorie</span></div><p className="text-xl font-bold text-purple-400">{categories.filter((c) => c.count > 0).length}</p></div>
       </div>
 
@@ -150,7 +153,7 @@ export default function StoragePage() {
         <DialogContent className="max-w-2xl"><DialogHeader><DialogTitle>Carica File</DialogTitle></DialogHeader>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4">
             <div className="md:col-span-2"><Label className="text-sm font-medium text-white/80">Nome File *</Label><Input value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} placeholder="nome-file.pdf" /></div>
-            <div><Label className="text-sm font-medium text-white/80">Categoria</Label><select value={formData.category} onChange={(e) => setFormData({ ...formData, category: e.target.value })} className="h-10 w-full rounded-lg border border-white/10 bg-white/5 px-3 text-sm text-white"><option value="documento">Documento</option><option value="foto">Foto</option><option value="preventivo">Preventivo</option><option value="fattura">Fattura</option></select></div>
+            <div><Label className="text-sm font-medium text-white/80">Categoria</Label><select value={formData.category} onChange={(e) => setFormData({ ...formData, category: e.target.value })} className="h-10 w-full rounded-lg border border-white/10 bg-white/5 px-3 text-sm text-white"><option value="contract">Contratto</option><option value="quote">Preventivo</option><option value="invoice">Fattura</option><option value="technical">Tecnico</option><option value="certificate">Certificato</option><option value="photo">Foto</option><option value="other">Altro</option></select></div>
             <div><Label className="text-sm font-medium text-white/80">Collegato a</Label>
               <select value={formData.quoteId} onChange={(e) => setFormData({ ...formData, quoteId: e.target.value, clientId: "", cantiereId: "" })} className="h-10 w-full rounded-lg border border-white/10 bg-white/5 px-3 text-sm text-white">
                 <option value="">Nessuno</option>

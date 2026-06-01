@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Search, FileText, Download, Eye, Calendar, User, Building2, Lock, Clock, CheckCircle2 } from "lucide-react"
+import { Search, FileText, Download, Building2, Lock, Clock } from "lucide-react"
 import { useQuery } from "convex/react"
 import { api } from "../../../../convex/_generated/api"
 import Link from "next/link"
@@ -17,6 +17,22 @@ import { useAuth } from "@/lib/auth/auth-context"
 const statusColors: Record<string, string> = {
   draft: "text-white/40", sent: "text-kranely-accent", accepted: "text-green-400",
   rejected: "text-red-400", in_lavorazione: "text-blue-400", completato: "text-green-400",
+}
+
+const entityTypeLabels: Record<string, string> = {
+  client: "Cliente",
+  cantiere: "Cantiere",
+  quote: "Preventivo",
+  supplier: "Fornitore",
+}
+
+const quoteStatusLabels: Record<string, string> = {
+  draft: "Bozza",
+  sent: "Inviato",
+  accepted: "Approvato",
+  rejected: "Rifiutato",
+  in_lavorazione: "In Lavorazione",
+  completato: "Completato",
 }
 
 export default function PrivateAreaPage() {
@@ -71,7 +87,7 @@ export default function PrivateAreaPage() {
             <div key={quote._id} className="p-4 rounded-xl border border-white/10 bg-white/[0.02] cursor-pointer hover:bg-white/[0.04]" onClick={() => setSelectedQuote(quote)}>
               <div className="flex items-start justify-between">
                 <div>
-                  <div className="flex items-center gap-2"><h3 className="font-medium text-white">{quote.title || "Preventivo"}</h3><span className={`text-xs font-medium ${statusColors[quote.status] || "text-white/40"}`}>{quote.status}</span></div>
+                  <div className="flex items-center gap-2"><h3 className="font-medium text-white">{quote.title || "Preventivo"}</h3><span className={`text-xs font-medium ${statusColors[quote.status] || "text-white/40"}`}>{quoteStatusLabels[quote.status] || quote.status}</span></div>
                   {quote.fullName && <p className="text-sm text-white/60 mt-1">{quote.fullName}</p>}
                   <div className="flex items-center gap-4 mt-2 text-xs text-white/40">
                     {quote.estimatedPrice && <span>Importo: EUR{quote.estimatedPrice.toLocaleString("it-IT")}</span>}
@@ -80,7 +96,7 @@ export default function PrivateAreaPage() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Badge variant={quote.status === "accepted" ? "success" : quote.status === "rejected" ? "destructive" : "secondary"}>{quote.status}</Badge>
+                  <Badge variant={quote.status === "accepted" ? "success" : quote.status === "rejected" ? "destructive" : "secondary"}>{quoteStatusLabels[quote.status] || quote.status}</Badge>
                 </div>
               </div>
             </div>
@@ -99,8 +115,8 @@ export default function PrivateAreaPage() {
                   <div><h3 className="text-sm font-medium text-white">{doc.title || doc.fileName || "Documento"}</h3><p className="text-xs text-white/40">{doc.type || ""} - {new Date(doc._creationTime).toLocaleDateString("it-IT")}</p></div>
                 </div>
                 <div className="flex items-center gap-2">
-                  {doc.entityType && <Badge variant="secondary">{doc.entityType}</Badge>}
-                  <Button size="sm" variant="outline" className="border-white/10 bg-white text-black hover:bg-white/90" title="Scarica" aria-label="Scarica"><Download className="w-4 h-4" /></Button>
+                  {doc.entityType && <Badge variant="secondary">{entityTypeLabels[doc.entityType] || doc.entityType}</Badge>}
+                  <Button size="sm" variant="outline" className="border-white/10 bg-white text-black hover:bg-white/90" title="Scarica" aria-label="Scarica" onClick={() => doc.fileUrl && window.open(doc.fileUrl, "_blank")}><Download className="w-4 h-4" /></Button>
                 </div>
               </div>
             </div>
@@ -115,7 +131,7 @@ export default function PrivateAreaPage() {
           {selectedQuote && (
             <div className="space-y-4 py-4">
               <div className="grid grid-cols-2 gap-4">
-                <div><span className="text-xs text-white/40">Stato</span><p className="text-white capitalize">{selectedQuote.status}</p></div>
+                <div><span className="text-xs text-white/40">Stato</span><p className="text-white capitalize">{quoteStatusLabels[selectedQuote.status] || selectedQuote.status}</p></div>
                 <div><span className="text-xs text-white/40">Tipo</span><p className="text-white">{selectedQuote.quoteType}</p></div>
                 {selectedQuote.estimatedPrice && <div><span className="text-xs text-white/40">Importo</span><p className="text-kranely-accent font-semibold">EUR{selectedQuote.estimatedPrice.toLocaleString("it-IT")}</p></div>}
                 {selectedQuote.fullName && <div><span className="text-xs text-white/40">Cliente</span><p className="text-white">{selectedQuote.fullName}</p></div>}

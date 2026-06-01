@@ -20,10 +20,9 @@ export default function SharedDocumentsPage() {
   const orgId = useOrgId()
   const { user } = useAuth()
   const [search, setSearch] = useState("")
-  const [statusFilter, setStatusFilter] = useState("all")
   const [filterType, setFilterType] = useState("all")
   const [showUploadDialog, setShowUploadDialog] = useState(false)
-  const [formData, setFormData] = useState({ name: "", type: "documento", url: "", entityType: "", entityId: "", description: "" })
+  const [formData, setFormData] = useState({ name: "", type: "contract", url: "", entityType: "", entityId: "", description: "" })
 
   const documents = useQuery(api.documents.list, orgId ? { organizationId: orgId!, userEmail: user?.email } : "skip")
   const clients = useQuery(api.clients.list, orgId ? { organizationId: orgId!, userEmail: user?.email } : "skip")
@@ -32,7 +31,7 @@ export default function SharedDocumentsPage() {
   const createDoc = useMutation(api.documents.create)
   const removeDoc = useMutation(api.documents.remove)
 
-  const openUpload = () => { setFormData({ name: "", type: "documento", url: "", entityType: "", entityId: "", description: "" }); setShowUploadDialog(true) }
+  const openUpload = () => { setFormData({ name: "", type: "contract", url: "", entityType: "", entityId: "", description: "" }); setShowUploadDialog(true) }
 
   const handleUpload = async () => {
     if (!formData.name || !orgId) { toast.error("Inserisci un nome"); return }
@@ -51,8 +50,8 @@ export default function SharedDocumentsPage() {
   }) || []
 
   const typeIcon = (type: string) => {
-    if (type.includes("pdf")) return <FileText className="w-5 h-5 text-red-400" />
-    if (type.includes("image") || type.includes("foto")) return <Eye className="w-5 h-5 text-green-400" />
+    if (type?.includes("pdf")) return <FileText className="w-5 h-5 text-red-400" />
+    if (type?.includes("image") || type?.includes("photo") || type?.includes("foto")) return <Eye className="w-5 h-5 text-green-400" />
     return <FileText className="w-5 h-5 text-blue-400" />
   }
 
@@ -70,7 +69,7 @@ export default function SharedDocumentsPage() {
 
       <div className="flex flex-wrap items-center gap-3">
         <div className="relative flex-1 min-w-[200px] max-w-md"><Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" /><Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Cerca documenti..." className="pl-10" /></div>
-        <select value={filterType} onChange={(e) => setFilterType(e.target.value)} className="h-10 rounded-lg border border-white/10 bg-white/5 px-3 text-sm text-white"><option value="all">Tutti i Tipi</option><option value="documento">Documenti</option><option value="foto">Foto</option><option value="preventivo">Preventivi</option><option value="fattura">Fatture</option></select>
+        <select value={filterType} onChange={(e) => setFilterType(e.target.value)} className="h-10 rounded-lg border border-white/10 bg-white/5 px-3 text-sm text-white"><option value="all">Tutti i Tipi</option><option value="contract">Contratti</option><option value="quote">Preventivi</option><option value="invoice">Fatture</option><option value="technical">Tecnici</option><option value="certificate">Certificati</option><option value="photo">Foto</option><option value="other">Altri</option></select>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -81,7 +80,7 @@ export default function SharedDocumentsPage() {
               <div className="flex items-start gap-3 mb-3">
                 <div className="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center flex-shrink-0">{typeIcon(doc.type || "other")}</div>
                 <div className="min-w-0">
-                  <h3 className="font-medium text-white truncate">{doc.name}</h3>
+                  <h3 className="font-medium text-white truncate">{doc.fileName || doc.title || doc.name || "Senza nome"}</h3>
                   <p className="text-xs text-white/40">{doc.type} - {new Date(doc._creationTime).toLocaleDateString("it-IT")}</p>
                 </div>
               </div>
@@ -90,8 +89,8 @@ export default function SharedDocumentsPage() {
                 {doc.entityType && <div className="flex items-center gap-1"><LinkIcon className="w-3 h-3" />{doc.entityType}: {entityName || doc.entityId}</div>}
               </div>
               <div className="flex items-center gap-2 pt-3 border-t border-white/10">
-                <Button size="sm" variant="outline" className="flex-1 border-white/10 bg-white text-black hover:bg-white/90"><Eye className="w-3 h-3 mr-1" />Visualizza</Button>
-                <Button size="sm" variant="outline" className="border-white/10 bg-white text-black hover:bg-white/90" title="Scarica" aria-label="Scarica"><Download className="w-3 h-3" /></Button>
+                <Button size="sm" variant="outline" className="flex-1 border-white/10 bg-white text-black hover:bg-white/90" onClick={() => doc.fileUrl && window.open(doc.fileUrl, "_blank")}><Eye className="w-3 h-3 mr-1" />Visualizza</Button>
+                <Button size="sm" variant="outline" className="border-white/10 bg-white text-black hover:bg-white/90" title="Scarica" aria-label="Scarica" onClick={() => doc.fileUrl && window.open(doc.fileUrl, "_blank")}><Download className="w-3 h-3" /></Button>
                 <Button size="sm" variant="destructive" onClick={() => handleDelete(doc._id)}><Trash2 className="w-3 h-3" /></Button>
               </div>
             </div>
@@ -105,7 +104,7 @@ export default function SharedDocumentsPage() {
         <DialogContent><DialogHeader><DialogTitle>Carica Documento</DialogTitle></DialogHeader>
           <div className="space-y-4 py-4">
             <div><Label>Nome *</Label><Input value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} /></div>
-            <div><Label>Tipo</Label><select value={formData.type} onChange={(e) => setFormData({ ...formData, type: e.target.value })} className="h-10 w-full rounded-lg border border-white/10 bg-white/5 px-3 text-sm text-white"><option value="documento">Documento</option><option value="foto">Foto</option><option value="preventivo">Preventivo</option><option value="fattura">Fattura</option></select></div>
+            <div><Label>Tipo</Label><select value={formData.type} onChange={(e) => setFormData({ ...formData, type: e.target.value })} className="h-10 w-full rounded-lg border border-white/10 bg-white/5 px-3 text-sm text-white"><option value="contract">Contratto</option><option value="quote">Preventivo</option><option value="invoice">Fattura</option><option value="technical">Tecnico</option><option value="certificate">Certificato</option><option value="photo">Foto</option><option value="other">Altro</option></select></div>
             <div><Label>URL</Label><Input value={formData.url} onChange={(e) => setFormData({ ...formData, url: e.target.value })} placeholder="https://..." /></div>
             <div><Label>Entita Collegata</Label><select value={formData.entityType} onChange={(e) => setFormData({ ...formData, entityType: e.target.value })} className="h-10 w-full rounded-lg border border-white/10 bg-white/5 px-3 text-sm text-white"><option value="">Nessuna</option><option value="client">Cliente</option><option value="cantiere">Cantiere</option><option value="quote">Preventivo</option><option value="supplier">Fornitore</option></select></div>
             <div><Label>Descrizione</Label><Input value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} /></div>
