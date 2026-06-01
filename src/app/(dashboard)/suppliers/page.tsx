@@ -954,7 +954,6 @@ function ChatTab({ orgId, selectedSupplierId, userEmail }: { orgId: Id<"organiza
 
   const ensureChannel = async () => {
     if (!channelId && selectedSupplierId) {
-      const supplier = await (await import("../../../../convex/_generated/api")).default
       try {
         await createChannel({
           organizationId: orgId,

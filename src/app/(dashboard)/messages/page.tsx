@@ -47,6 +47,7 @@ export default function MessagesPage() {
   if (!orgId || !channels) return <PageSkeleton />
 
   const selectedChannel = channels.find((c) => c._id === selectedChannelId)
+  const channelTypeLabel = (t: string) => ({ general: "Generale", project: "Progetto", private: "Privato", announcement: "Annuncio" } as Record<string, string>)[t] || t
 
   return (
     <div className="space-y-0 h-[calc(100vh-8rem)]">
@@ -67,7 +68,7 @@ export default function MessagesPage() {
             <>
               <div className="p-4 border-b border-white/10 flex items-center justify-between">
                 <div className="flex items-center gap-2"><Hash className="w-5 h-5 text-kranely-accent" /><div><h2 className="text-lg font-semibold text-white">{selectedChannel.name}</h2>{selectedChannel.description && <p className="text-xs text-white/40">{selectedChannel.description}</p>}</div></div>
-                <Badge variant={selectedChannel.type === "general" ? "success" : "default"}>{selectedChannel.type}</Badge>
+                <Badge variant={selectedChannel.type === "general" ? "success" : selectedChannel.type === "announcement" ? "warning" : "default"}>{channelTypeLabel(selectedChannel.type)}</Badge>
               </div>
               <div className="flex-1 overflow-y-auto p-4 space-y-4">
                 {messages && messages.length > 0 ? messages.map((msg) => (
