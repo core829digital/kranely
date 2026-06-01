@@ -128,8 +128,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         _id: result._id,
       }
       setUser(u)
-      setSession({ email: u.email, fullName: u.fullName, role: u.role, subrole: u.subrole, organizationId: u.organizationId || "", userId: u.id })
+      const orgIdForCookie = u.organizationId || ""
+      setSession({ email: u.email, fullName: u.fullName, role: u.role, subrole: u.subrole, organizationId: orgIdForCookie, userId: u.id })
       setSessionCookie(u.email)
+      setSessionDataCookie(u.role, orgIdForCookie)
       trackSession({ userEmail: u.email, sessionId: crypto.randomUUID(), event: "sign_in", userAgent: navigator.userAgent })
       setIsLoading(false)
       return true
@@ -161,7 +163,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         phone: phone || undefined,
       })
       if (!result) { setError("Errore registrazione"); setIsLoading(false); return false }
-      return await signIn(email, password)
+      const loginOk = await signIn(email, password)
+      if (!loginOk) {
+        setError("Account creato ma accesso non riuscito. Effettua il login manualmente.")
+        setIsLoading(false)
+      }
+      return loginOk
     } catch (e: any) {
       setError(e.message || "Errore registrazione")
       setIsLoading(false)

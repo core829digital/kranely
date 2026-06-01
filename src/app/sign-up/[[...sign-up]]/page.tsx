@@ -38,7 +38,8 @@ export default function SignUpPage() {
     const success = await signUp(email, password, fullName, role, subrole, phone)
     if (success) {
       toast.success("Account creato con successo")
-      router.push("/dashboard")
+      router.replace("/dashboard")
+      router.refresh()
     } else {
       toast.error(error || "Errore nella registrazione")
     }

@@ -23,7 +23,8 @@ function SignInForm() {
     setError("")
     const success = await signIn(email, password)
     if (success) {
-      router.push("/dashboard")
+      router.replace("/dashboard")
+      router.refresh()
     } else {
       setError("Email o password non corretti")
     }
