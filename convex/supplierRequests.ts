@@ -151,9 +151,14 @@ export const convertToOrder = mutation({
     if (user.role !== "admin" && user.role !== "superadmin") throw new Error("Not authorized")
     const request = await ctx.db.get(args.requestId)
     if (!request) throw new Error("Richiesta non trovata")
+    if (request.organizationId !== args.organizationId) throw new Error("Not found")
+    if (request.supplierId !== args.supplierId) throw new Error("convertToOrder: supplierId does not match request")
+    const supplier = await ctx.db.get(args.supplierId)
+    if (!supplier || supplier.organizationId !== args.organizationId) throw new Error("convertToOrder: supplier not in org")
     if (!request.depositPaymentId) throw new Error("L'acconto deve essere pagato prima di convertire in ordine")
     const depositPayment = await ctx.db.get(request.depositPaymentId)
     if (!depositPayment || depositPayment.status !== "pagato") throw new Error("L'acconto deve essere pagato prima di convertire in ordine")
+    if (depositPayment.organizationId !== args.organizationId) throw new Error("convertToOrder: deposit payment not in org")
 
     const orderId = await ctx.db.insert("supplierOrders", {
       organizationId: args.organizationId,
