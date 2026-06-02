@@ -206,6 +206,81 @@ export const stats = query({
   },
 })
 
+export const getDeliveriesForCantiere = query({
+  args: { cantiereId: v.id("cantieri"), organizationId: v.id("organizations"), userEmail: v.optional(v.string()) },
+  handler: async (ctx, args) => {
+    await assertOrgAccess(ctx, args.userEmail, args.organizationId)
+    const items = await ctx.db
+      .query("supplierDeliveries")
+      .withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId))
+      .collect()
+    return items
+      .filter((d) => d.cantiereId === args.cantiereId)
+      .sort((a, b) => b._creationTime - a._creationTime)
+  },
+})
+
+export const confirmByClient = mutation({
+  args: {
+    deliveryId: v.id("supplierDeliveries"),
+    organizationId: v.id("organizations"),
+    userEmail: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
+    const delivery = await ctx.db.get(args.deliveryId)
+    if (!delivery || delivery.organizationId !== args.organizationId) throw new Error("Consegna non trovata")
+
+    if (delivery.cantiereId) {
+      const cantiere = await ctx.db.get(delivery.cantiereId)
+      if (!cantiere) throw new Error("Cantiere non trovato")
+      const clientDoc = await ctx.db
+        .query("clients")
+        .withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId))
+        .filter((q: any) => q.eq(q.field("email"), user.email))
+        .first()
+      if (!clientDoc || cantiere.clientId !== clientDoc._id) {
+        throw new Error("Accesso negato: puoi confermare solo consegne dei tuoi cantieri")
+      }
+    }
+
+    await ctx.db.patch(args.deliveryId, {
+      status: "consegnato",
+      deliveryDate: new Date().toISOString().split("T")[0],
+      confirmedArrival: user.email,
+    })
+
+    if (delivery.orderId) {
+      await ctx.db.patch(delivery.orderId, { status: "delivered" })
+    }
+    if (delivery.cantiereId) {
+      const allDeliveries = await ctx.db
+        .query("supplierDeliveries")
+        .withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId))
+        .collect()
+      const allDone = allDeliveries
+        .filter((d) => d.cantiereId === delivery.cantiereId)
+        .every((d) => d._id === args.deliveryId || (d as any).status === "consegnato" || d.status === "consegnato")
+      const cantiere = await ctx.db.get(delivery.cantiereId)
+      if (cantiere && cantiere.status !== "completato") {
+        await ctx.db.patch(delivery.cantiereId, { status: allDone ? "completato" : "in_corso" })
+      }
+    }
+
+    await ctx.db.insert("activityLog", {
+      organizationId: args.organizationId,
+      userEmail: args.userEmail || "system",
+      action: "updated",
+      entityType: "supplierDelivery",
+      entityId: args.deliveryId,
+      entityName: delivery.description,
+      details: `Consegna "${delivery.description}" confermata dal cliente`,
+    })
+
+    return args.deliveryId
+  },
+})
+
 export const listByProduction = query({
   args: { productionId: v.id("supplierProduction"), organizationId: v.id("organizations"), userEmail: v.optional(v.string()) },
   handler: async (ctx, args) => {

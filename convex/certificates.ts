@@ -14,6 +14,18 @@ export const list = query({
     const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
     let filtered = await ctx.db.query("certificates").withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId)).collect()
     filtered = filtered.sort((a, b) => b._creationTime - a._creationTime)
+    const isCwa = user.role === "admin" || user.role === "superadmin"
+    if (!isCwa && user.role !== "anonymous") {
+      if (user.role === "collaborator") {
+        const collabDoc = await ctx.db.query("collaborators").withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId)).filter((q: any) => q.eq(q.field("email"), user.email)).first()
+        if (collabDoc) filtered = filtered.filter((c) => c.collaboratorId === collabDoc._id || c.createdById === user.userId); else filtered = []
+      } else if (user.role === "client") {
+        const clientDoc = await ctx.db.query("clients").withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId)).filter((q: any) => q.eq(q.field("email"), user.email)).first()
+        if (clientDoc) filtered = filtered.filter((c) => c.clientId === clientDoc._id); else filtered = []
+      } else {
+        filtered = []
+      }
+    }
     if (args.cantiereId) filtered = filtered.filter((c) => c.cantiereId === args.cantiereId)
     if (args.collaboratorId) filtered = filtered.filter((c) => c.collaboratorId === args.collaboratorId)
     if (args.category && args.category !== "all") filtered = filtered.filter((c) => c.category === args.category)

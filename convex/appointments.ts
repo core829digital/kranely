@@ -14,6 +14,18 @@ export const list = query({
     const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
     let filtered = await ctx.db.query("appointments").withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId)).collect()
     filtered = filtered.sort((a, b) => b._creationTime - a._creationTime)
+    const isAwa = user.role === "admin" || user.role === "superadmin"
+    if (!isAwa && user.role !== "anonymous") {
+      if (user.role === "client") {
+        const clientDoc = await ctx.db.query("clients").withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId)).filter((q: any) => q.eq(q.field("email"), user.email)).first()
+        if (clientDoc) filtered = filtered.filter((a) => a.clientId === clientDoc._id || a.email === user.email); else filtered = filtered.filter((a) => a.email === user.email)
+      } else if (user.role === "collaborator") {
+        const collabDoc = await ctx.db.query("collaborators").withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId)).filter((q: any) => q.eq(q.field("email"), user.email)).first()
+        if (collabDoc) filtered = filtered.filter((a) => a.collaboratorId === collabDoc._id); else filtered = []
+      } else {
+        filtered = filtered.filter((a) => a.email === user.email)
+      }
+    }
     if (args.date) filtered = filtered.filter((a) => a.appointmentDate === args.date)
     if (args.email) filtered = filtered.filter((a) => a.email === args.email)
 

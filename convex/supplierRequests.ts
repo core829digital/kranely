@@ -18,6 +18,13 @@ export const list = query({
     if (args.supplierId) filtered = filtered.filter((r) => r.supplierId === args.supplierId)
     if (args.status && args.status !== "all") filtered = filtered.filter((r) => r.status === args.status)
 
+    if (!isRwa && user.role !== "anonymous") {
+      filtered = filtered.map((r) => ({
+        ...r,
+        platformMarginPrice: undefined,
+      }))
+    }
+
     return filtered
   },
 })

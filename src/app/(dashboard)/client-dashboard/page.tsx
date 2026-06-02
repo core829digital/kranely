@@ -1,19 +1,24 @@
 "use client"
 
+import { useState } from "react"
 import { useAuth } from "@/lib/auth/auth-context"
-import { FileText, Building2, CreditCard, CheckCircle2, Clock, AlertCircle, MessageSquare, Eye, Euro, TrendingUp, AlertTriangle } from "lucide-react"
+import { FileText, Building2, CreditCard, CheckCircle2, Clock, AlertCircle, MessageSquare, Eye, Euro, TrendingUp, AlertTriangle, Package, Truck, Factory } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { useQuery } from "convex/react"
+import { useQuery, useMutation } from "convex/react"
 import { api } from "../../../../convex/_generated/api"
 import Link from "next/link"
 import { useOrgId } from "@/hooks/useOrgId"
 import { PageSkeleton } from "@/components/Skeletons"
+import { toast } from "sonner"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 
 export default function ClientDashboardPage() {
   const { user } = useAuth()
   const orgId = useOrgId()
+  const [confirmDelivery, setConfirmDelivery] = useState<any>(null)
+  const confirmDeliveryMut = useMutation(api.supplierDeliveries.confirmByClient)
 
   const clientData = useQuery(
     api.clientDashboard.getClientDashboard,
@@ -40,7 +45,16 @@ export default function ClientDashboardPage() {
     )
   }
 
-  const { client, cantieri, payments, quotes, documents, budget } = clientData
+  const { client, cantieri, payments, quotes, documents, budget, supplierTracking } = clientData
+
+  const handleConfirmDelivery = async () => {
+    if (!confirmDelivery) return
+    try {
+      await confirmDeliveryMut({ deliveryId: confirmDelivery._id, organizationId: orgId, userEmail: user?.email })
+      toast.success("Consegna confermata con successo")
+      setConfirmDelivery(null)
+    } catch (e: any) { toast.error(e.message || "Errore nella conferma") }
+  }
 
   return (
     <div className="space-y-6">
@@ -237,6 +251,64 @@ export default function ClientDashboardPage() {
         </div>
       </div>
 
+      {supplierTracking && (supplierTracking.orders.length > 0 || supplierTracking.deliveries.length > 0) && (
+        <div className="rounded-xl border border-white/10 bg-white/[0.02] p-6">
+          <div className="flex items-center gap-3 mb-4">
+            <Package className="w-5 h-5 text-violet-400" />
+            <h3 className="text-white font-semibold">Stato Fornitori</h3>
+          </div>
+
+          {supplierTracking.orders.map((o: any) => (
+            <div key={o._id} className="flex items-center justify-between py-2 border-b border-white/5 last:border-0">
+              <div className="flex-1">
+                <p className="text-sm text-white font-medium">{o.description || o.orderNumber || "Ordine"}</p>
+                <p className="text-xs text-white/40">{o.expectedDelivery ? `Prevista: ${o.expectedDelivery}` : ""}</p>
+              </div>
+              <Badge className={
+                o.status === "delivered" ? "bg-green-500/20 text-green-400" :
+                o.status === "shipped" ? "bg-cyan-500/20 text-cyan-400" :
+                o.status === "in_production" ? "bg-purple-500/20 text-purple-400" :
+                o.status === "confirmed" ? "bg-blue-500/20 text-blue-400" :
+                "bg-yellow-500/20 text-yellow-400"
+              }>
+                {o.status === "delivered" ? "Consegnato" : o.status === "shipped" ? "Spedito" : o.status === "in_production" ? "In Produzione" : o.status === "confirmed" ? "Confermato" : "In Attesa"}
+              </Badge>
+            </div>
+          ))}
+
+          {supplierTracking.deliveries.map((d: any) => (
+            <div key={d._id} className="flex items-center justify-between py-2 border-b border-white/5 last:border-0">
+              <div className="flex-1">
+                <p className="text-sm text-white font-medium">{d.description || "Consegna"}</p>
+                <p className="text-xs text-white/40">
+                  {d.expectedDate ? new Date(d.expectedDate).toLocaleDateString("it-IT") : ""}
+                  {d.deliveryDate ? ` — Effettuata: ${new Date(d.deliveryDate).toLocaleDateString("it-IT")}` : ""}
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Badge className={
+                  d.status === "consegnato" ? "bg-green-500/20 text-green-400" :
+                  d.status === "in_transito" ? "bg-blue-500/20 text-blue-400" :
+                  d.status === "partito" ? "bg-cyan-500/20 text-cyan-400" :
+                  "bg-yellow-500/20 text-yellow-400"
+                }>
+                  {d.status === "consegnato" ? "Consegnato" : d.status === "in_transito" ? "In Transito" : d.status === "partito" ? "Partito" : "Pianificato"}
+                </Badge>
+                {d.status !== "consegnato" && (
+                  <Button
+                    size="sm"
+                    className="bg-green-600 hover:bg-green-700 text-white h-7 text-xs"
+                    onClick={() => setConfirmDelivery(d)}
+                  >
+                    <CheckCircle2 className="w-3 h-3 mr-1" />Conferma
+                  </Button>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
       <div className="rounded-xl border border-white/10 bg-white/[0.02] p-6">
         <div className="flex items-center gap-3 mb-4">
           <MessageSquare className="w-5 h-5 text-kranely-accent" />
@@ -249,6 +321,25 @@ export default function ClientDashboardPage() {
           </Button>
         </Link>
       </div>
+
+      <Dialog open={!!confirmDelivery} onOpenChange={(open) => !open && setConfirmDelivery(null)}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Conferma Ricezione</DialogTitle></DialogHeader>
+          <div className="py-4">
+            <p className="text-white/80">Confermi di aver ricevuto la seguente consegna?</p>
+            <p className="text-white font-medium mt-2">{confirmDelivery?.description || "Consegna"}</p>
+            {confirmDelivery?.expectedDate && (
+              <p className="text-sm text-white/60">Prevista il: {new Date(confirmDelivery.expectedDate).toLocaleDateString("it-IT")}</p>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConfirmDelivery(null)} className="border-white/10">Annulla</Button>
+            <Button onClick={handleConfirmDelivery} className="bg-green-600 hover:bg-green-700 text-white">
+              <CheckCircle2 className="w-4 h-4 mr-2" />Conferma Ricevuta
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

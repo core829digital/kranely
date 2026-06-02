@@ -19,6 +19,13 @@ export const list = query({
     const isAdmin = requestingUser.role === "admin" || requestingUser.role === "superadmin"
     if (!isAdmin && requestingUser.role !== "anonymous") {
       filtered = filtered.filter((c) => c.email === requestingUser.email)
+      filtered = filtered.map((c) => ({
+        ...c,
+        hourlyRate: undefined,
+        dailyRate: undefined,
+        salary: undefined,
+        iban: undefined,
+      }))
     }
 
     return filtered

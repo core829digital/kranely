@@ -14,6 +14,23 @@ export const list = query({
     const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
     let filtered = await ctx.db.query("cantieri").withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId)).collect()
     filtered = filtered.sort((a, b) => b._creationTime - a._creationTime)
+    const isCwa = user.role === "admin" || user.role === "superadmin"
+    if (!isCwa && user.role !== "anonymous") {
+      if (user.role === "client") {
+        const clientDoc = await ctx.db.query("clients").withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId)).filter((q: any) => q.eq(q.field("email"), user.email)).first()
+        if (clientDoc) filtered = filtered.filter((c) => c.clientId === clientDoc._id); else filtered = []
+      } else if (user.role === "collaborator") {
+        const collabDoc = await ctx.db.query("collaborators").withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId)).filter((q: any) => q.eq(q.field("email"), user.email)).first()
+        if (collabDoc) {
+          const assigned = new Set(collabDoc.assignedCantieri || [])
+          filtered = filtered.filter((c) => assigned.has(c._id) || c.managerId === user.userId)
+        } else {
+          filtered = []
+        }
+      } else {
+        filtered = []
+      }
+    }
     if (args.clientId) filtered = filtered.filter((c) => c.clientId === args.clientId)
     if (args.search) {
       const s = args.search.toLowerCase()
@@ -21,15 +38,42 @@ export const list = query({
     }
     if (args.status && args.status !== "all") filtered = filtered.filter((c) => c.status === args.status)
 
+    if (!isCwa && user.role !== "anonymous") {
+      filtered = filtered.map((c) => ({
+        ...c,
+        totalBudget: undefined,
+      }))
+    }
+
     return filtered
   },
 })
 
 export const get = query({
-  args: { id: v.id("cantieri"), organizationId: v.id("organizations") },
+  args: { id: v.id("cantieri"), organizationId: v.id("organizations"), userEmail: v.optional(v.string()) },
   handler: async (ctx, args) => {
+    const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
     const doc = await ctx.db.get(args.id)
     if (!doc || doc.organizationId !== args.organizationId) throw new Error("Not found")
+    const isCwa = user.role === "admin" || user.role === "superadmin"
+    if (!isCwa && user.role !== "anonymous") {
+      if (user.role === "client") {
+        const clientDoc = await ctx.db.query("clients").withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId)).filter((q: any) => q.eq(q.field("email"), user.email)).first()
+        if (!clientDoc || doc.clientId !== clientDoc._id) throw new Error("Not found")
+      } else if (user.role === "collaborator") {
+        const collabDoc = await ctx.db.query("collaborators").withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId)).filter((q: any) => q.eq(q.field("email"), user.email)).first()
+        const assigned = new Set(collabDoc?.assignedCantieri || [])
+        if (!collabDoc || (!assigned.has(doc._id) && doc.managerId !== user.userId)) throw new Error("Not found")
+      } else {
+        throw new Error("Not found")
+      }
+    }
+    if (!isCwa && user.role !== "anonymous") {
+      return {
+        ...doc,
+        totalBudget: undefined,
+      }
+    }
     return doc
   },
 })

@@ -167,6 +167,31 @@ export const stats = query({
   },
 })
 
+export const getProductionByOrderForClient = query({
+  args: { orderId: v.id("supplierOrders"), organizationId: v.id("organizations"), userEmail: v.optional(v.string()) },
+  handler: async (ctx, args) => {
+    await assertOrgAccess(ctx, args.userEmail, args.organizationId)
+    const records = await ctx.db
+      .query("supplierProduction")
+      .withIndex("by_order", (q) => q.eq("orderId", args.orderId))
+      .collect()
+    return records.map((r) => ({
+      _id: r._id,
+      _creationTime: r._creationTime,
+      orderId: r.orderId,
+      description: r.description,
+      quantity: r.quantity,
+      completed: r.completed,
+      phase: r.phase,
+      status: r.status,
+      startedDate: r.startedDate,
+      completedDate: r.completedDate,
+      estimatedCompletion: r.estimatedCompletion,
+      progressPercentage: r.progressPercentage,
+    }))
+  },
+})
+
 export const canEdit = query({
   args: { userEmail: v.string(), supplierId: v.id("suppliers") },
   handler: async (ctx, args) => {

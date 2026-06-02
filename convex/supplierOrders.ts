@@ -193,6 +193,29 @@ export const remove = mutation({
   },
 })
 
+export const getOrdersForCantiere = query({
+  args: { cantiereId: v.id("cantieri"), organizationId: v.id("organizations"), userEmail: v.optional(v.string()) },
+  handler: async (ctx, args) => {
+    await assertOrgAccess(ctx, args.userEmail, args.organizationId)
+    const orders = await ctx.db
+      .query("supplierOrders")
+      .withIndex("by_cantiere", (q) => q.eq("cantiereId", args.cantiereId))
+      .collect()
+    return orders.map((o) => ({
+      _id: o._id,
+      _creationTime: o._creationTime,
+      supplierId: o.supplierId,
+      orderNumber: o.orderNumber,
+      description: o.description,
+      status: o.status,
+      expectedDelivery: o.expectedDelivery,
+      deliveryDate: o.deliveryDate,
+      notes: o.notes,
+      cantiereId: o.cantiereId,
+    }))
+  },
+})
+
 export const stats = query({
   args: { organizationId: v.id("organizations"), userEmail: v.optional(v.string()) },
   handler: async (ctx, args) => {

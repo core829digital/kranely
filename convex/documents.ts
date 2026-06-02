@@ -13,6 +13,15 @@ export const list = query({
     const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
     let filtered = await ctx.db.query("documents").withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId)).collect()
     filtered = filtered.sort((a, b) => b._creationTime - a._creationTime)
+    const isDwa = user.role === "admin" || user.role === "superadmin"
+    if (!isDwa && user.role !== "anonymous") {
+      if (user.role === "client") {
+        const clientDoc = await ctx.db.query("clients").withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId)).filter((q: any) => q.eq(q.field("email"), user.email)).first()
+        if (clientDoc) filtered = filtered.filter((d) => d.clientId === clientDoc._id); else filtered = []
+      } else {
+        filtered = filtered.filter((d) => d.sharedWith?.includes(user.email))
+      }
+    }
     if (args.cantiereId) filtered = filtered.filter((d) => d.cantiereId === args.cantiereId)
     if (args.clientId) filtered = filtered.filter((d) => d.clientId === args.clientId)
     if (args.quoteId) filtered = filtered.filter((d) => d.quoteId === args.quoteId)
