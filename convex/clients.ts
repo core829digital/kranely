@@ -114,10 +114,16 @@ export const list = query({
 })
 
 export const get = query({
-  args: { id: v.id("clients"), organizationId: v.id("organizations") },
+  args: { id: v.id("clients"), organizationId: v.id("organizations"), userEmail: v.optional(v.string()) },
   handler: async (ctx, args) => {
+    const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
     const doc = await ctx.db.get(args.id)
     if (!doc || doc.organizationId !== args.organizationId) throw new Error("Not found")
+    const isAdmin = user.role === "admin" || user.role === "superadmin"
+    if (!isAdmin && user.role !== "anonymous") {
+      if (user.role === "client" && doc.email !== user.email) throw new Error("Not found")
+      else if (user.role !== "client") throw new Error("Not found")
+    }
     return doc
   },
 })

@@ -6,6 +6,8 @@ export const list = query({
   args: { organizationId: v.id("organizations"), category: v.optional(v.string()), userEmail: v.optional(v.string()) },
   handler: async (ctx, args) => {
     const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
+    const isAdmin = user.role === "admin" || user.role === "superadmin"
+    if (!isAdmin) return []
     let filtered = await ctx.db.query("jobTitles").withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId)).collect()
     filtered = filtered.sort((a, b) => b._creationTime - a._creationTime)
     if (args.category && args.category !== "all") filtered = filtered.filter((j) => j.category === args.category)
@@ -14,8 +16,11 @@ export const list = query({
 })
 
 export const get = query({
-  args: { id: v.id("jobTitles"), organizationId: v.id("organizations") },
+  args: { id: v.id("jobTitles"), organizationId: v.id("organizations"), userEmail: v.optional(v.string()) },
   handler: async (ctx, args) => {
+    const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
+    const isAdmin = user.role === "admin" || user.role === "superadmin"
+    if (!isAdmin) throw new Error("Not found")
     const doc = await ctx.db.get(args.id)
     if (!doc || doc.organizationId !== args.organizationId) throw new Error("Not found")
     return doc

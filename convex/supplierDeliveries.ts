@@ -32,10 +32,22 @@ export const list = query({
 })
 
 export const get = query({
-  args: { id: v.id("supplierDeliveries"), organizationId: v.id("organizations") },
+  args: { id: v.id("supplierDeliveries"), organizationId: v.id("organizations"), userEmail: v.optional(v.string()) },
   handler: async (ctx, args) => {
+    const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
     const doc = await ctx.db.get(args.id)
     if (!doc || doc.organizationId !== args.organizationId) throw new Error("Not found")
+    const isAdmin = user.role === "admin" || user.role === "superadmin"
+    if (!isAdmin && user.role !== "anonymous") {
+      if (user.role === "driver") {
+        if (doc.driverId !== user.userId) throw new Error("Not found")
+      } else if (user.role === "supplier") {
+        const supplierDoc = await ctx.db.query("suppliers").withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId)).filter((q: any) => q.eq(q.field("email"), user.email)).first()
+        if (!supplierDoc || doc.supplierId !== supplierDoc._id) throw new Error("Not found")
+      } else {
+        throw new Error("Not found")
+      }
+    }
     return doc
   },
 })
