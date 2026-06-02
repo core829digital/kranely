@@ -75,6 +75,12 @@ export const create = mutation({
   },
   handler: async (ctx, args) => {
     const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
+    const isAdmin = user.role === "admin" || user.role === "superadmin"
+    if (!isAdmin && user.role !== "supplier") throw new Error("Not authorized")
+    if (!isAdmin) {
+      const supplierDoc = await ctx.db.query("suppliers").withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId)).filter((q: any) => q.eq(q.field("email"), user.email)).first()
+      if (!supplierDoc || supplierDoc._id !== args.supplierId) throw new Error("Not authorized: suppliers can only create their own deliveries")
+    }
     const { ...rest } = args
     const id = await ctx.db.insert("supplierDeliveries", { ...rest, status: args.status || "pending" })
 
@@ -125,9 +131,20 @@ export const update = mutation({
     userEmail: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await assertOrgAccess(ctx, args.userEmail, args.organizationId)
+    const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
+    const isAdmin = user.role === "admin" || user.role === "superadmin"
+    const isDriver = user.role === "driver" && user.userId
+    if (!isAdmin && !isDriver && user.role !== "supplier") throw new Error("Not authorized")
     const prev = await ctx.db.get(args.id)
     if (!prev || prev.organizationId !== args.organizationId) throw new Error("Not found")
+    if (!isAdmin) {
+      if (isDriver) {
+        if (prev.driverId !== user.userId) throw new Error("Not authorized: drivers can only update their assigned deliveries")
+      } else {
+        const supplierDoc = await ctx.db.query("suppliers").withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId)).filter((q: any) => q.eq(q.field("email"), user.email)).first()
+        if (!supplierDoc || supplierDoc._id !== prev.supplierId) throw new Error("Not authorized: suppliers can only update their own deliveries")
+      }
+    }
     const { userEmail, ...data } = args
     await ctx.db.patch(args.id, data)
 
@@ -181,6 +198,7 @@ export const remove = mutation({
   args: { id: v.id("supplierDeliveries"), organizationId: v.id("organizations"), userEmail: v.optional(v.string()) },
   handler: async (ctx, args) => {
     const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
+    if (user.role !== "admin" && user.role !== "superadmin") throw new Error("Not authorized")
     const delivery = await ctx.db.get(args.id)
     if (!delivery || delivery.organizationId !== args.organizationId) throw new Error("Not found")
     await ctx.db.delete(args.id)

@@ -64,6 +64,12 @@ export const create = mutation({
   },
   handler: async (ctx, args) => {
     const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
+    const isAdmin = user.role === "admin" || user.role === "superadmin"
+    if (!isAdmin && user.role !== "supplier") throw new Error("Not authorized")
+    if (!isAdmin) {
+      const supplierDoc = await ctx.db.query("suppliers").withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId)).filter((q: any) => q.eq(q.field("email"), user.email)).first()
+      if (!supplierDoc || supplierDoc._id !== args.supplierId) throw new Error("Not authorized: suppliers can only create their own orders")
+    }
     const { userEmail, ...rest } = args
     const id = await ctx.db.insert("supplierOrders", { ...rest, status: args.status || "pending" })
 
@@ -94,10 +100,16 @@ export const update = mutation({
     notes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await assertOrgAccess(ctx, args.userEmail, args.organizationId)
+    const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
+    const isAdmin = user.role === "admin" || user.role === "superadmin"
+    if (!isAdmin && user.role !== "supplier") throw new Error("Not authorized")
     const { id, organizationId, userEmail, ...data } = args
     const prev = await ctx.db.get(id)
     if (!prev || prev.organizationId !== organizationId) throw new Error("Ordine non trovato")
+    if (!isAdmin) {
+      const supplierDoc = await ctx.db.query("suppliers").withIndex("by_organization", (q) => q.eq("organizationId", organizationId)).filter((q: any) => q.eq(q.field("email"), user.email)).first()
+      if (!supplierDoc || supplierDoc._id !== prev.supplierId) throw new Error("Not authorized: suppliers can only update their own orders")
+    }
     await ctx.db.patch(id, data)
 
     await ctx.db.insert("activityLog", {
@@ -183,7 +195,8 @@ export const update = mutation({
 export const remove = mutation({
   args: { id: v.id("supplierOrders"), organizationId: v.id("organizations"), userEmail: v.optional(v.string()) },
   handler: async (ctx, args) => {
-    await assertOrgAccess(ctx, args.userEmail, args.organizationId)
+    const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
+    if (user.role !== "admin" && user.role !== "superadmin") throw new Error("Not authorized")
     const order = await ctx.db.get(args.id)
     if (!order || order.organizationId !== args.organizationId) throw new Error("Supplier order not found")
     await ctx.db.delete(args.id)
