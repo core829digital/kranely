@@ -41,7 +41,7 @@ test.describe("Marketing public pages", () => {
   test("all marketing pages have an <h1>", async ({ page }) => {
     const paths = ["/", "/about", "/services", "/pricing", "/contact", "/blog", "/calculator", "/reviews"]
     for (const path of paths) {
-      await page.goto(path)
+      await page.goto(path, { waitUntil: "networkidle" })
       const h1 = await page.locator("h1").count()
       expect(h1, `page ${path} should have exactly one h1, found ${h1}`).toBeGreaterThanOrEqual(1)
     }

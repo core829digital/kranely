@@ -10,6 +10,17 @@ export const list = query({
     const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
     let filtered = await ctx.db.query("supplierDeliveries").withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId)).collect()
     filtered = filtered.sort((a, b) => b._creationTime - a._creationTime)
+    const isDwa = user.role === "admin" || user.role === "superadmin"
+    if (!isDwa && user.role !== "anonymous") {
+      if (user.role === "driver" && user.userId) {
+        filtered = filtered.filter((d) => d.driverId === user.userId)
+      } else if (user.role === "supplier") {
+        const supplierDoc = await ctx.db.query("suppliers").withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId)).filter((q: any) => q.eq(q.field("email"), user.email)).first()
+        if (supplierDoc) filtered = filtered.filter((d) => d.supplierId === supplierDoc._id); else filtered = []
+      } else {
+        filtered = []
+      }
+    }
     if (args.supplierId) filtered = filtered.filter((d) => d.supplierId === args.supplierId)
     if (args.cantiereId) filtered = filtered.filter((d) => d.cantiereId === args.cantiereId)
     if (args.orderId) filtered = filtered.filter((d) => d.orderId === args.orderId)

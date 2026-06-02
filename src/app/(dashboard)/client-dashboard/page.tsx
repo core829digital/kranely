@@ -25,9 +25,9 @@ export default function ClientDashboardPage() {
   if (!clientData) {
     return (
       <div className="space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold text-white">Area Cliente</h1>
-          <p className="text-white/60 mt-1">Benvenuto, {user.fullName || user.email}</p>
+        <div className="relative overflow-hidden rounded-xl bg-gradient-to-r from-teal-500/20 via-teal-500/10 to-transparent border border-teal-500/20 p-6">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-teal-500/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+          <div className="relative"><h1 className="text-2xl font-bold text-white">Area Cliente</h1><p className="text-white/60 mt-1">Benvenuto, {user.fullName || user.email}</p></div>
         </div>
         <div className="rounded-xl border border-white/10 bg-white/[0.02] p-12 text-center">
           <Building2 className="w-16 h-16 mx-auto mb-4 text-white/20" />
@@ -44,18 +44,21 @@ export default function ClientDashboardPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-white">Area Cliente</h1>
-        <p className="text-white/60 mt-1">Benvenuto, {client.fullName || user.email}</p>
+      <div className="relative overflow-hidden rounded-xl bg-gradient-to-r from-teal-500/20 via-teal-500/10 to-transparent border border-teal-500/20 p-6">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-teal-500/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+        <div className="relative flex items-center justify-between">
+          <div><h1 className="text-2xl font-bold text-white">Area Cliente</h1><p className="text-white/60 mt-1">Benvenuto, {client.fullName || user.email} — i tuoi cantieri, preventivi e pagamenti</p></div>
+          <div className="w-10 h-10 rounded-lg bg-teal-500/15 flex items-center justify-center"><span className="text-lg text-teal-400">◆</span></div>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card className="bg-white/[0.02] border-white/10">
           <CardHeader className="pb-2 flex flex-row items-center justify-between">
             <CardTitle className="text-sm text-white/60">Cantieri Attivi</CardTitle>
-            <Building2 className="w-4 h-4 text-blue-400" />
+            <Building2 className="w-4 h-4 text-teal-400" />
           </CardHeader>
-          <CardContent><p className="text-3xl font-bold text-blue-400">{cantieri.active}</p></CardContent>
+          <CardContent><p className="text-3xl font-bold text-teal-400">{cantieri.active}</p></CardContent>
         </Card>
         <Card className="bg-white/[0.02] border-white/10">
           <CardHeader className="pb-2 flex flex-row items-center justify-between">
@@ -67,9 +70,9 @@ export default function ClientDashboardPage() {
         <Card className="bg-white/[0.02] border-white/10">
           <CardHeader className="pb-2 flex flex-row items-center justify-between">
             <CardTitle className="text-sm text-white/60">Preventivi</CardTitle>
-            <FileText className="w-4 h-4 text-kranely-accent" />
+            <FileText className="w-4 h-4 text-cyan-400" />
           </CardHeader>
-          <CardContent><p className="text-3xl font-bold text-kranely-accent">{quotes.total}</p></CardContent>
+          <CardContent><p className="text-3xl font-bold text-cyan-400">{quotes.total}</p></CardContent>
         </Card>
         <Card className="bg-white/[0.02] border-white/10">
           <CardHeader className="pb-2 flex flex-row items-center justify-between">

@@ -14,6 +14,11 @@ export const list = query({
     const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
     let filtered = await ctx.db.query("quotes").withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId)).collect()
     filtered = filtered.sort((a, b) => b._creationTime - a._creationTime)
+    const isQwa = user.role === "admin" || user.role === "superadmin"
+    if (!isQwa && user.role !== "anonymous" && user.role === "client") {
+      const clientDoc = await ctx.db.query("clients").withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId)).filter((q: any) => q.eq(q.field("email"), user.email)).first()
+      if (clientDoc) filtered = filtered.filter((q) => q.clientId === clientDoc._id); else filtered = []
+    }
     if (args.clientId) filtered = filtered.filter((q) => q.clientId === args.clientId)
     if (args.search) {
       const s = args.search.toLowerCase()
@@ -265,10 +270,16 @@ export const stats = query({
   args: { organizationId: v.id("organizations"), userEmail: v.optional(v.string()) },
   handler: async (ctx, args) => {
     const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
-    const quotes = await ctx.db
+    let quotes = await ctx.db
       .query("quotes")
       .withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId))
       .collect()
+
+    const isQwa = user.role === "admin" || user.role === "superadmin"
+    if (!isQwa && user.role !== "anonymous" && user.role === "client") {
+      const clientDoc = await ctx.db.query("clients").withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId)).filter((q: any) => q.eq(q.field("email"), user.email)).first()
+      if (clientDoc) quotes = quotes.filter((q) => q.clientId === clientDoc._id); else quotes = []
+    }
 
     return {
       total: quotes.length,

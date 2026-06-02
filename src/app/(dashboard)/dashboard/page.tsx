@@ -86,13 +86,16 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-8">
-      <div className="flex items-center justify-between">
-        <div><h1 className="text-2xl md:text-3xl font-bold text-white">Bentornato, {user?.fullName?.split(" ")[0] || "Utente"}</h1><p className="text-white/60 mt-1">
-          {user?.role === "client" ? "Ecco i tuoi cantieri e pagamenti" :
-           user?.role === "supplier" ? "Ecco lo stato dei tuoi ordini" :
-           "Ecco un riepilogo della tua attivita"}
-        </p></div>
-        <Badge variant="success" className="text-xs"><span className="w-1.5 h-1.5 rounded-full bg-green-400 mr-1.5 animate-pulse" /> Online</Badge>
+      <div className="relative overflow-hidden rounded-xl bg-gradient-to-r from-[#FFC703]/20 via-[#FFC703]/10 to-transparent border border-[#FFC703]/20 p-6">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-[#FFC703]/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+        <div className="relative flex items-center justify-between">
+          <div><h1 className="text-2xl md:text-3xl font-bold text-white">Bentornato, {user?.fullName?.split(" ")[0] || "Utente"}</h1><p className="text-white/60 mt-1">
+            {user?.role === "client" ? "Ecco i tuoi cantieri e pagamenti" :
+             user?.role === "supplier" ? "Ecco lo stato dei tuoi ordini" :
+             "Panoramica esecutiva — clienti, fornitori, cantieri e team"}
+          </p></div>
+          <div className="flex items-center gap-2"><Badge variant="success" className="text-xs"><span className="w-1.5 h-1.5 rounded-full bg-green-400 mr-1.5 animate-pulse" /> Online</Badge><div className="w-10 h-10 rounded-lg bg-[#FFC703]/15 flex items-center justify-center"><span className="text-lg">★</span></div></div>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

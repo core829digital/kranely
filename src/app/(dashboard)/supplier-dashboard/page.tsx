@@ -49,14 +49,12 @@ export default function SupplierDashboardPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-white">Dashboard Fornitore</h1>
-          <p className="text-white/60 mt-1">{user.fullName || user.email}</p>
+      <div className="relative overflow-hidden rounded-xl bg-gradient-to-r from-violet-500/20 via-violet-500/10 to-transparent border border-violet-500/20 p-6">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-violet-500/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+        <div className="relative flex items-center justify-between">
+          <div><h1 className="text-2xl font-bold text-white">Dashboard Fornitore</h1><p className="text-white/60 mt-1">{user.fullName || user.email} — produzione, ordini e consegne</p></div>
+          <div className="flex items-center gap-2"><div className="w-10 h-10 rounded-lg bg-violet-500/15 flex items-center justify-center"><span className="text-lg text-violet-400">◈</span></div><Button onClick={() => setShowQuoteRequest(true)} className="bg-kranely-accent text-kranely-app-bg"><Send className="w-4 h-4 mr-2" />Richiedi Preventivo</Button></div>
         </div>
-        <Button onClick={() => setShowQuoteRequest(true)} className="bg-kranely-accent text-kranely-app-bg">
-          <Send className="w-4 h-4 mr-2" />Richiedi Preventivo
-        </Button>
       </div>
 
       <Tabs defaultValue="produzione" className="space-y-6">
@@ -72,7 +70,7 @@ export default function SupplierDashboardPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
             <Card className="bg-white/[0.02] border-white/10">
               <CardHeader className="pb-2"><CardTitle className="text-sm text-white/60">In Produzione</CardTitle></CardHeader>
-              <CardContent><p className="text-3xl font-bold text-kranely-accent">{inProduction.filter((p) => p.status === "in_progress").length}</p></CardContent>
+              <CardContent><p className="text-3xl font-bold text-violet-400">{inProduction.filter((p) => p.status === "in_progress").length}</p></CardContent>
             </Card>
             <Card className="bg-white/[0.02] border-white/10">
               <CardHeader className="pb-2"><CardTitle className="text-sm text-white/60">Completati</CardTitle></CardHeader>

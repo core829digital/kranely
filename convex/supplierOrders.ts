@@ -14,6 +14,11 @@ export const list = query({
     const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
     let filtered = await ctx.db.query("supplierOrders").withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId)).collect()
     filtered = filtered.sort((a, b) => b._creationTime - a._creationTime)
+    const isSwa = user.role === "admin" || user.role === "superadmin"
+    if (!isSwa && user.role !== "anonymous" && user.role === "supplier") {
+      const supplierDoc = await ctx.db.query("suppliers").withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId)).filter((q: any) => q.eq(q.field("email"), user.email)).first()
+      if (supplierDoc) filtered = filtered.filter((o) => o.supplierId === supplierDoc._id); else filtered = []
+    }
     if (args.supplierId) filtered = filtered.filter((o) => o.supplierId === args.supplierId)
     if (args.cantiereId) filtered = filtered.filter((o) => o.cantiereId === args.cantiereId)
     if (args.quoteId) filtered = filtered.filter((o) => o.quoteId === args.quoteId)
@@ -192,10 +197,16 @@ export const stats = query({
   args: { organizationId: v.id("organizations"), userEmail: v.optional(v.string()) },
   handler: async (ctx, args) => {
     const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
-    const orders = await ctx.db
+    let orders = await ctx.db
       .query("supplierOrders")
       .withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId))
       .collect()
+
+    const isSwa = user.role === "admin" || user.role === "superadmin"
+    if (!isSwa && user.role !== "anonymous" && user.role === "supplier") {
+      const supplierDoc = await ctx.db.query("suppliers").withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId)).filter((q: any) => q.eq(q.field("email"), user.email)).first()
+      if (supplierDoc) orders = orders.filter((o) => o.supplierId === supplierDoc._id); else orders = []
+    }
 
     return {
       total: orders.length,

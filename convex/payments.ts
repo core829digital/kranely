@@ -14,6 +14,18 @@ export const list = query({
     const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
     let filtered = await ctx.db.query("payments").withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId)).collect()
     filtered = filtered.sort((a, b) => b._creationTime - a._creationTime)
+    const isPwa = user.role === "admin" || user.role === "superadmin"
+    if (!isPwa && user.role !== "anonymous") {
+      if (user.role === "client") {
+        const clientDoc = await ctx.db.query("clients").withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId)).filter((q: any) => q.eq(q.field("email"), user.email)).first()
+        if (clientDoc) filtered = filtered.filter((p) => p.clientId === clientDoc._id); else filtered = []
+      } else if (user.role === "supplier") {
+        const supplierDoc = await ctx.db.query("suppliers").withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId)).filter((q: any) => q.eq(q.field("email"), user.email)).first()
+        if (supplierDoc) filtered = filtered.filter((p) => p.supplierId === supplierDoc._id); else filtered = []
+      } else {
+        filtered = []
+      }
+    }
     if (args.cantiereId) filtered = filtered.filter((p) => p.cantiereId === args.cantiereId)
     if (args.clientId) filtered = filtered.filter((p) => p.clientId === args.clientId)
     if (args.status && args.status !== "all") filtered = filtered.filter((p) => p.status === args.status)
@@ -202,10 +214,23 @@ export const stats = query({
   args: { organizationId: v.id("organizations"), userEmail: v.optional(v.string()) },
   handler: async (ctx, args) => {
     const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
-    const payments = await ctx.db
+    let payments = await ctx.db
       .query("payments")
       .withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId))
       .collect()
+
+    const isPwa = user.role === "admin" || user.role === "superadmin"
+    if (!isPwa && user.role !== "anonymous") {
+      if (user.role === "client") {
+        const clientDoc = await ctx.db.query("clients").withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId)).filter((q: any) => q.eq(q.field("email"), user.email)).first()
+        if (clientDoc) payments = payments.filter((p) => p.clientId === clientDoc._id); else payments = []
+      } else if (user.role === "supplier") {
+        const supplierDoc = await ctx.db.query("suppliers").withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId)).filter((q: any) => q.eq(q.field("email"), user.email)).first()
+        if (supplierDoc) payments = payments.filter((p) => p.supplierId === supplierDoc._id); else payments = []
+      } else {
+        payments = []
+      }
+    }
 
     const incoming = payments.filter((p) => p.type === "client")
     const outgoing = payments.filter((p) => p.type === "supplier" || p.type === "collaborator")

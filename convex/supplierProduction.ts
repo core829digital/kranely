@@ -34,6 +34,11 @@ export const list = query({
   handler: async (ctx, args) => {
     const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
     let items = await ctx.db.query("supplierProduction").withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId)).collect()
+    const isPwa = user.role === "admin" || user.role === "superadmin"
+    if (!isPwa && user.role !== "anonymous" && user.role === "supplier") {
+      const supplierDoc = await ctx.db.query("suppliers").withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId)).filter((q: any) => q.eq(q.field("email"), user.email)).first()
+      if (supplierDoc) items = items.filter((p) => p.supplierId === supplierDoc._id); else items = []
+    }
     if (args.supplierId) items = items.filter((p) => p.supplierId === args.supplierId)
     let filtered = items.sort((a, b) => b._creationTime - a._creationTime)
     if (args.orderId) filtered = filtered.filter((p) => p.orderId === args.orderId)
@@ -142,10 +147,16 @@ export const stats = query({
   args: { organizationId: v.id("organizations"), userEmail: v.optional(v.string()) },
   handler: async (ctx, args) => {
     const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
-    const production = await ctx.db
+    let production = await ctx.db
       .query("supplierProduction")
       .withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId))
       .collect()
+
+    const isPwa = user.role === "admin" || user.role === "superadmin"
+    if (!isPwa && user.role !== "anonymous" && user.role === "supplier") {
+      const supplierDoc = await ctx.db.query("suppliers").withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId)).filter((q: any) => q.eq(q.field("email"), user.email)).first()
+      if (supplierDoc) production = production.filter((p) => p.supplierId === supplierDoc._id); else production = []
+    }
 
     return {
       total: production.length,

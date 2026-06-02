@@ -120,9 +120,12 @@ export default function DriverDashboardPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-white">Dashboard Autista</h1>
-        <p className="text-white/60 mt-1">{user.fullName || user.email}</p>
+      <div className="relative overflow-hidden rounded-xl bg-gradient-to-r from-orange-500/20 via-orange-500/10 to-transparent border border-orange-500/20 p-6">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-orange-500/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+        <div className="relative flex items-center justify-between">
+          <div><h1 className="text-2xl font-bold text-white">Dashboard Autista</h1><p className="text-white/60 mt-1">{user.fullName || user.email} — consegne da gestire</p></div>
+          <div className="w-10 h-10 rounded-lg bg-orange-500/15 flex items-center justify-center"><span className="text-lg text-orange-400">◆</span></div>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -136,9 +139,9 @@ export default function DriverDashboardPage() {
         <Card className="bg-white/[0.02] border-white/10">
           <CardHeader className="pb-2 flex flex-row items-center justify-between">
             <CardTitle className="text-sm text-white/60">In Transito</CardTitle>
-            <Truck className="w-4 h-4 text-blue-400" />
+            <Truck className="w-4 h-4 text-orange-400" />
           </CardHeader>
-          <CardContent><p className="text-3xl font-bold text-blue-400">{inTransit.length}</p></CardContent>
+          <CardContent><p className="text-3xl font-bold text-orange-400">{inTransit.length}</p></CardContent>
         </Card>
         <Card className="bg-white/[0.02] border-white/10">
           <CardHeader className="pb-2 flex flex-row items-center justify-between">
@@ -150,9 +153,9 @@ export default function DriverDashboardPage() {
         <Card className="bg-white/[0.02] border-white/10">
           <CardHeader className="pb-2 flex flex-row items-center justify-between">
             <CardTitle className="text-sm text-white/60">Totale</CardTitle>
-            <Truck className="w-4 h-4 text-kranely-accent" />
+            <Truck className="w-4 h-4 text-amber-400" />
           </CardHeader>
-          <CardContent><p className="text-3xl font-bold text-kranely-accent">{myDeliveries.length}</p></CardContent>
+          <CardContent><p className="text-3xl font-bold text-amber-400">{myDeliveries.length}</p></CardContent>
         </Card>
       </div>
 
