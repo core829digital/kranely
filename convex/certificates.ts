@@ -161,22 +161,35 @@ export const stats = query({
   args: { organizationId: v.id("organizations"), userEmail: v.optional(v.string()) },
   handler: async (ctx, args) => {
     const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
-    const certs = await ctx.db
+    let certItems = await ctx.db
       .query("certificates")
       .withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId))
       .collect()
+
+    const isCwa = user.role === "admin" || user.role === "superadmin"
+    if (!isCwa && user.role !== "anonymous") {
+      if (user.role === "collaborator") {
+        const collabDoc = await ctx.db.query("collaborators").withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId)).filter((q: any) => q.eq(q.field("email"), user.email)).first()
+        if (collabDoc) certItems = certItems.filter((c) => c.collaboratorId === collabDoc._id || c.createdById === user.userId); else certItems = []
+      } else if (user.role === "client") {
+        const clientDoc = await ctx.db.query("clients").withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId)).filter((q: any) => q.eq(q.field("email"), user.email)).first()
+        if (clientDoc) certItems = certItems.filter((c) => c.clientId === clientDoc._id); else certItems = []
+      } else {
+        certItems = []
+      }
+    }
 
     const today = new Date().toISOString().split("T")[0]
     const thirtyDays = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0]
 
     return {
-      total: certs.length,
-      validi: certs.filter((c) => c.status === "valido").length,
-      inScadenza: certs.filter((c) => c.status === "in_scadenza").length,
-      scaduti: certs.filter((c) => c.status === "scaduto").length,
-      inRinnovo: certs.filter((c) => c.status === "in_rinnovo").length,
-      expiringSoon: certs.filter((c) => c.expiryDate && c.expiryDate <= thirtyDays && c.expiryDate >= today).length,
-      expired: certs.filter((c) => c.expiryDate && c.expiryDate < today).length,
+      total: certItems.length,
+      validi: certItems.filter((c) => c.status === "valido").length,
+      inScadenza: certItems.filter((c) => c.status === "in_scadenza").length,
+      scaduti: certItems.filter((c) => c.status === "scaduto").length,
+      inRinnovo: certItems.filter((c) => c.status === "in_rinnovo").length,
+      expiringSoon: certItems.filter((c) => c.expiryDate && c.expiryDate <= thirtyDays && c.expiryDate >= today).length,
+      expired: certItems.filter((c) => c.expiryDate && c.expiryDate < today).length,
     }
   },
 })

@@ -157,20 +157,33 @@ export const stats = query({
   args: { organizationId: v.id("organizations"), userEmail: v.optional(v.string()) },
   handler: async (ctx, args) => {
     const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
-    const appts = await ctx.db
+    let apptItems = await ctx.db
       .query("appointments")
       .withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId))
       .collect()
 
+    const isAwa = user.role === "admin" || user.role === "superadmin"
+    if (!isAwa && user.role !== "anonymous") {
+      if (user.role === "client") {
+        const clientDoc = await ctx.db.query("clients").withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId)).filter((q: any) => q.eq(q.field("email"), user.email)).first()
+        if (clientDoc) apptItems = apptItems.filter((a) => a.clientId === clientDoc._id || a.email === user.email); else apptItems = apptItems.filter((a) => a.email === user.email)
+      } else if (user.role === "collaborator") {
+        const collabDoc = await ctx.db.query("collaborators").withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId)).filter((q: any) => q.eq(q.field("email"), user.email)).first()
+        if (collabDoc) apptItems = apptItems.filter((a) => a.collaboratorId === collabDoc._id); else apptItems = []
+      } else {
+        apptItems = apptItems.filter((a) => a.email === user.email)
+      }
+    }
+
     const today = new Date().toISOString().split("T")[0]
 
     return {
-      total: appts.length,
-      scheduled: appts.filter((a) => a.status === "scheduled").length,
-      completed: appts.filter((a) => a.status === "completed").length,
-      cancelled: appts.filter((a) => a.status === "cancelled").length,
-      upcoming: appts.filter((a) => a.status === "scheduled" && a.appointmentDate >= today).length,
-      today: appts.filter((a) => a.appointmentDate === today).length,
+      total: apptItems.length,
+      scheduled: apptItems.filter((a) => a.status === "scheduled").length,
+      completed: apptItems.filter((a) => a.status === "completed").length,
+      cancelled: apptItems.filter((a) => a.status === "cancelled").length,
+      upcoming: apptItems.filter((a) => a.status === "scheduled" && a.appointmentDate >= today).length,
+      today: apptItems.filter((a) => a.appointmentDate === today).length,
     }
   },
 })

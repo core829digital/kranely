@@ -232,18 +232,36 @@ export const stats = query({
   args: { organizationId: v.id("organizations"), userEmail: v.optional(v.string()) },
   handler: async (ctx, args) => {
     const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
-    const cantieri = await ctx.db
+    let filtered = await ctx.db
       .query("cantieri")
       .withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId))
       .collect()
 
+    const isCwa = user.role === "admin" || user.role === "superadmin"
+    if (!isCwa && user.role !== "anonymous") {
+      if (user.role === "client") {
+        const clientDoc = await ctx.db.query("clients").withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId)).filter((q: any) => q.eq(q.field("email"), user.email)).first()
+        if (clientDoc) filtered = filtered.filter((c) => c.clientId === clientDoc._id); else filtered = []
+      } else if (user.role === "collaborator") {
+        const collabDoc = await ctx.db.query("collaborators").withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId)).filter((q: any) => q.eq(q.field("email"), user.email)).first()
+        if (collabDoc) {
+          const assigned = new Set(collabDoc.assignedCantieri || [])
+          filtered = filtered.filter((c) => assigned.has(c._id) || c.managerId === user.userId)
+        } else {
+          filtered = []
+        }
+      } else {
+        filtered = []
+      }
+    }
+
     return {
-      total: cantieri.length,
-      pianificati: cantieri.filter((c) => c.status === "pianificato").length,
-      inCorso: cantieri.filter((c) => c.status === "in_corso").length,
-      completati: cantieri.filter((c) => c.status === "completato").length,
-      sospesi: cantieri.filter((c) => c.status === "sospeso").length,
-      totalBudget: cantieri.reduce((sum, c) => sum + (c.totalBudget || 0), 0),
+      total: filtered.length,
+      pianificati: filtered.filter((c) => c.status === "pianificato").length,
+      inCorso: filtered.filter((c) => c.status === "in_corso").length,
+      completati: filtered.filter((c) => c.status === "completato").length,
+      sospesi: filtered.filter((c) => c.status === "sospeso").length,
+      totalBudget: isCwa ? filtered.reduce((sum, c) => sum + (c.totalBudget || 0), 0) : 0,
     }
   },
 })

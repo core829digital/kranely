@@ -147,24 +147,34 @@ export const stats = query({
   args: { organizationId: v.id("organizations"), userEmail: v.optional(v.string()) },
   handler: async (ctx, args) => {
     const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
-    const docs = await ctx.db
+    let docItems = await ctx.db
       .query("documents")
       .withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId))
       .collect()
 
+    const isDwa = user.role === "admin" || user.role === "superadmin"
+    if (!isDwa && user.role !== "anonymous") {
+      if (user.role === "client") {
+        const clientDoc = await ctx.db.query("clients").withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId)).filter((q: any) => q.eq(q.field("email"), user.email)).first()
+        if (clientDoc) docItems = docItems.filter((d) => d.clientId === clientDoc._id); else docItems = []
+      } else {
+        docItems = docItems.filter((d) => d.sharedWith?.includes(user.email))
+      }
+    }
+
     return {
-      total: docs.length,
-      draft: docs.filter((d) => d.status === "draft").length,
-      final: docs.filter((d) => d.status === "final").length,
-      archived: docs.filter((d) => d.status === "archived").length,
+      total: docItems.length,
+      draft: docItems.filter((d) => d.status === "draft").length,
+      final: docItems.filter((d) => d.status === "final").length,
+      archived: docItems.filter((d) => d.status === "archived").length,
       byType: {
-        contract: docs.filter((d) => d.type === "contract").length,
-        quote: docs.filter((d) => d.type === "quote").length,
-        invoice: docs.filter((d) => d.type === "invoice").length,
-        technical: docs.filter((d) => d.type === "technical").length,
-        certificate: docs.filter((d) => d.type === "certificate").length,
-        photo: docs.filter((d) => d.type === "photo").length,
-        other: docs.filter((d) => d.type === "other").length,
+        contract: docItems.filter((d) => d.type === "contract").length,
+        quote: docItems.filter((d) => d.type === "quote").length,
+        invoice: docItems.filter((d) => d.type === "invoice").length,
+        technical: docItems.filter((d) => d.type === "technical").length,
+        certificate: docItems.filter((d) => d.type === "certificate").length,
+        photo: docItems.filter((d) => d.type === "photo").length,
+        other: docItems.filter((d) => d.type === "other").length,
       },
     }
   },
