@@ -37,6 +37,7 @@ export const create = mutation({
   },
   handler: async (ctx, args) => {
     const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
+    if (user.role !== "admin" && user.role !== "superadmin") throw new Error("Not authorized")
     const { createdById, ...rest } = args
     const id = await ctx.db.insert("jobTitles", { ...rest, createdById })
     return id
@@ -53,6 +54,7 @@ export const update = mutation({
   },
   handler: async (ctx, args) => {
     const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
+    if (user.role !== "admin" && user.role !== "superadmin") throw new Error("Not authorized")
     const { id, organizationId, ...data } = args
     const prev = await ctx.db.get(id)
     if (!prev || prev.organizationId !== organizationId) throw new Error("Not found")
@@ -76,6 +78,7 @@ export const remove = mutation({
   args: { id: v.id("jobTitles"), organizationId: v.id("organizations"), userEmail: v.optional(v.string()) },
   handler: async (ctx, args) => {
     const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
+    if (user.role !== "admin" && user.role !== "superadmin") throw new Error("Not authorized")
     const doc = await ctx.db.get(args.id)
     if (!doc || doc.organizationId !== args.organizationId) throw new Error("Not found")
     await ctx.db.delete(args.id)

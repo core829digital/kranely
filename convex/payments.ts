@@ -91,6 +91,7 @@ export const create = mutation({
   handler: async (ctx, args) => {
     const { userEmail, ...rest } = args
     const user = await assertOrgAccess(ctx, userEmail, args.organizationId)
+    if (user.role !== "admin" && user.role !== "superadmin") throw new Error("Not authorized")
     const id = await ctx.db.insert("payments", { ...rest, status: args.status || "in_attesa" })
 
     await ctx.db.insert("activityLog", {
@@ -136,6 +137,7 @@ export const update = mutation({
   handler: async (ctx, args) => {
     const { id, organizationId, userEmail, ...data } = args
     const user = await assertOrgAccess(ctx, userEmail, organizationId)
+    if (user.role !== "admin" && user.role !== "superadmin") throw new Error("Not authorized")
     const doc = await ctx.db.get(id)
     if (!doc || doc.organizationId !== organizationId) throw new Error("Not found")
     await ctx.db.patch(id, data)
@@ -164,7 +166,8 @@ export const markAsPaid = mutation({
     userEmail: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await assertOrgAccess(ctx, args.userEmail, args.organizationId)
+    const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
+    if (user.role !== "admin" && user.role !== "superadmin") throw new Error("Not authorized")
     const payment = await ctx.db.get(args.id)
     if (!payment || payment.organizationId !== args.organizationId) throw new Error("Payment not found")
 
@@ -205,6 +208,7 @@ export const remove = mutation({
   args: { id: v.id("payments"), organizationId: v.id("organizations"), userEmail: v.optional(v.string()) },
   handler: async (ctx, args) => {
     const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
+    if (user.role !== "admin" && user.role !== "superadmin") throw new Error("Not authorized")
     const payment = await ctx.db.get(args.id)
     if (!payment || payment.organizationId !== args.organizationId) throw new Error("Not found")
 

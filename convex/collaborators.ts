@@ -76,6 +76,7 @@ export const create = mutation({
   },
   handler: async (ctx, args) => {
     const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
+    if (user.role !== "admin" && user.role !== "superadmin") throw new Error("Not authorized")
     const { userEmail, ...rest } = args
     const id = await ctx.db.insert("collaborators", { ...rest, status: args.status || "active", liveStatus: args.liveStatus || "disponibile", type: args.type || "employee" })
 
@@ -128,6 +129,7 @@ export const update = mutation({
   },
   handler: async (ctx, args) => {
     const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
+    if (user.role !== "admin" && user.role !== "superadmin") throw new Error("Not authorized")
     const { id, organizationId, userEmail, ...data } = args
     const prev = await ctx.db.get(id)
     if (!prev || prev.organizationId !== organizationId) throw new Error("Not found")
@@ -163,6 +165,7 @@ export const remove = mutation({
   args: { id: v.id("collaborators"), organizationId: v.id("organizations"), userEmail: v.optional(v.string()) },
   handler: async (ctx, args) => {
     const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
+    if (user.role !== "admin" && user.role !== "superadmin") throw new Error("Not authorized")
     const collab = await ctx.db.get(args.id)
     if (!collab || collab.organizationId !== args.organizationId) throw new Error("Not found")
     await ctx.db.delete(args.id)
@@ -193,6 +196,7 @@ export const addHours = mutation({
   },
   handler: async (ctx, args) => {
     const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
+    if (user.role !== "admin" && user.role !== "superadmin") throw new Error("Not authorized")
     const { userEmail, ...rest } = args
     const id = await ctx.db.insert("collaboratorHours", { ...rest, approved: false })
 
@@ -267,6 +271,7 @@ export const updateHours = mutation({
   },
   handler: async (ctx, args) => {
     const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
+    if (user.role !== "admin" && user.role !== "superadmin") throw new Error("Not authorized")
     const { id, organizationId, ...data } = args
     const prev = await ctx.db.get(id)
     if (!prev || prev.organizationId !== organizationId) throw new Error("Not found")
@@ -289,6 +294,7 @@ export const removeHours = mutation({
   args: { id: v.id("collaboratorHours"), organizationId: v.id("organizations"), userEmail: v.optional(v.string()) },
   handler: async (ctx, args) => {
     const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
+    if (user.role !== "admin" && user.role !== "superadmin") throw new Error("Not authorized")
     const doc = await ctx.db.get(args.id)
     if (!doc || doc.organizationId !== args.organizationId) throw new Error("Not found")
     await ctx.db.delete(args.id)
@@ -314,6 +320,7 @@ export const generateOnboardingLink = mutation({
   },
   handler: async (ctx, args) => {
     const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
+    if (user.role !== "admin" && user.role !== "superadmin") throw new Error("Not authorized")
     const collab = await ctx.db.get(args.collaboratorId)
     if (!collab || collab.organizationId !== args.organizationId) throw new Error("Collaboratore non trovato")
 

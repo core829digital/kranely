@@ -65,6 +65,7 @@ export const create = mutation({
   handler: async (ctx, args) => {
     const { userEmail, ...rest } = args
     const user = await assertOrgAccess(ctx, userEmail, rest.organizationId)
+    if (user.role !== "admin" && user.role !== "superadmin") throw new Error("Not authorized")
     const id = await ctx.db.insert("suppliers", { ...rest, status: args.status || "pending" })
 
     await ctx.db.insert("activityLog", {
@@ -101,6 +102,7 @@ export const update = mutation({
   handler: async (ctx, args) => {
     const { id, organizationId, userEmail, ...data } = args
     const user = await assertOrgAccess(ctx, userEmail, organizationId)
+    if (user.role !== "admin" && user.role !== "superadmin") throw new Error("Not authorized")
     const prev = await ctx.db.get(id)
     if (!prev || prev.organizationId !== organizationId) throw new Error("Not found")
     await ctx.db.patch(id, data)
@@ -135,6 +137,7 @@ export const remove = mutation({
   args: { id: v.id("suppliers"), organizationId: v.id("organizations"), userEmail: v.optional(v.string()) },
   handler: async (ctx, args) => {
     const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
+    if (user.role !== "admin" && user.role !== "superadmin") throw new Error("Not authorized")
     const supplier = await ctx.db.get(args.id)
     if (!supplier || supplier.organizationId !== args.organizationId) throw new Error("Not found")
     await ctx.db.delete(args.id)
@@ -161,6 +164,7 @@ export const generateInvite = mutation({
   },
   handler: async (ctx, args) => {
     const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
+    if (user.role !== "admin" && user.role !== "superadmin") throw new Error("Not authorized")
     const supplier = await ctx.db.get(args.supplierId)
     if (!supplier) throw new Error("Fornitore non trovato")
 

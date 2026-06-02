@@ -66,6 +66,7 @@ export const create = mutation({
   },
   handler: async (ctx, args) => {
     const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
+    if (user.role !== "admin" && user.role !== "superadmin") throw new Error("Not authorized")
     const { organizationId, userEmail, ...rest } = args
     const existing = await ctx.db
       .query("blogPosts")
@@ -97,7 +98,8 @@ export const update = mutation({
     tags: v.optional(v.array(v.string())),
   },
   handler: async (ctx, args) => {
-    await assertOrgAccess(ctx, args.userEmail, args.organizationId)
+    const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
+    if (user.role !== "admin" && user.role !== "superadmin") throw new Error("Not authorized")
     const { id, organizationId, userEmail, ...data } = args
     const prev = await ctx.db.get(id)
     if (!prev || prev.organizationId !== organizationId) throw new Error("Not found")
@@ -122,7 +124,8 @@ export const update = mutation({
 export const publish = mutation({
   args: { id: v.id("blogPosts"), published: v.boolean(), organizationId: v.id("organizations"), userEmail: v.optional(v.string()) },
   handler: async (ctx, args) => {
-    await assertOrgAccess(ctx, args.userEmail, args.organizationId)
+    const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
+    if (user.role !== "admin" && user.role !== "superadmin") throw new Error("Not authorized")
     const prev = await ctx.db.get(args.id)
     if (!prev || prev.organizationId !== args.organizationId) throw new Error("Not found")
     const patch: { published: boolean; publishedDate?: string } = {
@@ -148,7 +151,8 @@ export const publish = mutation({
 export const remove = mutation({
   args: { id: v.id("blogPosts"), organizationId: v.id("organizations"), userEmail: v.optional(v.string()) },
   handler: async (ctx, args) => {
-    await assertOrgAccess(ctx, args.userEmail, args.organizationId)
+    const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
+    if (user.role !== "admin" && user.role !== "superadmin") throw new Error("Not authorized")
     const prev = await ctx.db.get(args.id)
     if (!prev || prev.organizationId !== args.organizationId) throw new Error("Not found")
     await ctx.db.delete(args.id)

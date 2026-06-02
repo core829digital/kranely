@@ -147,6 +147,7 @@ export const createClient = mutation({
   handler: async (ctx, args) => {
     const { createdById, userEmail, type: clientType, ...rest } = args
     const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
+    if (user.role !== "admin" && user.role !== "superadmin") throw new Error("Not authorized")
 
     const id = await ctx.db.insert("clients", { ...rest, clientType, status: args.status || "lead", createdById })
 
@@ -192,6 +193,7 @@ export const update = mutation({
   },
   handler: async (ctx, args) => {
     const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
+    if (user.role !== "admin" && user.role !== "superadmin") throw new Error("Not authorized")
     const { id, organizationId, userEmail, type, ...data } = args
     const prev = await ctx.db.get(id)
     if (!prev || prev.organizationId !== organizationId) throw new Error("Not found")
@@ -227,6 +229,7 @@ export const remove = mutation({
   args: { id: v.id("clients"), organizationId: v.id("organizations"), userEmail: v.optional(v.string()) },
   handler: async (ctx, args) => {
     const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
+    if (user.role !== "admin" && user.role !== "superadmin") throw new Error("Not authorized")
     const client = await ctx.db.get(args.id)
     if (!client || client.organizationId !== args.organizationId) throw new Error("Not found")
     await ctx.db.delete(args.id)

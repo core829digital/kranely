@@ -96,6 +96,7 @@ export const create = mutation({
   handler: async (ctx, args) => {
     const { managerId, userEmail, ...rest } = args
     const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
+    if (user.role !== "admin" && user.role !== "superadmin") throw new Error("Not authorized")
 
     const id = await ctx.db.insert("cantieri", { ...rest, status: args.status || "pianificato", managerId })
 
@@ -139,6 +140,7 @@ export const update = mutation({
   },
   handler: async (ctx, args) => {
     const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
+    if (user.role !== "admin" && user.role !== "superadmin") throw new Error("Not authorized")
     const { id, organizationId, userEmail, ...data } = args
     const prev = await ctx.db.get(id)
     if (!prev || prev.organizationId !== organizationId) throw new Error("Not found")
@@ -178,6 +180,7 @@ export const remove = mutation({
   args: { id: v.id("cantieri"), organizationId: v.id("organizations"), userEmail: v.optional(v.string()) },
   handler: async (ctx, args) => {
     const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
+    if (user.role !== "admin" && user.role !== "superadmin") throw new Error("Not authorized")
     const cantiere = await ctx.db.get(args.id)
     if (!cantiere || cantiere.organizationId !== args.organizationId) throw new Error("Not found")
     await ctx.db.delete(args.id)
@@ -210,7 +213,8 @@ export const addPhaseTask = mutation({
     userEmail: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await assertOrgAccess(ctx, args.userEmail, args.organizationId)
+    const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
+    if (user.role !== "admin" && user.role !== "superadmin") throw new Error("Not authorized")
     const cantiere = await ctx.db.get(args.cantiereId)
     if (!cantiere) throw new Error("Cantiere non trovato")
     const id = await ctx.db.insert("phaseTasks", {
