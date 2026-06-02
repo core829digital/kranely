@@ -1,6 +1,18 @@
 import { internalMutation, mutation, query } from "./_generated/server"
 import { v } from "convex/values"
+import { Id } from "./_generated/dataModel"
 import { assertOrgAccess } from "./auth"
+
+async function getAdminEmails(ctx: { db: any }, organizationId: Id<"organizations">): Promise<string[]> {
+  const all = await ctx.db.query("users").withIndex("by_organization", (q: any) => q.eq("organizationId", organizationId)).collect()
+  return Array.from(
+    new Set(
+      all
+        .filter((u: any) => u.role === "admin" || u.role === "superadmin")
+        .map((u: any) => u.email as string)
+    )
+  )
+}
 
 export const checkCertificateExpiry = internalMutation({
   args: {},
@@ -17,16 +29,20 @@ export const checkCertificateExpiry = internalMutation({
         const org = await ctx.db.query("organizations").filter((q) => q.eq(q.field("_id"), cert.organizationId)).first()
         if (!org) continue
 
-        await ctx.db.insert("notifications", {
-          organizationId: cert.organizationId,
-          userEmail: org.ownerEmail,
-          title: "Certificato in scadenza",
-          message: `Il certificato "${cert.name}" scadrà il ${new Date(cert.expiryDate).toLocaleDateString("it-IT")}`,
-          type: "certificate_expiry",
-          priority: "high",
-          isRead: false,
-          link: `/certificates`,
-        })
+        const adminEmails = await getAdminEmails(ctx, cert.organizationId)
+        if (adminEmails.length === 0) adminEmails.push(org.ownerEmail)
+        for (const email of adminEmails) {
+          await ctx.db.insert("notifications", {
+            organizationId: cert.organizationId,
+            userEmail: email,
+            title: "Certificato in scadenza",
+            message: `Il certificato "${cert.name}" scadrà il ${new Date(cert.expiryDate).toLocaleDateString("it-IT")}`,
+            type: "certificate_expiry",
+            priority: "high",
+            isRead: false,
+            link: `/certificates`,
+          })
+        }
 
         await ctx.db.patch(cert._id, { alertSent: true })
       }
@@ -49,16 +65,20 @@ export const checkPaymentDue = internalMutation({
         const org = await ctx.db.query("organizations").filter((q) => q.eq(q.field("_id"), payment.organizationId)).first()
         if (!org) continue
 
-        await ctx.db.insert("notifications", {
-          organizationId: payment.organizationId,
-          userEmail: org.ownerEmail,
-          title: "Pagamento in scadenza",
-          message: `Il pagamento di EUR${payment.amount.toLocaleString("it-IT")} "${payment.description}" è in scadenza il ${new Date(payment.dueDate).toLocaleDateString("it-IT")}`,
-          type: "payment_due",
-          priority: "high",
-          isRead: false,
-          link: `/payments`,
-        })
+        const adminEmails = await getAdminEmails(ctx, payment.organizationId)
+        if (adminEmails.length === 0) adminEmails.push(org.ownerEmail)
+        for (const email of adminEmails) {
+          await ctx.db.insert("notifications", {
+            organizationId: payment.organizationId,
+            userEmail: email,
+            title: "Pagamento in scadenza",
+            message: `Il pagamento di EUR${payment.amount.toLocaleString("it-IT")} "${payment.description}" è in scadenza il ${new Date(payment.dueDate).toLocaleDateString("it-IT")}`,
+            type: "payment_due",
+            priority: "high",
+            isRead: false,
+            link: `/payments`,
+          })
+        }
       }
     }
   },
@@ -80,16 +100,20 @@ export const checkOverduePayments = internalMutation({
         const org = await ctx.db.query("organizations").filter((q) => q.eq(q.field("_id"), payment.organizationId)).first()
         if (!org) continue
 
-        await ctx.db.insert("notifications", {
-          organizationId: payment.organizationId,
-          userEmail: org.ownerEmail,
-          title: "Pagamento scaduto",
-          message: `Il pagamento di EUR${payment.amount.toLocaleString("it-IT")} "${payment.description}" è scaduto dal ${new Date(payment.dueDate).toLocaleDateString("it-IT")}`,
-          type: "payment_due",
-          priority: "urgent",
-          isRead: false,
-          link: `/payments`,
-        })
+        const adminEmails = await getAdminEmails(ctx, payment.organizationId)
+        if (adminEmails.length === 0) adminEmails.push(org.ownerEmail)
+        for (const email of adminEmails) {
+          await ctx.db.insert("notifications", {
+            organizationId: payment.organizationId,
+            userEmail: email,
+            title: "Pagamento scaduto",
+            message: `Il pagamento di EUR${payment.amount.toLocaleString("it-IT")} "${payment.description}" è scaduto dal ${new Date(payment.dueDate).toLocaleDateString("it-IT")}`,
+            type: "payment_due",
+            priority: "urgent",
+            isRead: false,
+            link: `/payments`,
+          })
+        }
       }
     }
   },

@@ -58,11 +58,16 @@ export const markRead = mutation({
   },
   handler: async (ctx, args) => {
     const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
-    const msgs = await ctx.db
+    const allMsgs = await ctx.db
       .query("internalMessages")
       .withIndex("by_channel", (q) => q.eq("channelType", args.channelType).eq("channelId", args.channelId))
       .collect()
-    for (const msg of msgs) {
+    const isAdmin = user.role === "admin" || user.role === "superadmin"
+    const isParticipant = allMsgs.some((m) => m.senderEmail === user.email)
+    if (!isAdmin && !isParticipant) {
+      throw new Error("markRead: caller is not a participant of this channel")
+    }
+    for (const msg of allMsgs) {
       if (!msg.read && msg.senderEmail !== args.userEmail && msg.organizationId === args.organizationId) {
         await ctx.db.patch(msg._id, { read: true, readDate: new Date().toISOString() })
       }

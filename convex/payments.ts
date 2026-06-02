@@ -92,6 +92,26 @@ export const create = mutation({
     const { userEmail, ...rest } = args
     const user = await assertOrgAccess(ctx, userEmail, args.organizationId)
     if (user.role !== "admin" && user.role !== "superadmin") throw new Error("Not authorized")
+    if (args.clientId) {
+      const c = await ctx.db.get(args.clientId)
+      if (!c || c.organizationId !== args.organizationId) throw new Error("payments.create: clientId not in org")
+    }
+    if (args.cantiereId) {
+      const c = await ctx.db.get(args.cantiereId)
+      if (!c || c.organizationId !== args.organizationId) throw new Error("payments.create: cantiereId not in org")
+    }
+    if (args.supplierId) {
+      const s = await ctx.db.get(args.supplierId)
+      if (!s || s.organizationId !== args.organizationId) throw new Error("payments.create: supplierId not in org")
+    }
+    if (args.collaboratorId) {
+      const c = await ctx.db.get(args.collaboratorId)
+      if (!c || c.organizationId !== args.organizationId) throw new Error("payments.create: collaboratorId not in org")
+    }
+    if (args.proofDocId) {
+      const d = await ctx.db.get(args.proofDocId)
+      if (!d || d.organizationId !== args.organizationId) throw new Error("payments.create: proofDocId not in org")
+    }
     const id = await ctx.db.insert("payments", { ...rest, status: args.status || "in_attesa" })
 
     await ctx.db.insert("activityLog", {

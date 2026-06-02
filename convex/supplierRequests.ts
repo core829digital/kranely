@@ -40,7 +40,14 @@ export const get = query({
       if (user.role === "supplier") {
         const supplierDoc = await ctx.db.query("suppliers").withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId)).filter((q: any) => q.eq(q.field("email"), user.email)).first()
         if (!supplierDoc || doc.supplierId !== supplierDoc._id) throw new Error("Not found")
-        return { ...doc, platformMarginPrice: undefined }
+        return {
+          ...doc,
+          platformMarginPrice: undefined,
+          counterproposalStatus: undefined,
+          counterproposalRejectionNotes: undefined,
+          supplierExpiryNotified: undefined,
+          quoteRevisionCount: undefined,
+        }
       } else {
         throw new Error("Not found")
       }

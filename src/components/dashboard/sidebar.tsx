@@ -87,12 +87,14 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
         { href: "/quotes", label: "Preventivi", icon: FileText },
         { href: "/cantieri", label: "Cantieri", icon: Building2 },
         { href: "/workflow", label: "Flusso Lavoro", icon: Workflow },
+        { href: "/supplier-dashboard", label: "Dashboard Fornitore", icon: HardHat, roles: ["superadmin", "admin", "supplier"] },
+        { href: "/driver-dashboard", label: "Dashboard Autista", icon: Truck, roles: ["superadmin", "admin", "driver"] },
       ],
     },
     {
       title: "Operatività",
       items: [
-        { href: "/tasks", label: "Task Cantieri", icon: ClipboardList, roles: ["admin", "superadmin", "collaborator"] },
+        { href: "/tasks", label: "Task Cantieri", icon: ClipboardList, roles: ["admin", "superadmin", "collaborator", "supplier"] },
         { href: "/certificates", label: "Certificati", icon: ShieldCheck, roles: ["admin", "superadmin", "collaborator"] },
         { href: "/payments", label: "Pagamenti", icon: CreditCard, roles: ["admin", "superadmin", "client", "supplier"] },
         { href: "/storage", label: "Archivio File", icon: FolderOpen },
@@ -102,7 +104,7 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
       title: "Comunicazione",
       items: [
         { href: "/messages", label: "Messaggi", icon: MessageSquare },
-        { href: "/appointments", label: "Appuntamenti", icon: CalendarDays, roles: ["superadmin", "admin", "collaborator"] },
+        { href: "/appointments", label: "Appuntamenti", icon: CalendarDays, roles: ["superadmin", "admin", "collaborator", "driver"] },
       ],
     },
     {

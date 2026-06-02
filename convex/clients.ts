@@ -8,8 +8,11 @@ import { assertOrgAccess } from "./auth"
 // ═══════════════════════════════════════════════════════
 
 export const createOrganization = mutation({
-  args: { name: v.string(), slug: v.string(), ownerEmail: v.string() },
+  args: { name: v.string(), slug: v.string(), ownerEmail: v.string(), userEmail: v.optional(v.string()) },
   handler: async (ctx, args) => {
+    if (args.userEmail && args.userEmail !== args.ownerEmail) {
+      throw new Error("createOrganization: userEmail must match ownerEmail")
+    }
     const orgId = await ctx.db.insert("organizations", {
       name: args.name,
       slug: args.slug,

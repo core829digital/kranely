@@ -357,3 +357,18 @@ export function assertAdmin(email: string | null | undefined): void {
     throw new Error("Accesso negato — solo l'amministratore può eseguire questa operazione")
   }
 }
+
+export async function assertAdminAsync(
+  ctx: QueryCtx | MutationCtx,
+  email: string | null | undefined,
+): Promise<void> {
+  assertAdmin(email)
+  if (!email) return
+  const user = await ctx.db
+    .query("users")
+    .withIndex("by_email", (q: any) => q.eq("email", email.toLowerCase().trim()))
+    .first()
+  if (user && user.role !== "superadmin" && user.role !== "admin") {
+    throw new Error("Accesso negato — ruolo non autorizzato")
+  }
+}

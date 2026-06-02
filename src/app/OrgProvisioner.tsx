@@ -14,7 +14,7 @@ export function OrgProvisioner({ children }: { children: React.ReactNode }) {
     if (org === undefined || provisionAttempted.current) return
     if (org === null) {
       provisionAttempted.current = true
-      getOrCreate().catch(() => {
+      getOrCreate({ userEmail: "system" }).catch(() => {
         provisionAttempted.current = false
       })
     }

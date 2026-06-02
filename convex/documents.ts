@@ -69,6 +69,17 @@ export const create = mutation({
   },
   handler: async (ctx, args) => {
     const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
+    const isAdmin = user.role === "admin" || user.role === "superadmin"
+    if (!isAdmin) {
+      if (user.role === "client") {
+        if (!args.clientId) throw new Error("documents.create: client must specify a clientId")
+        const clientDoc = await ctx.db.get(args.clientId)
+        if (!clientDoc || clientDoc.organizationId !== args.organizationId) throw new Error("Not found")
+        if (clientDoc.email !== user.email) throw new Error("documents.create: client can only upload to their own record")
+      } else if (user.role === "supplier" || user.role === "driver") {
+        throw new Error("documents.create: suppliers/drivers cannot create documents directly")
+      }
+    }
     const { createdById, userEmail, ...rest } = args
     const id = await ctx.db.insert("documents", { ...rest, status: args.status || "draft", createdById })
 

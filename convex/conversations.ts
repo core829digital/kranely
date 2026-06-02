@@ -9,6 +9,10 @@ export const list = query({
     const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
     let filtered = await ctx.db.query("conversations").withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId)).collect()
     filtered = filtered.sort((a, b) => b._creationTime - a._creationTime)
+    const isAdmin = user.role === "admin" || user.role === "superadmin"
+    if (!isAdmin && user.role !== "anonymous") {
+      filtered = filtered.filter((c) => c.clientEmail === user.email || c.adminEmail === user.email)
+    }
     if (args.clientEmail) filtered = filtered.filter((c) => c.clientEmail === args.clientEmail)
     if (args.adminEmail) filtered = filtered.filter((c) => c.adminEmail === args.adminEmail)
     return filtered

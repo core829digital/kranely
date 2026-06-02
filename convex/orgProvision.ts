@@ -1,9 +1,11 @@
 import { v } from "convex/values"
 import { mutation, query } from "./_generated/server"
+import { assertAdmin } from "./auth"
 
 export const getOrCreateDefault = mutation({
-  args: {},
-  handler: async (ctx) => {
+  args: { userEmail: v.optional(v.string()) },
+  handler: async (ctx, args) => {
+    assertAdmin(args.userEmail)
     const existing = await ctx.db.query("organizations").first()
     if (existing) return existing._id
 

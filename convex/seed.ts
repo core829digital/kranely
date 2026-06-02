@@ -1,9 +1,14 @@
+import { v } from "convex/values"
 import { mutation } from "./_generated/server"
-import { hashPassword } from "./auth"
+import { assertAdmin, hashPassword } from "./auth"
 
 export const seed = mutation({
-  args: {},
-  handler: async (ctx) => {
+  args: { userEmail: v.optional(v.string()) },
+  handler: async (ctx, args) => {
+    assertAdmin(args.userEmail)
+    if (process.env.NODE_ENV === "production" && !process.env.CONVEX_SEED_ALLOW) {
+      throw new Error("seed: refused in production (set CONVEX_SEED_ALLOW=1 to override)")
+    }
     const orgId = await ctx.db.insert("organizations", {
       name: "Kranely Demo Srl",
       slug: "kranely-demo",

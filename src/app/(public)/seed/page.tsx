@@ -14,7 +14,7 @@ export default function SeedPage() {
     setLoading(true)
     setStatus("Popolamento database in corso...")
     try {
-      const result = await seed()
+      const result = await seed({})
       setStatus(`Database popolato con successo! Organizzazione: ${result.orgId}, Admin: ${result.adminId}, Clienti: ${result.clients.length}, Fornitori: ${result.suppliers.length}, Preventivi: ${result.quotes.length}, Cantieri: ${result.cantieri.length}`)
     } catch (e) {
       setStatus(`Errore: ${e instanceof Error ? e.message : "Errore sconosciuto"}`)

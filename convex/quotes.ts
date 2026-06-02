@@ -109,6 +109,10 @@ export const create = mutation({
     const { createdBy, userEmail, ...rest } = args
     const user = await assertOrgAccess(ctx, userEmail, args.organizationId)
     if (user.role !== "admin" && user.role !== "superadmin") throw new Error("Not authorized: only admin can create quotes")
+    if (args.clientId) {
+      const c = await ctx.db.get(args.clientId)
+      if (!c || c.organizationId !== args.organizationId) throw new Error("quotes.create: clientId not in org")
+    }
     const id = await ctx.db.insert("quotes", { ...rest, status: args.status || "draft", quoteType: args.quoteType || "preventivo", createdBy })
 
     await ctx.db.insert("activityLog", {

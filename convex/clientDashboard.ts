@@ -6,6 +6,11 @@ export const getClientDashboard = query({
   args: { organizationId: v.id("organizations"), clientEmail: v.string(), userEmail: v.optional(v.string()) },
   handler: async (ctx, args) => {
     const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
+    const isAdmin = user.role === "admin" || user.role === "superadmin"
+
+    if (!isAdmin && user.role === "client" && user.email !== args.clientEmail) {
+      throw new Error("clientDashboard: client can only access their own dashboard")
+    }
 
     const client = await ctx.db
       .query("clients")
@@ -69,7 +74,7 @@ export const getClientDashboard = query({
       .collect()
     const cantiereDeliveries = allDeliveries.filter((d) => d.cantiereId && cantieriIds.some((cId) => cId === d.cantiereId))
 
-    const supplierProduction = (
+    const supplierProductionRaw = (
       await Promise.all(
         supplierOrders.map((o) =>
           ctx.db
@@ -79,6 +84,23 @@ export const getClientDashboard = query({
         )
       )
     ).flat()
+    const supplierProduction = isAdmin
+      ? supplierProductionRaw
+      : supplierProductionRaw.map((p) => ({
+          _id: p._id,
+          _creationTime: p._creationTime,
+          orderId: p.orderId,
+          supplierId: p.supplierId,
+          description: p.description,
+          quantity: p.quantity,
+          completed: p.completed,
+          phase: p.phase,
+          status: p.status,
+          startedDate: p.startedDate,
+          completedDate: p.completedDate,
+          estimatedCompletion: p.estimatedCompletion,
+          progressPercentage: p.progressPercentage,
+        }))
 
     return {
       clientId: client._id,

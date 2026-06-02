@@ -2,6 +2,14 @@ import { v } from "convex/values"
 import { query } from "./_generated/server"
 import { assertOrgAccess } from "./auth"
 
+const ALLOWED_TABLES = new Set([
+  "supplierOrders",
+  "quotes",
+  "cantieri",
+  "payments",
+  "supplierRequests",
+])
+
 export const getNextNumber = query({
   args: {
     organizationId: v.id("organizations"),
@@ -10,6 +18,9 @@ export const getNextNumber = query({
     userEmail: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    if (!ALLOWED_TABLES.has(args.table)) {
+      throw new Error(`getNextNumber: table "${args.table}" is not in the allowlist`)
+    }
     const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
     const year = new Date().getFullYear()
     const items = await ctx.db.query(args.table as any).collect()
