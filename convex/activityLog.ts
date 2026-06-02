@@ -1,5 +1,5 @@
 import { v } from "convex/values"
-import { mutation, query } from "./_generated/server"
+import { internalMutation, mutation, query } from "./_generated/server"
 import { assertOrgAccess } from "./auth"
 
 // ═══════════════════════════════════════════════════════
@@ -71,5 +71,29 @@ export const stats = query({
         document: logs.filter((l) => l.entityType === "document").length,
       },
     }
+  },
+})
+
+export const purgeOldEntries = internalMutation({
+  args: { retentionDays: v.optional(v.number()) },
+  handler: async (ctx, args) => {
+    const days = args.retentionDays ?? 180
+    const cutoffMs = Date.now() - days * 24 * 60 * 60 * 1000
+    const cutoffSeconds = Math.floor(cutoffMs / 1000)
+
+    const allOrgs = await ctx.db.query("organizations").collect()
+    let totalDeleted = 0
+    for (const org of allOrgs) {
+      const logs = await ctx.db
+        .query("activityLog")
+        .withIndex("by_organization", (q) => q.eq("organizationId", org._id))
+        .collect()
+      const toDelete = logs.filter((l) => l._creationTime < cutoffSeconds)
+      for (const l of toDelete) {
+        await ctx.db.delete(l._id)
+        totalDeleted++
+      }
+    }
+    return { deleted: totalDeleted, retentionDays: days }
   },
 })

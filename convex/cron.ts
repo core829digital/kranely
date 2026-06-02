@@ -24,4 +24,11 @@ cron.cron(
   {}
 )
 
+cron.cron(
+  "purge-old-activity-log",
+  "0 3 * * 0",
+  internal.activityLog.purgeOldEntries,
+  { retentionDays: 180 }
+)
+
 export default cron

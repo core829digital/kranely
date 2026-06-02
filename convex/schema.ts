@@ -127,6 +127,7 @@ export default defineSchema({
     description: v.optional(v.string()),
     quoteId: v.optional(v.id("quotes")),
     totalBudget: v.optional(v.number()),
+    progressPercentage: v.optional(v.number()),
     managerId: v.optional(v.id("users")),
     companyEmail: v.optional(v.string()),
     teamAssegnato: v.optional(v.string()),
@@ -758,7 +759,9 @@ export default defineSchema({
   })
     .index("by_user", ["userEmail"])
     .index("by_entity", ["entityType", "entityId"])
-    .index("by_organization", ["organizationId"]),
+    .index("by_organization", ["organizationId"])
+    .index("by_org_type", ["organizationId", "entityType"])
+    .index("by_org_user", ["organizationId", "userEmail"]),
 
   // ═══════════════════════════════════════════════════════
   // REFERRAL CODES

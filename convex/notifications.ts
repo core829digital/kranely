@@ -8,8 +8,8 @@ async function getAdminEmails(ctx: { db: any }, organizationId: Id<"organization
   return Array.from(
     new Set(
       all
-        .filter((u: any) => u.role === "admin" || u.role === "superadmin")
-        .map((u: any) => u.email as string)
+        .filter((u: { role?: string }) => u.role === "admin" || u.role === "superadmin")
+        .map((u: { email: string }) => u.email)
     )
   )
 }

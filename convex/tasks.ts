@@ -145,6 +145,24 @@ export const update = mutation({
         priority: "normal",
         link: "/tasks",
       })
+
+      if (data.status === "completato" && existing.cantiereId) {
+        const allTasks = await ctx.db
+          .query("phaseTasks")
+          .withIndex("by_cantiere", (q) => q.eq("cantiereId", existing.cantiereId))
+          .collect()
+        const completed = allTasks.filter((t) => t.status === "completato").length
+        const total = allTasks.length
+        const newProgress = total > 0 ? Math.round((completed / total) * 100) : 0
+        const cantiere = await ctx.db.get(existing.cantiereId)
+        if (cantiere && cantiere.organizationId === existing.organizationId) {
+          const newStatus = newProgress === 100 ? "completato" : "in_corso"
+          await ctx.db.patch(existing.cantiereId, {
+            progressPercentage: newProgress,
+            ...(newStatus === "completato" && cantiere.status !== "completato" ? { status: newStatus, endDate: new Date().toISOString() } : {}),
+          })
+        }
+      }
     }
 
     return id
