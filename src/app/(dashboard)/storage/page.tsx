@@ -67,6 +67,7 @@ export default function StoragePage() {
         clientId: formData.clientId ? formData.clientId as Id<"clients"> : undefined,
         cantiereId: formData.cantiereId ? formData.cantiereId as Id<"cantieri"> : undefined,
         quoteId: formData.quoteId ? formData.quoteId as Id<"quotes"> : undefined,
+        userEmail: user?.email,
       })
       setShowUploadDialog(false)
       toast.success("File caricato")
@@ -79,7 +80,7 @@ export default function StoragePage() {
 
   const handleDelete = async (id: Id<"documents">) => {
     if (!confirm("Eliminare questo file?")) return
-    try { await removeDoc({ id, organizationId: orgId! }); toast.success("File eliminato") } catch (e) { toast.error("Errore") }
+    try { await removeDoc({ id, organizationId: orgId!, userEmail: user?.email }); toast.success("File eliminato") } catch (e) { toast.error("Errore") }
   }
 
   const filtered = documents?.filter((d) => {

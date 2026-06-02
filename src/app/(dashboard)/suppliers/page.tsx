@@ -206,6 +206,7 @@ function AnagraficaTab({
         type: form.type as any, status: form.status as any,
         supplierCode: form.supplierCode || undefined,
         notes: form.notes || undefined,
+        userEmail,
       })
       setShowCreate(false); resetForm(); toast.success("Fornitore aggiunto")
     } catch { toast.error("Errore creazione") }
@@ -214,7 +215,7 @@ function AnagraficaTab({
   const handleEdit = async () => {
     if (!editId) return
     try {
-      await updateSupplier({ id: editId, organizationId: orgId, companyName: form.companyName, email: form.email, phone: form.phone || undefined, contactPerson: form.contactPerson || undefined, address: form.address || undefined, vatNumber: form.vatNumber || undefined, type: form.type as any, status: form.status as any, rating: form.rating ? parseFloat(form.rating) : undefined, notes: form.notes || undefined })
+      await updateSupplier({ id: editId, organizationId: orgId, companyName: form.companyName, email: form.email, phone: form.phone || undefined, contactPerson: form.contactPerson || undefined, address: form.address || undefined, vatNumber: form.vatNumber || undefined, type: form.type as any, status: form.status as any, rating: form.rating ? parseFloat(form.rating) : undefined, notes: form.notes || undefined, userEmail })
       setShowEdit(false); toast.success("Fornitore aggiornato")
     } catch { toast.error("Errore aggiornamento") }
   }
@@ -298,7 +299,7 @@ function AnagraficaTab({
                       <button onClick={() => { setDetailId(s._id); setShowDetail(true) }} className="p-1.5 rounded bg-white text-black hover:bg-white/80"><Eye className="w-4 h-4" /></button>
                       <button onClick={() => openEdit(s)} className="p-1.5 rounded bg-white text-black hover:bg-white/80"><Edit2 className="w-4 h-4" /></button>
                       <button onClick={() => setSelectedSupplierId(s._id)} className="p-1.5 rounded bg-white text-black hover:bg-white/80"><ChevronRight className="w-4 h-4" /></button>
-                      <button onClick={async () => { if (confirm("Eliminare?")) { try { await deleteSupplier({ id: s._id, organizationId: orgId }); toast.success("Eliminato") } catch { toast.error("Errore") } } }} className="p-1.5 rounded bg-white text-black hover:bg-red-100 hover:text-red-600"><Trash2 className="w-4 h-4" /></button>
+                      <button onClick={async () => { if (confirm("Eliminare?")) { try { await deleteSupplier({ id: s._id, organizationId: orgId, userEmail }); toast.success("Eliminato") } catch { toast.error("Errore") } } }} className="p-1.5 rounded bg-white text-black hover:bg-red-100 hover:text-red-600"><Trash2 className="w-4 h-4" /></button>
                     </div>
                   </td>
                 </tr>
@@ -401,7 +402,7 @@ function RichiesteTab({ orgId, selectedSupplierId, userEmail }: { orgId: Id<"org
   const handleCreate = async () => {
     if (!form.title) { toast.error("Inserisci un titolo"); return }
     try {
-      await createRequest({ organizationId: orgId, title: form.title, description: form.description || undefined, quantity: form.quantity ? parseInt(form.quantity) : undefined, urgency: form.urgency as any, material: form.material || undefined, supplierId: selectedSupplierId || undefined })
+      await createRequest({ organizationId: orgId, title: form.title, description: form.description || undefined, quantity: form.quantity ? parseInt(form.quantity) : undefined, urgency: form.urgency as any, material: form.material || undefined, supplierId: selectedSupplierId || undefined, userEmail })
       setShowCreate(false); setForm({ title: "", description: "", quantity: "", urgency: "normal", material: "", notes: "" }); toast.success("Richiesta creata")
     } catch { toast.error("Errore") }
   }
@@ -409,7 +410,7 @@ function RichiesteTab({ orgId, selectedSupplierId, userEmail }: { orgId: Id<"org
   const handleConvert = async () => {
     if (!showConvert || !convertAmount) { toast.error("Inserisci l'importo totale"); return }
     try {
-      await convertToOrder({ requestId: showConvert, organizationId: orgId, supplierId: selectedSupplierId!, totalAmount: parseFloat(convertAmount), expectedDelivery: convertDelivery || undefined })
+      await convertToOrder({ requestId: showConvert, organizationId: orgId, supplierId: selectedSupplierId!, totalAmount: parseFloat(convertAmount), expectedDelivery: convertDelivery || undefined, userEmail })
       setShowConvert(null); setConvertAmount(""); setConvertDelivery(""); toast.success("Ordine creato!")
     } catch (e: any) { toast.error(e.data || "Errore conversione") }
   }
@@ -603,7 +604,6 @@ function OrdiniTab({ orgId, selectedSupplierId, userEmail }: { orgId: Id<"organi
 
 function ProduzioneTab({ orgId, selectedSupplierId, userEmail }: { orgId: Id<"organizations">; selectedSupplierId: Id<"suppliers"> | null; userEmail?: string }) {
   const [selectedOrderId, setSelectedOrderId] = useState<Id<"supplierOrders"> | null>(null)
-  const [adminEmail] = useState(() => { if (typeof window !== "undefined") return localStorage.getItem("kranely_session") || ""; return "" })
 
   const orders = useQuery(api.supplierOrders.list, { organizationId: orgId, supplierId: selectedSupplierId || undefined, userEmail })
   const production = useQuery(api.supplierProduction.list, { organizationId: orgId, supplierId: selectedSupplierId || undefined, orderId: selectedOrderId || undefined, userEmail })
@@ -625,7 +625,7 @@ function ProduzioneTab({ orgId, selectedSupplierId, userEmail }: { orgId: Id<"or
         phase: nextPhase as any,
         status: nextPhase === "pronto" ? "completed" : "in_progress",
         progressPercentage: ((currentIdx + 2) / phases.length) * 100,
-        userEmail: adminEmail,
+        userEmail,
       })
       toast.success(`Fase avanzata a: ${PRODUCTION_PHASES.find((p) => p.key === nextPhase)?.label}`)
     } catch (e: any) { toast.error(e.data || "Errore aggiornamento produzione") }
@@ -939,7 +939,6 @@ function ConsegnaTab({ orgId, selectedSupplierId, userEmail }: { orgId: Id<"orga
 
 function ChatTab({ orgId, selectedSupplierId, userEmail }: { orgId: Id<"organizations">; selectedSupplierId: Id<"suppliers"> | null; userEmail?: string }) {
   const [message, setMessage] = useState("")
-  const adminEmail = typeof window !== "undefined" ? localStorage.getItem("kranely_session") || "" : ""
 
   const channels = useQuery(api.chat.listChannels, orgId && userEmail ? { organizationId: orgId, userEmail } : "skip")
   const supplierChannel = channels?.find((ch) =>
@@ -953,23 +952,23 @@ function ChatTab({ orgId, selectedSupplierId, userEmail }: { orgId: Id<"organiza
   const sendMessage = useMutation(api.chat.sendMessage)
 
   const ensureChannel = async () => {
-    if (!channelId && selectedSupplierId) {
+    if (!channelId && selectedSupplierId && userEmail) {
       try {
         await createChannel({
           organizationId: orgId,
           name: `Fornitore-${selectedSupplierId}`,
           type: "private",
           linkedId: selectedSupplierId,
-          members: [adminEmail],
+          members: [userEmail],
         })
       } catch { toast.error("Errore creazione canale chat") }
     }
   }
 
   const handleSend = async () => {
-    if (!message.trim() || !channelId) return
+    if (!message.trim() || !channelId || !userEmail) return
     try {
-      await sendMessage({ organizationId: orgId, channelId, senderEmail: adminEmail, content: message })
+      await sendMessage({ organizationId: orgId, channelId, senderEmail: userEmail, content: message })
       setMessage("")
     } catch { toast.error("Errore invio") }
   }
@@ -1006,13 +1005,13 @@ function ChatTab({ orgId, selectedSupplierId, userEmail }: { orgId: Id<"organiza
               </div>
             ) : (
               messages.map((m) => (
-                <div key={m._id} className={`flex ${m.senderEmail === adminEmail ? "justify-end" : "justify-start"}`}>
+                <div key={m._id} className={`flex ${m.senderEmail === userEmail ? "justify-end" : "justify-start"}`}>
                   <div className={`max-w-[80%] p-3 rounded-xl ${
-                    m.senderEmail === adminEmail ? "bg-kranely-accent/20 text-white" : "bg-white/10 text-white/80"
+                    m.senderEmail === userEmail ? "bg-kranely-accent/20 text-white" : "bg-white/10 text-white/80"
                   }`}>
                     <p className="text-sm">{m.content}</p>
                     <p className="text-[10px] text-white/40 mt-1">
-                      {m.senderEmail === adminEmail ? "Tu" : "Fornitore"}
+                      {m.senderEmail === userEmail ? "Tu" : "Fornitore"}
                     </p>
                   </div>
                 </div>

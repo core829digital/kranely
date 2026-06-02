@@ -67,7 +67,7 @@ export default function ClientsPage() {
   const handleCreate = async () => {
     if (!formData.fullName || !formData.email || !orgId) { toast.error("Compila i campi obbligatori"); return }
     try {
-      await createClient({ organizationId: orgId!, fullName: formData.fullName, email: formData.email, phone: formData.phone, address: formData.address, fiscalCode: formData.fiscalCode, companyName: formData.companyName, vatNumber: formData.vatNumber, type: formData.type, status: formData.status, notes: formData.notes })
+      await createClient({ organizationId: orgId!, fullName: formData.fullName, email: formData.email, phone: formData.phone, address: formData.address, fiscalCode: formData.fiscalCode, companyName: formData.companyName, vatNumber: formData.vatNumber, type: formData.type, status: formData.status, notes: formData.notes, userEmail: user?.email })
       setShowCreateDialog(false); toast.success("Cliente creato con successo")
     } catch (e) { toast.error("Errore nella creazione") }
   }
@@ -75,14 +75,14 @@ export default function ClientsPage() {
   const handleUpdate = async () => {
     if (!selectedClientId) return
     try {
-      await updateClient({ id: selectedClientId, organizationId: orgId!, fullName: formData.fullName, email: formData.email, phone: formData.phone, address: formData.address, fiscalCode: formData.fiscalCode, companyName: formData.companyName, vatNumber: formData.vatNumber, type: formData.type as any, status: formData.status, notes: formData.notes })
+      await updateClient({ id: selectedClientId, organizationId: orgId!, fullName: formData.fullName, email: formData.email, phone: formData.phone, address: formData.address, fiscalCode: formData.fiscalCode, companyName: formData.companyName, vatNumber: formData.vatNumber, type: formData.type as any, status: formData.status, notes: formData.notes, userEmail: user?.email })
       setShowEditDialog(false); toast.success("Cliente aggiornato")
     } catch (e) { toast.error("Errore nell'aggiornamento") }
   }
 
   const handleDelete = async (id: Id<"clients">) => {
     if (!confirm("Eliminare questo cliente?")) return
-    try { await deleteClient({ id, organizationId: orgId! }); toast.success("Cliente eliminato") } catch (e) { toast.error("Errore nell'eliminazione") }
+    try { await deleteClient({ id, organizationId: orgId!, userEmail: user?.email }); toast.success("Cliente eliminato") } catch (e) { toast.error("Errore nell'eliminazione") }
   }
 
   const statusBadge = (status: string) => {

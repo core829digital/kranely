@@ -55,21 +55,21 @@ export default function MyAppointmentsPage() {
 
   const handleCreate = async () => {
     if (!formData.title || !formData.email || !formData.appointmentDate || !orgId) { toast.error("Compila i campi obbligatori"); return }
-    try { await createAppt({ organizationId: orgId!, title: formData.title, email: formData.email, appointmentDate: formData.appointmentDate, appointmentTime: formData.appointmentTime || undefined, location: formData.location || undefined, description: formData.description || undefined, clientId: formData.clientId ? formData.clientId as Id<"clients"> : undefined, cantiereId: formData.cantiereId ? formData.cantiereId as Id<"cantieri"> : undefined }); setShowCreateDialog(false); toast.success("Appuntamento creato") } catch (e) { toast.error("Errore") }
+    try { await createAppt({ organizationId: orgId!, title: formData.title, email: formData.email, appointmentDate: formData.appointmentDate, appointmentTime: formData.appointmentTime || undefined, location: formData.location || undefined, description: formData.description || undefined, clientId: formData.clientId ? formData.clientId as Id<"clients"> : undefined, cantiereId: formData.cantiereId ? formData.cantiereId as Id<"cantieri"> : undefined, userEmail: user?.email }); setShowCreateDialog(false); toast.success("Appuntamento creato") } catch (e) { toast.error("Errore") }
   }
 
   const updateStatus = async (id: Id<"appointments">, status: "scheduled" | "completed" | "cancelled" | "no_show") => {
-    try { await updateAppt({ id, organizationId: orgId!, status }); toast.success("Stato aggiornato") } catch (e) { toast.error("Errore") }
+    try { await updateAppt({ id, organizationId: orgId!, status, userEmail: user?.email }); toast.success("Stato aggiornato") } catch (e) { toast.error("Errore") }
   }
 
   const handleEditSubmit = async () => {
     if (!editingAppointment) return
-    try { await updateAppt({ id: editingAppointment, organizationId: orgId!, title: editFormData.title, appointmentDate: editFormData.appointmentDate, appointmentTime: editFormData.appointmentTime || undefined, location: editFormData.location || undefined, description: editFormData.description || undefined }); setShowEditDialog(false); toast.success("Appuntamento aggiornato") } catch (e) { toast.error("Errore") }
+    try { await updateAppt({ id: editingAppointment, organizationId: orgId!, title: editFormData.title, appointmentDate: editFormData.appointmentDate, appointmentTime: editFormData.appointmentTime || undefined, location: editFormData.location || undefined, description: editFormData.description || undefined, userEmail: user?.email }); setShowEditDialog(false); toast.success("Appuntamento aggiornato") } catch (e) { toast.error("Errore") }
   }
 
   const handleDelete = async (id: Id<"appointments">) => {
     if (!confirm("Eliminare questo appuntamento?")) return
-    try { await deleteAppt({ id, organizationId: orgId! }); toast.success("Appuntamento eliminato") } catch (e) { toast.error("Errore") }
+    try { await deleteAppt({ id, organizationId: orgId!, userEmail: user?.email }); toast.success("Appuntamento eliminato") } catch (e) { toast.error("Errore") }
   }
 
   const getClientName = (id: string) => clients?.find((c) => c._id === id)?.fullName

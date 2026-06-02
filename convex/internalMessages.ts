@@ -74,8 +74,12 @@ export const remove = mutation({
   args: { id: v.id("internalMessages"), organizationId: v.id("organizations"), userEmail: v.optional(v.string()) },
   handler: async (ctx, args) => {
     const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
+    const isAdmin = user.role === "admin" || user.role === "superadmin"
     const doc = await ctx.db.get(args.id)
     if (!doc || doc.organizationId !== args.organizationId) throw new Error("Not found")
+    if (!isAdmin && doc.senderEmail !== user.email) {
+      throw new Error("Not authorized: only sender or admin can delete")
+    }
     await ctx.db.delete(args.id)
     return args.id
   },

@@ -31,6 +31,7 @@ export const getBySlug = query({
 export const create = mutation({
   args: { name: v.string(), slug: v.string(), ownerEmail: v.string() },
   handler: async (ctx, args) => {
+    assertAdmin(args.ownerEmail)
     const id = await ctx.db.insert("organizations", {
       name: args.name,
       slug: args.slug,
@@ -52,7 +53,7 @@ export const update = mutation({
     status: v.optional(v.union(v.literal("trial"), v.literal("active"), v.literal("suspended"), v.literal("cancelled"))),
   },
   handler: async (ctx, args) => {
-    await assertOrgAccess(ctx, args.userEmail, args.id)
+    assertAdmin(args.userEmail)
     const { id, userEmail, ...data } = args
     const prev = await ctx.db.get(id)
     if (!prev) throw new Error("Not found")
@@ -100,7 +101,7 @@ export const updateUser = mutation({
     blocked: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
-    await assertOrgAccess(ctx, args.userEmail, args.organizationId)
+    assertAdmin(args.userEmail)
     const { id, organizationId, userEmail, ...data } = args
     const existing = await ctx.db.get(id)
     if (!existing) throw new Error("Utente non trovato")
@@ -125,7 +126,7 @@ export const updateUser = mutation({
 export const removeUser = mutation({
   args: { id: v.id("users"), organizationId: v.id("organizations"), userEmail: v.optional(v.string()) },
   handler: async (ctx, args) => {
-    await assertOrgAccess(ctx, args.userEmail, args.organizationId)
+    assertAdmin(args.userEmail)
     const existing = await ctx.db.get(args.id)
     if (!existing) throw new Error("Utente non trovato")
     await ctx.db.delete(args.id)

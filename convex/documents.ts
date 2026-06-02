@@ -107,9 +107,11 @@ export const update = mutation({
   },
   handler: async (ctx, args) => {
     const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
+    const isAdmin = user.role === "admin" || user.role === "superadmin"
     const { id, organizationId, ...data } = args
     const doc = await ctx.db.get(id)
     if (!doc || doc.organizationId !== organizationId) throw new Error("Not found")
+    if (!isAdmin && doc.createdById !== user.userId) throw new Error("Not authorized: only the creator or admin can update this document")
     await ctx.db.patch(id, data)
 
     await ctx.db.insert("activityLog", {
@@ -130,8 +132,10 @@ export const remove = mutation({
   args: { id: v.id("documents"), organizationId: v.id("organizations"), userEmail: v.optional(v.string()) },
   handler: async (ctx, args) => {
     const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
+    const isAdmin = user.role === "admin" || user.role === "superadmin"
     const doc = await ctx.db.get(args.id)
     if (!doc || doc.organizationId !== args.organizationId) throw new Error("Not found")
+    if (!isAdmin && doc.createdById !== user.userId) throw new Error("Not authorized: only the creator or admin can delete this document")
 
     if (doc.storageId) {
       await ctx.storage.delete(doc.storageId)

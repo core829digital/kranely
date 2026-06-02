@@ -55,6 +55,9 @@ export const createChannel = mutation({
   },
   handler: async (ctx, args) => {
     const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
+    if (user.role !== "admin" && user.role !== "superadmin" && user.role !== "collaborator") {
+      throw new Error("Not authorized: only admin or collaborator can create channels")
+    }
     const { createdById, ...rest } = args
     const id = await ctx.db.insert("chatChannels", { ...rest, createdById })
     return id
@@ -123,9 +126,11 @@ export const sendMessage = mutation({
 export const deleteMessage = mutation({
   args: { id: v.id("channelMessages"), organizationId: v.id("organizations"), userEmail: v.optional(v.string()) },
   handler: async (ctx, args) => {
-    await assertOrgAccess(ctx, args.userEmail, args.organizationId)
+    const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
+    const isAdmin = user.role === "admin" || user.role === "superadmin"
     const msg = await ctx.db.get(args.id)
     if (!msg || msg.organizationId !== args.organizationId) throw new Error("Message not found")
+    if (!isAdmin && msg.senderEmail !== user.email) throw new Error("Not authorized: only the sender or admin can delete this message")
     await ctx.db.delete(args.id)
     return args.id
   },

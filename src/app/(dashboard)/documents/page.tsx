@@ -79,6 +79,7 @@ export default function DocumentsPage() {
           clientId: formData.clientId ? formData.clientId as Id<"clients"> : undefined,
           cantiereId: formData.cantiereId ? formData.cantiereId as Id<"cantieri"> : undefined,
           quoteId: formData.quoteId ? formData.quoteId as Id<"quotes"> : undefined,
+          userEmail: user?.email,
         })
       } else if (formData.fileUrl) {
         await createDocument({
@@ -92,6 +93,7 @@ export default function DocumentsPage() {
           clientId: formData.clientId ? formData.clientId as Id<"clients"> : undefined,
           cantiereId: formData.cantiereId ? formData.cantiereId as Id<"cantieri"> : undefined,
           quoteId: formData.quoteId ? formData.quoteId as Id<"quotes"> : undefined,
+          userEmail: user?.email,
         })
       } else {
         toast.error("Seleziona un file o inserisci un URL"); return
@@ -107,12 +109,12 @@ export default function DocumentsPage() {
 
   const handleEdit = async () => {
     if (!editingDocId) return
-    try { await updateDocument({ id: editingDocId, organizationId: orgId!, title: editFormData.title, description: editFormData.description || undefined, status: editFormData.status as any }); setShowEditDialog(false); toast.success("Documento aggiornato") } catch (e) { toast.error("Errore") }
+    try { await updateDocument({ id: editingDocId, organizationId: orgId!, title: editFormData.title, description: editFormData.description || undefined, status: editFormData.status as any, userEmail: user?.email }); setShowEditDialog(false); toast.success("Documento aggiornato") } catch (e) { toast.error("Errore") }
   }
 
   const handleDelete = async (id: Id<"documents">) => {
     if (!confirm("Eliminare questo documento?")) return
-    try { await deleteDocument({ id, organizationId: orgId! }); toast.success("Documento eliminato") } catch (e) { toast.error("Errore") }
+    try { await deleteDocument({ id, organizationId: orgId!, userEmail: user?.email }); toast.success("Documento eliminato") } catch (e) { toast.error("Errore") }
   }
 
   const statusBadge = (status: string) => { const map: Record<string, { label: string; variant: "success" | "default" | "secondary" }> = { draft: { label: "Bozza", variant: "secondary" }, final: { label: "Finale", variant: "success" }, archived: { label: "Archiviato", variant: "default" } }; const { label, variant } = map[status] || { label: status, variant: "secondary" }; return <Badge variant={variant}>{label}</Badge> }

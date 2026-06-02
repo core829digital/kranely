@@ -36,7 +36,7 @@ export default function MessagesPage() {
 
   const handleCreateChannel = async () => {
     if (!newChannelName || !orgId) { toast.error("Inserisci un nome"); return }
-    try { const id = await createChannel({ organizationId: orgId, name: newChannelName, type: newChannelType, description: newChannelDesc || undefined }); setSelectedChannelId(id); setShowCreateDialog(false); setNewChannelName(""); toast.success("Canale creato") } catch (e) { toast.error("Errore") }
+    try { const id = await createChannel({ organizationId: orgId, name: newChannelName, type: newChannelType, description: newChannelDesc || undefined, userEmail: user?.email }); setSelectedChannelId(id); setShowCreateDialog(false); setNewChannelName(""); toast.success("Canale creato") } catch (e) { toast.error("Errore") }
   }
 
   const handleSendMessage = async () => {

@@ -40,7 +40,7 @@ export default function SupplierDashboardPage() {
   const handleQuoteRequest = async () => {
     if (!quoteMessage) { toast.error("Inserisci una descrizione"); return }
     try {
-      await createRequest({ organizationId: orgId, title: quoteMessage })
+      await createRequest({ organizationId: orgId, title: quoteMessage, userEmail: user?.email })
       setShowQuoteRequest(false)
       setQuoteMessage("")
       toast.success("Richiesta inviata")

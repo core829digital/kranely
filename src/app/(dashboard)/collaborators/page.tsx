@@ -48,17 +48,17 @@ export default function CollaboratorsPage() {
 
   const handleCreate = async () => {
     if (!formData.fullName || !formData.email || !orgId) { toast.error("Compila i campi obbligatori"); return }
-    try { await createCollaborator({ organizationId: orgId!, fullName: formData.fullName, email: formData.email, phone: formData.phone, type: formData.type, specialization: formData.specialization || undefined, status: formData.status, hourlyRate: formData.hourlyRate ? parseFloat(formData.hourlyRate) : undefined, dailyRate: formData.dailyRate ? parseFloat(formData.dailyRate) : undefined, notes: formData.notes || undefined }); setShowCreateDialog(false); toast.success("Collaboratore aggiunto") } catch (e) { toast.error("Errore") }
+    try { await createCollaborator({ organizationId: orgId!, fullName: formData.fullName, email: formData.email, phone: formData.phone, type: formData.type, specialization: formData.specialization || undefined, status: formData.status, hourlyRate: formData.hourlyRate ? parseFloat(formData.hourlyRate) : undefined, dailyRate: formData.dailyRate ? parseFloat(formData.dailyRate) : undefined, notes: formData.notes || undefined, userEmail: user?.email }); setShowCreateDialog(false); toast.success("Collaboratore aggiunto") } catch (e) { toast.error("Errore") }
   }
 
   const handleUpdate = async () => {
     if (!editingId) return
-    try { await updateCollaborator({ id: editingId, organizationId: orgId!, fullName: formData.fullName, email: formData.email, phone: formData.phone, type: formData.type as any, specialization: formData.specialization || undefined, status: formData.status as any, hourlyRate: formData.hourlyRate ? parseFloat(formData.hourlyRate) : undefined, dailyRate: formData.dailyRate ? parseFloat(formData.dailyRate) : undefined, notes: formData.notes || undefined }); setShowEditDialog(false); toast.success("Collaboratore aggiornato") } catch (e) { toast.error("Errore") }
+    try { await updateCollaborator({ id: editingId, organizationId: orgId!, fullName: formData.fullName, email: formData.email, phone: formData.phone, type: formData.type as any, specialization: formData.specialization || undefined, status: formData.status as any, hourlyRate: formData.hourlyRate ? parseFloat(formData.hourlyRate) : undefined, dailyRate: formData.dailyRate ? parseFloat(formData.dailyRate) : undefined, notes: formData.notes || undefined, userEmail: user?.email }); setShowEditDialog(false); toast.success("Collaboratore aggiornato") } catch (e) { toast.error("Errore") }
   }
 
   const handleDelete = async (id: Id<"collaborators">) => {
     if (!confirm("Eliminare questo collaboratore?")) return
-    try { await deleteCollaborator({ id, organizationId: orgId! }); toast.success("Collaboratore eliminato") } catch (e) { toast.error("Errore") }
+    try { await deleteCollaborator({ id, organizationId: orgId!, userEmail: user?.email }); toast.success("Collaboratore eliminato") } catch (e) { toast.error("Errore") }
   }
 
   const statusBadge = (status: string) => { const map: Record<string, { label: string; variant: "success" | "default" | "secondary" }> = { active: { label: "Attivo", variant: "success" }, inactive: { label: "Inattivo", variant: "secondary" }, on_leave: { label: "In Permesso", variant: "default" } }; const { label, variant } = map[status] || { label: status, variant: "secondary" }; return <Badge variant={variant}>{label}</Badge> }

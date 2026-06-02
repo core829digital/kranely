@@ -113,9 +113,14 @@ export const update = mutation({
   },
   handler: async (ctx, args) => {
     const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
+    const isAdmin = user.role === "admin" || user.role === "superadmin"
     const { id, organizationId, userEmail, ...data } = args
     const prev = await ctx.db.get(id)
     if (!prev || prev.organizationId !== organizationId) throw new Error("Not found")
+    if (!isAdmin) {
+      const isParticipant = prev.email === user.email
+      if (!isParticipant) throw new Error("Not authorized: only the participant or admin can update this appointment")
+    }
     await ctx.db.patch(id, data)
 
     await ctx.db.insert("activityLog", {
@@ -148,8 +153,10 @@ export const remove = mutation({
   args: { id: v.id("appointments"), organizationId: v.id("organizations"), userEmail: v.optional(v.string()) },
   handler: async (ctx, args) => {
     const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
+    const isAdmin = user.role === "admin" || user.role === "superadmin"
     const appt = await ctx.db.get(args.id)
     if (!appt || appt.organizationId !== args.organizationId) throw new Error("Not found")
+    if (!isAdmin && appt.email !== user.email) throw new Error("Not authorized: only the participant or admin can delete this appointment")
     await ctx.db.delete(args.id)
 
     await ctx.db.insert("activityLog", {

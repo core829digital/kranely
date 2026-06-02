@@ -61,7 +61,7 @@ export default function CantieriPage() {
   const handleCreate = async () => {
     if (!formData.name || !orgId) { toast.error("Compila i campi obbligatori"); return }
     try {
-      await createCantiere({ organizationId: orgId!, clientId: formData.clientId as Id<"clients">, name: formData.name, address: formData.address, startDate: formData.startDate || undefined, endDate: formData.endDate || undefined, status: formData.status, description: formData.description || undefined, quoteId: formData.quoteId ? formData.quoteId as Id<"quotes"> : undefined, totalBudget: formData.totalBudget ? parseFloat(formData.totalBudget) : undefined })
+      await createCantiere({ organizationId: orgId!, clientId: formData.clientId as Id<"clients">, name: formData.name, address: formData.address, startDate: formData.startDate || undefined, endDate: formData.endDate || undefined, status: formData.status, description: formData.description || undefined, quoteId: formData.quoteId ? formData.quoteId as Id<"quotes"> : undefined, totalBudget: formData.totalBudget ? parseFloat(formData.totalBudget) : undefined, userEmail: user?.email })
       setShowCreateDialog(false)
       toast.success("Cantiere creato")
     } catch (e) { toast.error("Errore nella creazione") }
@@ -70,7 +70,7 @@ export default function CantieriPage() {
   const handleUpdate = async () => {
     if (!selectedCantiereId) return
     try {
-      await updateCantiere({ id: selectedCantiereId, organizationId: orgId!, name: formData.name, address: formData.address, startDate: formData.startDate || undefined, endDate: formData.endDate || undefined, status: formData.status, description: formData.description || undefined, totalBudget: formData.totalBudget ? parseFloat(formData.totalBudget) : undefined })
+      await updateCantiere({ id: selectedCantiereId, organizationId: orgId!, name: formData.name, address: formData.address, startDate: formData.startDate || undefined, endDate: formData.endDate || undefined, status: formData.status, description: formData.description || undefined, totalBudget: formData.totalBudget ? parseFloat(formData.totalBudget) : undefined, userEmail: user?.email })
       setShowEditDialog(false)
       toast.success("Cantiere aggiornato")
     } catch (e) { toast.error("Errore nell'aggiornamento") }
@@ -78,7 +78,7 @@ export default function CantieriPage() {
 
   const handleDelete = async (id: Id<"cantieri">) => {
     if (!confirm("Eliminare questo cantiere?")) return
-    try { await deleteCantiere({ id, organizationId: orgId! }); toast.success("Cantiere eliminato") } catch (e) { toast.error("Errore nell'eliminazione") }
+    try { await deleteCantiere({ id, organizationId: orgId!, userEmail: user?.email }); toast.success("Cantiere eliminato") } catch (e) { toast.error("Errore nell'eliminazione") }
   }
 
   const statusBadge = (status: string) => {

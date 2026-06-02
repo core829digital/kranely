@@ -36,12 +36,12 @@ export default function SharedDocumentsPage() {
 
   const handleUpload = async () => {
     if (!formData.name || !orgId) { toast.error("Inserisci un nome"); return }
-    try { await createDoc({ organizationId: orgId!, title: formData.name, fileName: formData.name, type: formData.type as any, fileUrl: formData.url || "", description: formData.description || undefined }); setShowUploadDialog(false); toast.success("Documento aggiunto") } catch (e) { toast.error("Errore") }
+    try { await createDoc({ organizationId: orgId!, title: formData.name, fileName: formData.name, type: formData.type as any, fileUrl: formData.url || "", description: formData.description || undefined, userEmail: user?.email }); setShowUploadDialog(false); toast.success("Documento aggiunto") } catch (e) { toast.error("Errore") }
   }
 
   const handleDelete = async (id: Id<"documents">) => {
     if (!confirm("Eliminare questo documento?")) return
-    try { await removeDoc({ id, organizationId: orgId! }); toast.success("Documento eliminato") } catch (e) { toast.error("Errore") }
+    try { await removeDoc({ id, organizationId: orgId!, userEmail: user?.email }); toast.success("Documento eliminato") } catch (e) { toast.error("Errore") }
   }
 
   const filtered = documents?.filter((d) => {

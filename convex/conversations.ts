@@ -90,6 +90,11 @@ export const update = mutation({
     const { id, organizationId, ...data } = args
     const prev = await ctx.db.get(id)
     if (!prev || prev.organizationId !== organizationId) throw new Error("Not found")
+    const isAdmin = user.role === "admin" || user.role === "superadmin"
+    if (!isAdmin) {
+      const isParticipant = prev.clientEmail === user.email || prev.adminEmail === user.email
+      if (!isParticipant) throw new Error("Not authorized: only conversation participants or admin can update")
+    }
     await ctx.db.patch(id, data)
 
     await ctx.db.insert("activityLog", {
@@ -111,6 +116,11 @@ export const remove = mutation({
     const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
     const doc = await ctx.db.get(args.id)
     if (!doc || doc.organizationId !== args.organizationId) throw new Error("Not found")
+    const isAdmin = user.role === "admin" || user.role === "superadmin"
+    if (!isAdmin) {
+      const isParticipant = doc.clientEmail === user.email || doc.adminEmail === user.email
+      if (!isParticipant) throw new Error("Not authorized: only conversation participants or admin can delete")
+    }
     const messages = await ctx.db
       .query("conversationMessages")
       .withIndex("by_conversation", (q) => q.eq("conversationId", args.id))

@@ -112,9 +112,14 @@ export const update = mutation({
   },
   handler: async (ctx, args) => {
     const { id, organizationId, userEmail, ...data } = args
-    await assertOrgAccess(ctx, userEmail, organizationId)
+    const user = await assertOrgAccess(ctx, userEmail, organizationId)
+    const isAdmin = user.role === "admin" || user.role === "superadmin"
     const existing = await ctx.db.get(id)
     if (!existing || existing.organizationId !== organizationId) throw new Error("Not found")
+    if (!isAdmin) {
+      const isOwner = existing.createdById === user.userId || existing.assignedTo === user.email
+      if (!isOwner) throw new Error("Not authorized: only the creator, assignee, or admin can update this task")
+    }
     await ctx.db.patch(id, data)
 
     if (existing) {
@@ -149,9 +154,11 @@ export const update = mutation({
 export const remove = mutation({
   args: { id: v.id("phaseTasks"), organizationId: v.id("organizations"), userEmail: v.optional(v.string()) },
   handler: async (ctx, args) => {
-    await assertOrgAccess(ctx, args.userEmail, args.organizationId)
+    const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
+    const isAdmin = user.role === "admin" || user.role === "superadmin"
     const existing = await ctx.db.get(args.id)
     if (!existing || existing.organizationId !== args.organizationId) throw new Error("Not found")
+    if (!isAdmin && existing.createdById !== user.userId) throw new Error("Not authorized: only the creator or admin can delete this task")
     await ctx.db.delete(args.id)
 
     if (existing) {

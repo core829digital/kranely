@@ -60,14 +60,14 @@ export default function DailyLogsPage() {
 
   const handleApprove = async (id: any, approved: boolean) => {
     try {
-      await approveHours({ id, organizationId: orgId, approved })
+      await approveHours({ id, organizationId: orgId, approved, userEmail: user?.email })
       toast.success(approved ? "Ore approvate" : "Approvazione rimossa")
     } catch { toast.error("Errore") }
   }
 
   const handleRemove = async (id: any) => {
     try {
-      await removeHours({ id, organizationId: orgId })
+      await removeHours({ id, organizationId: orgId, userEmail: user?.email })
       toast.success("Ore rimosse")
     } catch { toast.error("Errore") }
   }

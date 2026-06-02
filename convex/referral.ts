@@ -25,6 +25,7 @@ export const create = mutation({
   },
   handler: async (ctx, args) => {
     const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
+    if (user.role !== "admin" && user.role !== "superadmin") throw new Error("Not authorized: only admin can create referral codes")
     const id = await ctx.db.insert("referralCodes", {
       organizationId: args.organizationId,
       code: args.code,
@@ -50,7 +51,8 @@ export const update = mutation({
     maxUses: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    await assertOrgAccess(ctx, args.userEmail, args.organizationId)
+    const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
+    if (user.role !== "admin" && user.role !== "superadmin") throw new Error("Not authorized: only admin can update referral codes")
     const { id, organizationId, userEmail, ...data } = args
     const prev = await ctx.db.get(id)
     if (!prev || prev.organizationId !== organizationId) throw new Error("Not found")
@@ -75,7 +77,8 @@ export const update = mutation({
 export const remove = mutation({
   args: { id: v.id("referralCodes"), organizationId: v.id("organizations"), userEmail: v.optional(v.string()) },
   handler: async (ctx, args) => {
-    await assertOrgAccess(ctx, args.userEmail, args.organizationId)
+    const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
+    if (user.role !== "admin" && user.role !== "superadmin") throw new Error("Not authorized: only admin can delete referral codes")
     const prev = await ctx.db.get(args.id)
     if (!prev || prev.organizationId !== args.organizationId) throw new Error("Not found")
     await ctx.db.delete(args.id)

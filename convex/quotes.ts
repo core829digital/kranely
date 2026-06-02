@@ -108,6 +108,7 @@ export const create = mutation({
   handler: async (ctx, args) => {
     const { createdBy, userEmail, ...rest } = args
     const user = await assertOrgAccess(ctx, userEmail, args.organizationId)
+    if (user.role !== "admin" && user.role !== "superadmin") throw new Error("Not authorized: only admin can create quotes")
     const id = await ctx.db.insert("quotes", { ...rest, status: args.status || "draft", quoteType: args.quoteType || "preventivo", createdBy })
 
     await ctx.db.insert("activityLog", {
@@ -143,6 +144,7 @@ export const update = mutation({
   handler: async (ctx, args) => {
     const { id, organizationId, userEmail, ...data } = args
     const user = await assertOrgAccess(ctx, userEmail, organizationId)
+    if (user.role !== "admin" && user.role !== "superadmin") throw new Error("Not authorized: only admin can update quotes")
     const existing = await ctx.db.get(id)
     if (!existing || existing.organizationId !== organizationId) throw new Error("Not found")
     await ctx.db.patch(id, data)
@@ -206,6 +208,7 @@ export const linkDocument = mutation({
   },
   handler: async (ctx, args) => {
     const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
+    if (user.role !== "admin" && user.role !== "superadmin") throw new Error("Not authorized: only admin can link quote documents")
     const quote = await ctx.db.get(args.quoteId)
     if (!quote || quote.organizationId !== args.organizationId) throw new Error("Quote not found")
     const doc = await ctx.db.get(args.documentId)
@@ -240,6 +243,7 @@ export const setSelectedVersionDoc = mutation({
   },
   handler: async (ctx, args) => {
     const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
+    if (user.role !== "admin" && user.role !== "superadmin") throw new Error("Not authorized: only admin can set the selected version")
     const quote = await ctx.db.get(args.quoteId)
     if (!quote || quote.organizationId !== args.organizationId) throw new Error("Quote not found")
 
@@ -263,6 +267,7 @@ export const remove = mutation({
   args: { id: v.id("quotes"), organizationId: v.id("organizations"), userEmail: v.optional(v.string()) },
   handler: async (ctx, args) => {
     const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
+    if (user.role !== "admin" && user.role !== "superadmin") throw new Error("Not authorized: only admin can delete quotes")
     const quote = await ctx.db.get(args.id)
     if (!quote || quote.organizationId !== args.organizationId) throw new Error("Not found")
     await ctx.db.delete(args.id)

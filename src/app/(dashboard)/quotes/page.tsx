@@ -62,7 +62,7 @@ export default function QuotesPage() {
   const handleCreate = async () => {
     if (!formData.title || !orgId) { toast.error("Compila i campi obbligatori"); return }
     try {
-      await createQuote({ organizationId: orgId!, clientId: formData.clientId as Id<"clients">, title: formData.title, description: formData.description, quoteType: formData.quoteType, status: formData.status, estimatedPrice: formData.totalAmount ? parseFloat(formData.totalAmount) : undefined, clientQuoteExpiresAt: formData.validUntil || undefined, email: formData.email })
+      await createQuote({ organizationId: orgId!, clientId: formData.clientId as Id<"clients">, title: formData.title, description: formData.description, quoteType: formData.quoteType, status: formData.status, estimatedPrice: formData.totalAmount ? parseFloat(formData.totalAmount) : undefined, clientQuoteExpiresAt: formData.validUntil || undefined, email: formData.email, userEmail: user?.email })
       setShowCreateDialog(false)
       toast.success("Preventivo creato")
     } catch (e) { toast.error("Errore nella creazione") }
@@ -71,7 +71,7 @@ export default function QuotesPage() {
   const handleUpdate = async () => {
     if (!selectedQuoteId) return
     try {
-      await updateQuote({ id: selectedQuoteId, organizationId: orgId!, title: formData.title, description: formData.description, quoteType: formData.quoteType, status: formData.status, estimatedPrice: formData.totalAmount ? parseFloat(formData.totalAmount) : undefined, clientQuoteExpiresAt: formData.validUntil || undefined })
+      await updateQuote({ id: selectedQuoteId, organizationId: orgId!, title: formData.title, description: formData.description, quoteType: formData.quoteType, status: formData.status, estimatedPrice: formData.totalAmount ? parseFloat(formData.totalAmount) : undefined, clientQuoteExpiresAt: formData.validUntil || undefined, userEmail: user?.email })
       setShowEditDialog(false)
       toast.success("Preventivo aggiornato")
     } catch (e) { toast.error("Errore nell'aggiornamento") }
@@ -79,7 +79,7 @@ export default function QuotesPage() {
 
   const handleDelete = async (id: Id<"quotes">) => {
     if (!confirm("Eliminare questo preventivo?")) return
-    try { await deleteQuote({ id, organizationId: orgId! }); toast.success("Preventivo eliminato") } catch (e) { toast.error("Errore nell'eliminazione") }
+    try { await deleteQuote({ id, organizationId: orgId!, userEmail: user?.email }); toast.success("Preventivo eliminato") } catch (e) { toast.error("Errore nell'eliminazione") }
   }
 
   const statusBadge = (status: string) => {

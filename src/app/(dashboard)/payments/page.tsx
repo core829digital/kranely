@@ -75,7 +75,7 @@ export default function PaymentsPage() {
   const handleCreate = async () => {
     if (!formData.description || !formData.amount || !orgId) { toast.error("Compila i campi obbligatori"); return }
     try {
-      await createPayment({ organizationId: orgId!, type: formData.type, description: formData.description, amount: parseFloat(formData.amount), status: formData.status, dueDate: formData.dueDate || undefined, clientId: formData.clientId ? formData.clientId as Id<"clients"> : undefined, cantiereId: formData.cantiereId ? formData.cantiereId as Id<"cantieri"> : undefined, supplierId: formData.supplierId ? formData.supplierId as Id<"suppliers"> : undefined, method: formData.method, notes: formData.notes || undefined })
+      await createPayment({ organizationId: orgId!, type: formData.type, description: formData.description, amount: parseFloat(formData.amount), status: formData.status, dueDate: formData.dueDate || undefined, clientId: formData.clientId ? formData.clientId as Id<"clients"> : undefined, cantiereId: formData.cantiereId ? formData.cantiereId as Id<"cantieri"> : undefined, supplierId: formData.supplierId ? formData.supplierId as Id<"suppliers"> : undefined, method: formData.method, notes: formData.notes || undefined, userEmail: user?.email })
       setShowCreateDialog(false); toast.success("Pagamento registrato")
     } catch (e) { toast.error("Errore") }
   }
