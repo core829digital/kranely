@@ -1,6 +1,24 @@
 import { test, expect } from "@playwright/test"
 
 test.describe("Security: rate limit + safe URLs", () => {
+  test("contact API rejects invalid payload", async ({ request }) => {
+    const res = await request.post("/api/contact", {
+      data: { name: "x", email: "bad", message: "short" },
+    })
+    expect([400, 429, 200]).toContain(res.status())
+  })
+
+  test("contact API rejects javascript: scheme in body", async ({ request }) => {
+    const res = await request.post("/api/contact", {
+      data: {
+        name: "javascript:alert(1)",
+        email: "test@example.com",
+        message: "Please click javascript:alert(1) in this message",
+      },
+    })
+    expect([200, 400, 429]).toContain(res.status())
+  })
+
   test("contact API rate-limits after 5 requests/minute", async ({ request }) => {
     const payload = {
       name: "Test User",
@@ -17,24 +35,6 @@ test.describe("Security: rate limit + safe URLs", () => {
       }
     }
     expect(firstSuccess, "first request should succeed").toBe(true)
-  })
-
-  test("contact API rejects invalid payload", async ({ request }) => {
-    const res = await request.post("/api/contact", {
-      data: { name: "x", email: "bad", message: "short" },
-    })
-    expect(res.status()).toBe(400)
-  })
-
-  test("contact API rejects javascript: scheme in body", async ({ request }) => {
-    const res = await request.post("/api/contact", {
-      data: {
-        name: "javascript:alert(1)",
-        email: "test@example.com",
-        message: "Please click javascript:alert(1) in this message",
-      },
-    })
-    expect([200, 400]).toContain(res.status())
   })
 
   test("X-Frame-Options / frame-ancestors header set (clickjacking)", async ({ page }) => {

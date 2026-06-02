@@ -42,8 +42,9 @@ function SignInForm() {
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="block text-sm font-medium text-white/80 mb-1">Email</label>
+          <label htmlFor="signin-email" className="block text-sm font-medium text-white/80 mb-1">Email</label>
           <input
+            id="signin-email"
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
@@ -53,8 +54,9 @@ function SignInForm() {
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-white/80 mb-1">Password</label>
+          <label htmlFor="signin-password" className="block text-sm font-medium text-white/80 mb-1">Password</label>
           <input
+            id="signin-password"
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}

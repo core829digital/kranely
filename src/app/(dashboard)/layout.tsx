@@ -7,6 +7,7 @@ import { useAuth } from "@/lib/auth/auth-context"
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 import { ErrorBoundary } from "@/components/ErrorBoundary"
+import { OrgProvisioner } from "../OrgProvisioner"
 
 export default function DashboardLayout({
   children,
@@ -35,19 +36,21 @@ export default function DashboardLayout({
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-kranely-app-bg">
-      <Sidebar
-        mobileOpen={mobileMenuOpen}
-        onMobileClose={() => setMobileMenuOpen(false)}
-      />
-      <div className="flex-1 flex flex-col min-w-0">
-        <Header onMenuToggle={() => setMobileMenuOpen((v) => !v)} />
-        <main id="main-content" className="flex-1 p-4 md:p-6 lg:p-8 overflow-y-auto relative">
-          <ErrorBoundary>
-            {children}
-          </ErrorBoundary>
-        </main>
+    <OrgProvisioner>
+      <div className="flex h-screen overflow-hidden bg-kranely-app-bg">
+        <Sidebar
+          mobileOpen={mobileMenuOpen}
+          onMobileClose={() => setMobileMenuOpen(false)}
+        />
+        <div className="flex-1 flex flex-col min-w-0">
+          <Header onMenuToggle={() => setMobileMenuOpen((v) => !v)} />
+          <main id="main-content" className="flex-1 p-4 md:p-6 lg:p-8 overflow-y-auto relative">
+            <ErrorBoundary>
+              {children}
+            </ErrorBoundary>
+          </main>
+        </div>
       </div>
-    </div>
+    </OrgProvisioner>
   )
 }

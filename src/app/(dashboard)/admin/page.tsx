@@ -15,6 +15,23 @@ import {
 
 const ADMIN_EMAIL = "contact.core829@gmail.com"
 
+type ChartTooltipProps = { active?: boolean; payload?: { name?: string; value?: number | string; color?: string }[]; label?: string | number }
+function ChartTooltip({ active, payload, label }: ChartTooltipProps) {
+  if (active && payload?.length) {
+    return (
+      <div className="bg-[#2a2826] border border-white/10 rounded-lg p-3 text-sm">
+        <p className="text-white/60 mb-1">{label}</p>
+        {payload.map((p, i) => (
+          <p key={i} style={{ color: p.color }} className="font-semibold">
+            {p.name}: {p.value}
+          </p>
+        ))}
+      </div>
+    )
+  }
+  return null
+}
+
 function AdminDashboard() {
   const adminData = useQuery(api.analytics.getAdminDashboard, { adminEmail: ADMIN_EMAIL })
   const adminUsers = useQuery(api.analytics.getAdminUsers, { adminEmail: ADMIN_EMAIL })
@@ -44,22 +61,6 @@ function AdminDashboard() {
   const roleLabels: Record<string, string> = {
     superadmin: "Super Admin", admin: "Admin", supplier: "Fornitore",
     collaborator: "Collaboratore", client: "Cliente", driver: "Autista",
-  }
-
-  const ChartTooltip = ({ active, payload, label }: any) => {
-    if (active && payload?.length) {
-      return (
-        <div className="bg-[#2a2826] border border-white/10 rounded-lg p-3 text-sm">
-          <p className="text-white/60 mb-1">{label}</p>
-          {payload.map((p: any, i: number) => (
-            <p key={i} style={{ color: p.color }} className="font-semibold">
-              {p.name}: {p.value}
-            </p>
-          ))}
-        </div>
-      )
-    }
-    return null
   }
 
   return (

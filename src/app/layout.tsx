@@ -3,7 +3,6 @@ import { Inter } from "next/font/google"
 import { AuthProvider } from "@/lib/auth/auth-context"
 import { ConvexClientProvider } from "./ConvexClientProvider"
 import { ResourceHints } from "@/components/ResourceHints"
-import { OrgProvisioner } from "./OrgProvisioner"
 import { Toaster } from "sonner"
 import "./globals.css"
 
@@ -70,22 +69,20 @@ export default function RootLayout({
         <a href="#main-content" className="skip-link">Salta al contenuto principale</a>
         <ResourceHints />
         <ConvexClientProvider>
-          <OrgProvisioner>
-            <AuthProvider>
-              {children}
-              <Toaster
-                position="top-right"
-                theme="dark"
-                toastOptions={{
-                  style: {
-                    background: "#2a2826",
-                    color: "#F0EBE8",
-                    border: "1px solid #535252",
-                  },
-                }}
-              />
-            </AuthProvider>
-          </OrgProvisioner>
+          <AuthProvider>
+            {children}
+            <Toaster
+              position="top-right"
+              theme="dark"
+              toastOptions={{
+                style: {
+                  background: "#2a2826",
+                  color: "#F0EBE8",
+                  border: "1px solid #535252",
+                },
+              }}
+            />
+          </AuthProvider>
         </ConvexClientProvider>
       </body>
     </html>

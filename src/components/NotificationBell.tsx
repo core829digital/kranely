@@ -58,8 +58,15 @@ export function NotificationBell({ userEmail }: NotificationBellProps) {
     try { await removeNotification({ id, organizationId: orgId, userEmail }) } catch (e) { toast.error("Errore") }
   }
 
+  const [now, setNow] = useState<number | null>(null)
+  useEffect(() => {
+    setNow(Math.floor(Date.now() / 1000))
+    const id = setInterval(() => setNow(Math.floor(Date.now() / 1000)), 60_000)
+    return () => clearInterval(id)
+  }, [])
+
   const formatTime = (timestamp: number) => {
-    const now = Date.now() / 1000
+    if (now == null) return ""
     const diff = now - timestamp
     if (diff < 60) return "Adesso"
     if (diff < 3600) return `${Math.floor(diff / 60)} min fa`

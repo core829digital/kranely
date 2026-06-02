@@ -3,6 +3,7 @@
 import { useMutation } from "convex/react"
 import { api } from "../../../../convex/_generated/api"
 import { useState } from "react"
+import Link from "next/link"
 
 export default function SeedPage() {
   const seed = useMutation(api.seed.seed)
@@ -49,9 +50,9 @@ export default function SeedPage() {
 
 
         <div className="text-center">
-          <a href="/sign-in" className="text-sm text-[#c8ff66] hover:underline">
+          <Link href="/sign-in" className="text-sm text-[#c8ff66] hover:underline">
             Vai al login
-          </a>
+          </Link>
         </div>
       </div>
     </div>

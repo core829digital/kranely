@@ -1,5 +1,6 @@
 "use client"
 
+import { useEffect, useState } from "react"
 import { useAuth } from "@/lib/auth/auth-context"
 import { Users, FileText, Building2, CreditCard, ArrowUpRight, ArrowDownRight, Plus, Clock, CheckCircle2, AlertCircle, Truck } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -37,6 +38,12 @@ const CustomTooltip = ({ active, payload, label }: CustomTooltipProps) => {
 export default function DashboardPage() {
   const { user } = useAuth()
   const orgId = useOrgId()
+  const [now, setNow] = useState<number | null>(null)
+  useEffect(() => {
+    setNow(Math.floor(Date.now() / 1000))
+    const id = setInterval(() => setNow(Math.floor(Date.now() / 1000)), 60_000)
+    return () => clearInterval(id)
+  }, [])
 
   const overview = useQuery(api.dashboard.overview, orgId ? { organizationId: orgId, userEmail: user?.email } : "skip")
   const revenueTrend = useQuery(api.dashboard.revenueTrend, orgId ? { organizationId: orgId, userEmail: user?.email } : "skip")
@@ -69,8 +76,12 @@ export default function DashboardPage() {
   }
 
   const formatTimeAgo = (timestamp: number) => {
-    const now = Date.now() / 1000; const diff = now - timestamp
-    if (diff < 60) return "Adesso"; if (diff < 3600) return `${Math.floor(diff / 60)} min fa`; if (diff < 86400) return `${Math.floor(diff / 3600)} ore fa`; return `${Math.floor(diff / 86400)} giorni fa`
+    if (now == null) return ""
+    const diff = now - timestamp
+    if (diff < 60) return "Adesso"
+    if (diff < 3600) return `${Math.floor(diff / 60)} min fa`
+    if (diff < 86400) return `${Math.floor(diff / 3600)} ore fa`
+    return `${Math.floor(diff / 86400)} giorni fa`
   }
 
   return (
