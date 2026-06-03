@@ -88,6 +88,7 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
         { href: "/collaborators", label: "Collaboratori", icon: UserCog },
         { href: "/quotes", label: "Preventivi", icon: FileText },
         { href: "/cantieri", label: "Cantieri", icon: Building2 },
+        { href: "/magazzino", label: "Magazzino", icon: Package, accountType: ["manufacturer"] },
         { href: "/workflow", label: "Flusso Lavoro", icon: Workflow, accountType: ["manufacturer"] },
         { href: "/supplier-dashboard", label: "Dashboard Fornitore", icon: HardHat, roles: ["superadmin", "admin", "supplier"] },
         { href: "/driver-dashboard", label: "Dashboard Autista", icon: Truck, roles: ["superadmin", "admin", "driver"] },

@@ -919,4 +919,45 @@ export default defineSchema({
   })
     .index("by_user", ["userEmail"])
     .index("by_session", ["sessionId"]),
+
+  // ═══════════════════════════════════════════════════════
+  // WAREHOUSE / INVENTORY
+  // ═══════════════════════════════════════════════════════
+
+  warehouseCategories: defineTable({
+    organizationId: v.id("organizations"),
+    name: v.string(),
+    description: v.optional(v.string()),
+  })
+    .index("by_organization", ["organizationId"]),
+
+  warehouseItems: defineTable({
+    organizationId: v.id("organizations"),
+    name: v.string(),
+    sku: v.optional(v.string()),
+    categoryId: v.optional(v.id("warehouseCategories")),
+    quantity: v.number(),
+    unit: v.string(),
+    minStock: v.optional(v.number()),
+    price: v.optional(v.number()),
+    description: v.optional(v.string()),
+    supplier: v.optional(v.string()),
+    image: v.optional(v.string()),
+  })
+    .index("by_organization", ["organizationId"])
+    .index("by_category", ["categoryId"])
+    .index("by_sku", ["organizationId", "sku"]),
+
+  stockMovements: defineTable({
+    organizationId: v.id("organizations"),
+    itemId: v.id("warehouseItems"),
+    type: v.union(v.literal("in"), v.literal("out")),
+    quantity: v.number(),
+    note: v.optional(v.string()),
+    reference: v.optional(v.string()),
+    createdBy: v.string(),
+    createdAt: v.number(),
+  })
+    .index("by_organization", ["organizationId"])
+    .index("by_item", ["itemId"]),
 })

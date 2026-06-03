@@ -64,6 +64,7 @@ const ROUTE_ACCESS_MAP: Record<string, UserRole[]> = {
   "/certificates": ["admin", "collaborator"],
   "/messages": ["admin", "client", "collaborator", "driver"],
   "/network": ["admin", "superadmin"],
+  "/magazzino": ["admin", "superadmin"],
   "/tasks": ["admin", "collaborator"],
   "/blog": ["admin"],
   "/blog-admin": ["admin"],
@@ -98,6 +99,7 @@ export function canViewSidebarItem(role: string, itemName: string): boolean {
 
 const ACCOUNT_TYPE_MAP: Record<string, AccountType[]> = {
   "/workflow": ["manufacturer"],
+  "/magazzino": ["manufacturer"],
 }
 
 export function canAccessRoute(role: string, pathname: string, accountType?: string | null): boolean {
