@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server"
 import { clientIp, rateLimit } from "@/lib/rate-limit"
+import { fetchMutation } from "convex/nextjs"
+import { api } from "../../../../../convex/_generated/api"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -32,7 +34,18 @@ export async function POST(req: Request) {
     const event = stripe.webhooks.constructEvent(body, sig, STRIPE_WEBHOOK_SECRET)
 
     switch (event.type) {
-      case "checkout.session.completed":
+      case "checkout.session.completed": {
+        const session = event.data.object as any
+        const meta = session.metadata
+        if (meta?.type === "payment" && meta.organizationId && meta.paymentId) {
+          await fetchMutation(api.stripe.handlePaymentCheckoutCompleted, {
+            organizationId: meta.organizationId,
+            paymentId: meta.paymentId,
+          })
+          console.log("[stripe] payment completed via checkout", meta.paymentId)
+        }
+        break
+      }
       case "payment_intent.succeeded":
         console.log("[stripe] payment ok", event.id)
         break

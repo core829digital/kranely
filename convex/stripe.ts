@@ -3,6 +3,49 @@ import { mutation, internalMutation, internalQuery, httpAction } from "./_genera
 import { internal } from "./_generated/api"
 import { assertOrgAccess } from "./auth"
 
+export const createPaymentCheckoutSession = mutation({
+  args: {
+    organizationId: v.id("organizations"),
+    paymentId: v.id("payments"),
+    returnUrl: v.string(),
+    userEmail: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    await assertOrgAccess(ctx, args.userEmail, args.organizationId)
+    const payment = await ctx.db.get(args.paymentId)
+    if (!payment || payment.organizationId !== args.organizationId) throw new Error("Pagamento non trovato")
+    if (payment.status === "pagato") throw new Error("Pagamento già saldato")
+
+    const stripeKey = process.env.STRIPE_SECRET_KEY
+    if (!stripeKey) throw new Error("STRIPE_SECRET_KEY non configurata")
+
+    const Stripe = (await import("stripe")).default
+    const stripe = new Stripe(stripeKey, { apiVersion: "2025-02-24.acacia" } as any)
+
+    const session = await stripe.checkout.sessions.create({
+      mode: "payment",
+      line_items: [{
+        price_data: {
+          currency: "eur",
+          product_data: { name: payment.description || `Pagamento #${payment._id.slice(-6)}` },
+          unit_amount: Math.round(payment.amount * 100),
+        },
+        quantity: 1,
+      }],
+      success_url: `${args.returnUrl}?payment_ok=1`,
+      cancel_url: `${args.returnUrl}?payment_cancel=1`,
+      metadata: {
+        organizationId: args.organizationId,
+        paymentId: args.paymentId,
+        type: "payment",
+      },
+    })
+
+    if (!session.url) throw new Error("Impossibile creare la sessione di pagamento")
+    return { url: session.url }
+  },
+})
+
 export const createCheckoutSession = mutation({
   args: {
     organizationId: v.id("organizations"),
@@ -108,6 +151,31 @@ export const handleSubscriptionEvent = internalMutation({
         ...(args.stripeCustomerId ? { stripeCustomerId: args.stripeCustomerId } : {}),
       })
     }
+  },
+})
+
+export const handlePaymentCheckoutCompleted = mutation({
+  args: {
+    organizationId: v.id("organizations"),
+    paymentId: v.id("payments"),
+  },
+  handler: async (ctx, args) => {
+    const payment = await ctx.db.get(args.paymentId)
+    if (!payment || payment.status === "pagato") return
+    await ctx.db.patch(args.paymentId, {
+      status: "pagato",
+      paidDate: new Date().toISOString().split("T")[0],
+      method: "online",
+    })
+    await ctx.db.insert("activityLog", {
+      organizationId: args.organizationId,
+      userEmail: "system",
+      action: "updated",
+      entityType: "payment",
+      entityId: args.paymentId,
+      entityName: payment.description,
+      details: `Pagamento "${payment.description}" saldato via Stripe`,
+    })
   },
 })
 

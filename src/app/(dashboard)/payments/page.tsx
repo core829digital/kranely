@@ -15,6 +15,7 @@ import { useAuth } from "@/lib/auth/auth-context"
 import { useOrgId } from "@/hooks/useOrgId"
 import { PageSkeleton } from "@/components/Skeletons"
 import { safeWindowOpen } from "@/lib/utils"
+import { useRouter } from "next/navigation"
 
 export default function PaymentsPage() {
   const orgId = useOrgId()
@@ -35,6 +36,8 @@ export default function PaymentsPage() {
   const proofFileRef = useRef<HTMLInputElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
+  const router = useRouter()
+
   const payments = useQuery(api.payments.list, orgId ? { organizationId: orgId!, status: filterStatus !== "all" ? filterStatus : undefined, type: filterType !== "all" ? filterType : undefined, userEmail: user?.email } : "skip")
   const stats = useQuery(api.payments.stats, orgId ? { organizationId: orgId!, userEmail: user?.email } : "skip")
   const clients = useQuery(api.clients.list, orgId ? { organizationId: orgId!, userEmail: user?.email } : "skip")
@@ -43,6 +46,7 @@ export default function PaymentsPage() {
   const paymentDetail = useQuery(api.payments.getWithProof, selectedPaymentId && orgId ? { id: selectedPaymentId, organizationId: orgId! } : "skip")
 
   const createPayment = useMutation(api.payments.create)
+  const createCheckoutSession = useMutation(api.stripe.createPaymentCheckoutSession)
   const updatePayment = useMutation(api.payments.update)
   const deletePayment = useMutation(api.payments.remove)
   const markAsPaid = useMutation(api.payments.markAsPaid)
@@ -207,6 +211,20 @@ export default function PaymentsPage() {
                     <div className="flex items-center gap-1">
                       <button onClick={() => openDetail(p)} className="p-1.5 rounded bg-white text-black hover:bg-white/80" title="Dettagli"><Eye className="w-4 h-4" /></button>
                       {isPwa && p.status !== "pagato" && <button onClick={() => openMarkAsPaid(p)} className="p-1.5 rounded bg-white text-black hover:bg-white/80 hover:text-green-600" title="Segna come pagato + ricevuta"><CheckCircle className="w-4 h-4" /></button>}
+                      {p.status !== "pagato" && (
+                        <button
+                          onClick={async () => {
+                            try {
+                              const result = await createCheckoutSession({ paymentId: p._id, organizationId: orgId!, returnUrl: window.location.href, userEmail: user?.email })
+                              if (result.url) safeWindowOpen(result.url)
+                            } catch (e: any) { toast.error(e.message || "Errore pagamento online") }
+                          }}
+                          className="p-1.5 rounded bg-white text-black hover:bg-white/80 hover:text-blue-600"
+                          title="Paga online con carta"
+                        >
+                          <CreditCard className="w-4 h-4" />
+                        </button>
+                      )}
                       {isPwa && <button onClick={() => openEdit(p)} className="p-1.5 rounded bg-white text-black hover:bg-white/80" title="Modifica"><Edit2 className="w-4 h-4" /></button>}
                       {isPwa && <button onClick={() => handleDelete(p._id)} className="p-1.5 rounded bg-white text-black hover:bg-red-100 hover:text-red-600" title="Elimina"><Trash2 className="w-4 h-4" /></button>}
                     </div>
