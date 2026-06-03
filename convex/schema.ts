@@ -965,4 +965,21 @@ export default defineSchema({
   })
     .index("by_organization", ["organizationId"])
     .index("by_item", ["itemId"]),
+
+  // ═══════════════════════════════════════════════════════
+  // REVIEWS
+  // ═══════════════════════════════════════════════════════
+
+  reviews: defineTable({
+    organizationId: v.id("organizations"),
+    name: v.string(),
+    email: v.optional(v.string()),
+    company: v.optional(v.string()),
+    text: v.string(),
+    rating: v.number(),
+    approved: v.optional(v.boolean()),
+    createdAt: v.number(),
+  })
+    .index("by_organization", ["organizationId"])
+    .index("by_approved", ["approved"]),
 })

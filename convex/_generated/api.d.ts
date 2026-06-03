@@ -45,6 +45,7 @@ import type * as payments from "../payments.js";
 import type * as quotePolls from "../quotePolls.js";
 import type * as quotes from "../quotes.js";
 import type * as referral from "../referral.js";
+import type * as reviews from "../reviews.js";
 import type * as seed from "../seed.js";
 import type * as stripe from "../stripe.js";
 import type * as subscriptions from "../subscriptions.js";
@@ -102,6 +103,7 @@ declare const fullApi: ApiFromModules<{
   quotePolls: typeof quotePolls;
   quotes: typeof quotes;
   referral: typeof referral;
+  reviews: typeof reviews;
   seed: typeof seed;
   stripe: typeof stripe;
   subscriptions: typeof subscriptions;
