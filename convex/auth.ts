@@ -232,6 +232,88 @@ export const login = mutation({
   },
 })
 
+export const registerCompany = mutation({
+  args: {
+    email: v.string(),
+    password: v.string(),
+    fullName: v.string(),
+    phone: v.optional(v.string()),
+    accountType: v.union(v.literal("manufacturer"), v.literal("reseller")),
+    companyName: v.string(),
+    vatNumber: v.optional(v.string()),
+    employeeCount: v.optional(v.number()),
+    suppliers: v.optional(v.array(v.string())),
+    specializations: v.optional(v.array(v.string())),
+    materialsUsed: v.optional(v.array(v.string())),
+    hardwareBrands: v.optional(v.array(v.string())),
+    country: v.optional(v.string()),
+    city: v.optional(v.string()),
+    address: v.optional(v.string()),
+    profileDescription: v.optional(v.string()),
+    website: v.optional(v.string()),
+    contactPhone: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const normalizedEmail = args.email.toLowerCase().trim()
+
+    const existing = await ctx.db
+      .query("users")
+      .withIndex("by_email", (q) => q.eq("email", normalizedEmail))
+      .first()
+    if (existing) throw new Error("Email già registrata")
+    if (args.password.length < 8) throw new Error("Password troppo corta (min 8 caratteri)")
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(args.email)) throw new Error("Email non valida")
+
+    const passwordHash = await hashPassword(args.password)
+
+    const slug = "org-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 6)
+    const orgId = await ctx.db.insert("organizations", {
+      name: args.companyName,
+      slug,
+      ownerEmail: normalizedEmail,
+      accountType: args.accountType,
+      companyName: args.companyName,
+      vatNumber: args.vatNumber,
+      employeeCount: args.employeeCount,
+      suppliers: args.suppliers,
+      country: args.country,
+      city: args.city,
+      address: args.address,
+      specializations: args.specializations,
+      materialsUsed: args.materialsUsed,
+      hardwareBrands: args.hardwareBrands,
+      profileDescription: args.profileDescription,
+      website: args.website,
+      contactPhone: args.contactPhone,
+      onboardingCompleted: true,
+      plan: "free",
+      status: "active",
+    })
+
+    const userId = await ctx.db.insert("users", {
+      email: normalizedEmail,
+      fullName: args.fullName,
+      role: "admin",
+      organizationId: orgId,
+      phone: args.phone,
+      passwordHash,
+      onboardingCompleted: true,
+    })
+
+    await ctx.scheduler.runAfter(0, internal.lib.helpers.logActivity, {
+      organizationId: orgId,
+      userEmail: args.email,
+      action: "registered_company",
+      entityType: "user",
+      entityId: userId,
+      entityName: args.fullName,
+      details: `Azienda ${args.companyName} registrata come ${args.accountType === "manufacturer" ? "Fabbricante" : "Rivenditore"}`,
+    })
+
+    return { userId, organizationId: orgId, accountType: args.accountType }
+  },
+})
+
 export const updatePassword = mutation({
   args: { email: v.string(), oldPassword: v.string(), newPassword: v.string() },
   handler: async (ctx, args) => {

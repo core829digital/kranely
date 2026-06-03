@@ -28,6 +28,7 @@ export default defineSchema({
     specializations: v.optional(v.array(v.string())),
     materialsUsed: v.optional(v.array(v.string())),
     hardwareBrands: v.optional(v.array(v.string())),
+    suppliers: v.optional(v.array(v.string())),
     profileDescription: v.optional(v.string()),
     website: v.optional(v.string()),
     logo: v.optional(v.string()),

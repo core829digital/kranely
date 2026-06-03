@@ -10,6 +10,27 @@ export type UserRole = "superadmin" | "admin" | "supplier" | "driver" | "collabo
 export type UserSubrole = "serramenti" | "edilizia" | "generale" | "factory" | "office" | "construction" | null
 export type AccountType = "manufacturer" | "reseller" | null
 
+export interface RegisterCompanyArgs {
+  email: string
+  password: string
+  fullName: string
+  phone?: string
+  accountType: "manufacturer" | "reseller"
+  companyName: string
+  vatNumber?: string
+  employeeCount?: number
+  suppliers?: string[]
+  specializations?: string[]
+  materialsUsed?: string[]
+  hardwareBrands?: string[]
+  country?: string
+  city?: string
+  address?: string
+  profileDescription?: string
+  website?: string
+  contactPhone?: string
+}
+
 interface User {
   id: string
   email: string
@@ -26,6 +47,7 @@ interface AuthContextType {
   user: User | null
   signIn: (email: string, password: string) => Promise<boolean>
   signUp: (email: string, password: string, fullName: string, role: "supplier" | "collaborator" | "client" | "driver", subrole?: string | null, phone?: string) => Promise<boolean>
+  registerCompany: (args: RegisterCompanyArgs) => Promise<boolean>
   signOut: () => void
   isLoading: boolean
   error: string | null
@@ -106,6 +128,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const loginMutation = useMutation(api.auth.login)
   const registerMutation = useMutation(api.auth.register)
+  const registerCompanyMutation = useMutation(api.auth.registerCompany)
   const trackSession = useMutation(api.analytics.trackSessionEvent)
 
   useEffect(() => {
@@ -196,6 +219,44 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [signIn, registerMutation])
 
+  const registerCompanyFn = useCallback(async (args: RegisterCompanyArgs): Promise<boolean> => {
+    setIsLoading(true)
+    setError(null)
+    try {
+      const result = await registerCompanyMutation({
+        email: args.email.toLowerCase().trim(),
+        password: args.password,
+        fullName: args.fullName,
+        phone: args.phone,
+        accountType: args.accountType,
+        companyName: args.companyName,
+        vatNumber: args.vatNumber,
+        employeeCount: args.employeeCount,
+        suppliers: args.suppliers,
+        specializations: args.specializations,
+        materialsUsed: args.materialsUsed,
+        hardwareBrands: args.hardwareBrands,
+        country: args.country,
+        city: args.city,
+        address: args.address,
+        profileDescription: args.profileDescription,
+        website: args.website,
+        contactPhone: args.contactPhone,
+      })
+      if (!result) { setError("Errore registrazione"); setIsLoading(false); return false }
+      const loginOk = await signIn(args.email, args.password)
+      if (!loginOk) {
+        setError("Account creato ma accesso non riuscito. Effettua il login manualmente.")
+        setIsLoading(false)
+      }
+      return loginOk
+    } catch (e: any) {
+      setError(e.message || "Errore registrazione")
+      setIsLoading(false)
+      return false
+    }
+  }, [signIn, registerCompanyMutation])
+
   const signOut = useCallback(() => {
     if (user) {
       trackSession({ userEmail: user.email, sessionId: crypto.randomUUID(), event: "sign_out" })
@@ -216,7 +277,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, signIn, signUp, signOut, isLoading, error }}>
+    <AuthContext.Provider value={{ user, signIn, signUp, registerCompany: registerCompanyFn, signOut, isLoading, error }}>
       {children}
     </AuthContext.Provider>
   )
