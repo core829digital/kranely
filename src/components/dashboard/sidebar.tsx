@@ -114,6 +114,7 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
       roles: ["superadmin", "admin"],
       items: [
         { href: "/network", label: "Rete Kranely", icon: Globe },
+        { href: "/company-profile", label: "Profilo Azienda", icon: Building2 },
       ],
     },
     {

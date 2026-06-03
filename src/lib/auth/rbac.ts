@@ -47,6 +47,7 @@ const ROUTE_ACCESS_MAP: Record<string, UserRole[]> = {
   "/onboarding-setup": ["admin", "superadmin", "supplier", "collaborator", "client", "driver"],
   "/dashboard": ["admin", "client", "supplier", "collaborator"],
   "/client-dashboard": ["client"],
+  "/company-profile": ["admin", "superadmin"],
   "/collaborator-dashboard": ["collaborator"],
   "/supplier-dashboard": ["superadmin", "admin", "supplier"],
   "/driver-dashboard": ["superadmin", "admin", "driver"],
