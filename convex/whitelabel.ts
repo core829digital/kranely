@@ -6,8 +6,7 @@ export const get = query({
   args: { organizationId: v.id("organizations"), userEmail: v.optional(v.string()) },
   handler: async (ctx, args) => {
     const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
-    const isAdmin = user.role === "admin" || user.role === "superadmin"
-    if (!isAdmin) return null
+    if (user.role !== "superadmin") return null
     const settings = await ctx.db
       .query("whiteLabelSettings")
       .withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId))
@@ -35,7 +34,7 @@ export const create = mutation({
   },
   handler: async (ctx, args) => {
     const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
-    if (user.role !== "admin" && user.role !== "superadmin") throw new Error("Not authorized")
+    if (user.role !== "superadmin") throw new Error("Not authorized")
     const id = await ctx.db.insert("whiteLabelSettings", {
       organizationId: args.organizationId,
       appName: args.appName,
@@ -75,7 +74,7 @@ export const update = mutation({
   },
   handler: async (ctx, args) => {
     const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
-    if (user.role !== "admin" && user.role !== "superadmin") throw new Error("Not authorized")
+    if (user.role !== "superadmin") throw new Error("Not authorized")
     const { id, organizationId, userEmail, ...data } = args
     const prev = await ctx.db.get(id)
     if (!prev || prev.organizationId !== organizationId) throw new Error("Not found")

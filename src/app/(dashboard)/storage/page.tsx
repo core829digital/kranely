@@ -110,9 +110,11 @@ export default function StoragePage() {
 
   if (!orgId || !documents) return <PageSkeleton />
 
+  const isPwa = user?.role === "admin" || user?.role === "superadmin"
+
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between"><div><h1 className="text-2xl font-bold text-white">Archivio</h1><p className="text-white/60 mt-1">Gestisci file e documenti archiviati</p></div><Button onClick={openUpload} className="bg-kranely-accent text-kranely-app-bg hover:bg-kranely-accent/90"><Upload className="w-4 h-4 mr-2" /> Carica File</Button></div>
+      <div className="flex items-center justify-between"><div><h1 className="text-2xl font-bold text-white">Archivio</h1><p className="text-white/60 mt-1">Gestisci file e documenti archiviati</p></div>{isPwa && <Button onClick={openUpload} className="bg-kranely-accent text-kranely-app-bg hover:bg-kranely-accent/90"><Upload className="w-4 h-4 mr-2" /> Carica File</Button>}</div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <div className="p-4 rounded-xl border border-white/10 bg-white/[0.02]"><div className="flex items-center gap-2 mb-2"><HardDrive className="w-4 h-4 text-kranely-accent" /><span className="text-sm text-white/60">File Totali</span></div><p className="text-xl font-bold text-white">{documents.length}</p></div>
@@ -143,7 +145,7 @@ export default function StoragePage() {
             <div className="flex items-center gap-2 pt-3 border-t border-white/10">
               <Button size="sm" variant="outline" className="flex-1 border-white/10 bg-white text-black hover:bg-white/90" onClick={() => safeWindowOpen(doc.fileUrl)}><Eye className="w-3 h-3 mr-1" />Apri</Button>
               <Button size="sm" variant="outline" className="border-white/10 bg-white text-black hover:bg-white/90" title="Scarica" aria-label="Scarica" onClick={() => safeWindowOpen(doc.fileUrl)}><Download className="w-3 h-3" /></Button>
-              <Button size="sm" variant="destructive" onClick={() => handleDelete(doc._id)}><Trash2 className="w-3 h-3" /></Button>
+{isPwa && <Button size="sm" variant="destructive" onClick={() => handleDelete(doc._id)}><Trash2 className="w-3 h-3" /></Button>}
             </div>
           </div>
         ))}

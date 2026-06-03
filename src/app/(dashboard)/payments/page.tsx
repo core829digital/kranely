@@ -143,20 +143,22 @@ export default function PaymentsPage() {
 
   if (!orgId || !payments || !stats) return <PageSkeleton />
 
+  const isPwa = user?.role === "admin" || user?.role === "superadmin"
+
   const filteredPayments = payments.filter((p) => { if (!search) return true; const s = search.toLowerCase(); return p.description.toLowerCase().includes(s) })
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div><h1 className="text-2xl font-bold text-white">Pagamenti</h1><p className="text-white/60 mt-1">{filteredPayments.length} pagamenti trovati</p></div>
-        <Button onClick={openCreate} className="bg-kranely-accent text-kranely-app-bg hover:bg-kranely-accent/90"><Plus className="w-4 h-4 mr-2" /> Nuovo Pagamento</Button>
+        {isPwa && <Button onClick={openCreate} className="bg-kranely-accent text-kranely-app-bg hover:bg-kranely-accent/90"><Plus className="w-4 h-4 mr-2" /> Nuovo Pagamento</Button>}
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="p-4 rounded-xl border border-white/10 bg-white/[0.02]"><div className="flex items-center gap-2 mb-2"><TrendingUp className="w-4 h-4 text-green-400" /><span className="text-sm text-white/60">Entrate Totali</span></div><p className="text-xl font-bold text-green-400">EUR{stats.paidIncoming.toLocaleString("it-IT")}</p></div>
-        <div className="p-4 rounded-xl border border-white/10 bg-white/[0.02]"><div className="flex items-center gap-2 mb-2"><TrendingDown className="w-4 h-4 text-red-400" /><span className="text-sm text-white/60">Uscite Totali</span></div><p className="text-xl font-bold text-red-400">EUR{stats.paidOutgoing.toLocaleString("it-IT")}</p></div>
-        <div className="p-4 rounded-xl border border-white/10 bg-white/[0.02]"><div className="flex items-center gap-2 mb-2"><Calendar className="w-4 h-4 text-yellow-400" /><span className="text-sm text-white/60">In Attesa</span></div><p className="text-xl font-bold text-yellow-400">EUR{stats.pendingAmount.toLocaleString("it-IT")}</p></div>
-        <div className="p-4 rounded-xl border border-white/10 bg-white/[0.02]"><div className="flex items-center gap-2 mb-2"><CreditCard className="w-4 h-4 text-red-400" /><span className="text-sm text-white/60">Scaduti</span></div><p className="text-xl font-bold text-red-400">EUR{stats.overdueAmount.toLocaleString("it-IT")}</p></div>
+        {isPwa && <div className="p-4 rounded-xl border border-white/10 bg-white/[0.02]"><div className="flex items-center gap-2 mb-2"><TrendingUp className="w-4 h-4 text-green-400" /><span className="text-xs text-white/60">Entrate Totali</span></div><p className="text-xl font-bold text-green-400">EUR{stats.paidIncoming.toLocaleString("it-IT")}</p></div>}
+        {isPwa && <div className="p-4 rounded-xl border border-white/10 bg-white/[0.02]"><div className="flex items-center gap-2 mb-2"><TrendingDown className="w-4 h-4 text-red-400" /><span className="text-xs text-white/60">Uscite Totali</span></div><p className="text-xl font-bold text-red-400">EUR{stats.paidOutgoing.toLocaleString("it-IT")}</p></div>}
+        <div className="p-4 rounded-xl border border-white/10 bg-white/[0.02]"><div className="flex items-center gap-2 mb-2"><Calendar className="w-4 h-4 text-yellow-400" /><span className="text-xs text-white/60">In Attesa</span></div><p className="text-xl font-bold text-yellow-400">EUR{stats.pendingAmount.toLocaleString("it-IT")}</p></div>
+        <div className="p-4 rounded-xl border border-white/10 bg-white/[0.02]"><div className="flex items-center gap-2 mb-2"><CreditCard className="w-4 h-4 text-red-400" /><span className="text-xs text-white/60">Scaduti</span></div><p className="text-xl font-bold text-red-400">EUR{stats.overdueAmount.toLocaleString("it-IT")}</p></div>
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
@@ -174,7 +176,7 @@ export default function PaymentsPage() {
                 <th className="text-left px-4 py-3 text-xs font-medium text-white/60 uppercase hidden md:table-cell">Entita</th>
                 <th className="text-left px-4 py-3 text-xs font-medium text-white/60 uppercase">Tipo</th>
                 <th className="text-left px-4 py-3 text-xs font-medium text-white/60 uppercase">Stato</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-white/60 uppercase hidden lg:table-cell">Importo</th>
+{isPwa && <th className="text-left px-4 py-3 text-xs font-medium text-white/60 uppercase hidden lg:table-cell">Importo</th>}
                 <th className="text-left px-4 py-3 text-xs font-medium text-white/60 uppercase hidden lg:table-cell">Scadenza</th>
                 <th className="w-32"></th>
               </tr>
@@ -199,14 +201,14 @@ export default function PaymentsPage() {
                   </td>
                   <td className="px-4 py-3"><Badge variant={p.type === "client" ? "success" : "destructive"}>{p.type === "client" ? "Entrata" : p.type === "supplier" ? "Fornitore" : "Collaboratore"}</Badge></td>
                   <td className="px-4 py-3">{statusBadge(p.status)}</td>
-                  <td className={`px-4 py-3 text-sm font-medium hidden lg:table-cell ${p.type === "client" ? "text-green-400" : "text-red-400"}`}>EUR{p.amount.toLocaleString("it-IT")}</td>
+                  {isPwa && <td className={`px-4 py-3 text-sm font-medium hidden lg:table-cell ${p.type === "client" ? "text-green-400" : "text-red-400"}`}>EUR{p.amount.toLocaleString("it-IT")}</td>}
                   <td className="px-4 py-3 text-sm text-white/60 hidden lg:table-cell">{p.dueDate || "-"}</td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-1">
                       <button onClick={() => openDetail(p)} className="p-1.5 rounded bg-white text-black hover:bg-white/80" title="Dettagli"><Eye className="w-4 h-4" /></button>
-                      {p.status !== "pagato" && <button onClick={() => openMarkAsPaid(p)} className="p-1.5 rounded bg-white text-black hover:bg-white/80 hover:text-green-600" title="Segna come pagato + ricevuta"><CheckCircle className="w-4 h-4" /></button>}
-                      <button onClick={() => openEdit(p)} className="p-1.5 rounded bg-white text-black hover:bg-white/80" title="Modifica"><Edit2 className="w-4 h-4" /></button>
-                      <button onClick={() => handleDelete(p._id)} className="p-1.5 rounded bg-white text-black hover:bg-red-100 hover:text-red-600" title="Elimina"><Trash2 className="w-4 h-4" /></button>
+                      {isPwa && p.status !== "pagato" && <button onClick={() => openMarkAsPaid(p)} className="p-1.5 rounded bg-white text-black hover:bg-white/80 hover:text-green-600" title="Segna come pagato + ricevuta"><CheckCircle className="w-4 h-4" /></button>}
+                      {isPwa && <button onClick={() => openEdit(p)} className="p-1.5 rounded bg-white text-black hover:bg-white/80" title="Modifica"><Edit2 className="w-4 h-4" /></button>}
+                      {isPwa && <button onClick={() => handleDelete(p._id)} className="p-1.5 rounded bg-white text-black hover:bg-red-100 hover:text-red-600" title="Elimina"><Trash2 className="w-4 h-4" /></button>}
                     </div>
                   </td>
                 </tr>

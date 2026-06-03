@@ -32,6 +32,8 @@ export default function SettingsPage() {
 
   if (!orgId || !org) return <PageSkeleton />
 
+  const isPwa = user?.role === "admin" || user?.role === "superadmin"
+
   if (!orgNameLoaded && org.name) {
     setOrgName(org.name)
     setOrgNameLoaded(true)
@@ -64,7 +66,7 @@ export default function SettingsPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
-        <div className="p-6 rounded-xl border border-white/10 bg-white/[0.02]">
+        {isPwa && <div className="p-6 rounded-xl border border-white/10 bg-white/[0.02]">
           <div className="flex items-center gap-2 mb-4"><Building2 className="w-5 h-5 text-kranely-accent" /><h2 className="text-lg font-semibold text-white">Azienda</h2></div>
           <div className="space-y-4">
             <div><Label>Nome Azienda</Label>
@@ -77,7 +79,7 @@ export default function SettingsPage() {
             <div><Label>Piano</Label><Badge variant="default" className="mt-1">{org.plan}</Badge></div>
             <div><Label>Stato</Label><Badge variant={org.status === "active" ? "success" : "secondary"} className="mt-1">{org.status}</Badge></div>
           </div>
-        </div>
+        </div>}
 
         <div className="p-6 rounded-xl border border-white/10 bg-white/[0.02]">
           <div className="flex items-center gap-2 mb-4"><Bell className="w-5 h-5 text-kranely-accent" /><h2 className="text-lg font-semibold text-white">Notifiche</h2></div>

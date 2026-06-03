@@ -64,7 +64,7 @@ const ROUTE_ACCESS_MAP: Record<string, UserRole[]> = {
   "/blog": ["admin"],
   "/blog-admin": ["admin"],
   "/referral": ["admin"],
-  "/whitelabel": ["admin"],
+  "/whitelabel": ["superadmin"],
   "/company-dashboard": ["admin"],
   "/workflow": ["admin", "supplier"],
   "/activity-log": ["admin"],

@@ -13,8 +13,6 @@ import {
   LineChart, Line, PieChart, Pie, Cell,
 } from "recharts"
 
-const ADMIN_EMAIL = "contact.core829@gmail.com"
-
 type ChartTooltipProps = { active?: boolean; payload?: { name?: string; value?: number | string; color?: string }[]; label?: string | number }
 function ChartTooltip({ active, payload, label }: ChartTooltipProps) {
   if (active && payload?.length) {
@@ -33,9 +31,10 @@ function ChartTooltip({ active, payload, label }: ChartTooltipProps) {
 }
 
 function AdminDashboard() {
-  const adminData = useQuery(api.analytics.getAdminDashboard, { adminEmail: ADMIN_EMAIL })
-  const adminUsers = useQuery(api.analytics.getAdminUsers, { adminEmail: ADMIN_EMAIL })
-  const recentActivity = useQuery(api.analytics.getAdminRecentActivity, { adminEmail: ADMIN_EMAIL, limit: 30 })
+  const { user } = useAuth()
+  const adminData = useQuery(api.analytics.getAdminDashboard, user?.email ? { adminEmail: user.email } : "skip")
+  const adminUsers = useQuery(api.analytics.getAdminUsers, user?.email ? { adminEmail: user.email } : "skip")
+  const recentActivity = useQuery(api.analytics.getAdminRecentActivity, user?.email ? { adminEmail: user.email, limit: 30 } : "skip")
 
   const [userSearch, setUserSearch] = useState("")
 
@@ -385,7 +384,7 @@ export default function AdminPage() {
     )
   }
 
-  if (user.email !== ADMIN_EMAIL) {
+  if (user.role !== "admin" && user.role !== "superadmin") {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="text-center max-w-md">

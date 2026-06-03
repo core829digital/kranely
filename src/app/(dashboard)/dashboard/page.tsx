@@ -54,11 +54,13 @@ export default function DashboardPage() {
 
   if (!orgId || !overview) return <PageSkeleton />
 
+  const isPwa = user?.role === "admin" || user?.role === "superadmin"
+
   const stats = [
     { label: "Clienti Totali", value: overview?.clients?.total?.toString() ?? "—", change: `${overview?.clients?.active ?? 0} attivi`, trend: (overview?.clients?.active ?? 0) > 0 ? "up" : "down", icon: Users, href: "/clients" },
     { label: "Preventivi", value: overview?.quotes?.total?.toString() ?? "—", change: `${overview?.quotes?.accepted ?? 0} accettati`, trend: (overview?.quotes?.accepted ?? 0) > (overview?.quotes?.pending ?? 0) ? "up" : "down", icon: FileText, href: "/quotes" },
     { label: "Cantieri Attivi", value: overview?.cantieri?.inCorso?.toString() ?? "—", change: `${overview?.cantieri?.completati ?? 0} completati`, trend: (overview?.cantieri?.inCorso ?? 0) > 0 ? "up" : "down", icon: Building2, href: "/cantieri" },
-    { label: "Pagamenti in Attesa", value: overview ? `EUR${overview.payments.pending.toLocaleString("it-IT")}` : "—", change: (overview?.payments?.overdue ?? 0) > 0 ? `EUR${(overview?.payments?.overdue ?? 0).toLocaleString("it-IT")} scaduti` : "Nessun scaduto", trend: (overview?.payments?.overdue ?? 0) > 0 ? "down" : "up", icon: CreditCard, href: "/payments" },
+    ...(isPwa ? [{ label: "Pagamenti in Attesa", value: overview ? `EUR${overview.payments.pending.toLocaleString("it-IT")}` : "—", change: (overview?.payments?.overdue ?? 0) > 0 ? `EUR${(overview?.payments?.overdue ?? 0).toLocaleString("it-IT")} scaduti` : "Nessun scaduto", trend: (overview?.payments?.overdue ?? 0) > 0 ? "down" : "up", icon: CreditCard, href: "/payments" }] : []),
   ]
 
   const revenueChartData: { month: string; revenue: number; expenses: number }[] = (revenueTrend || []).map((item) => ({ month: item.month, revenue: item.incoming, expenses: item.outgoing }))
@@ -113,7 +115,7 @@ export default function DashboardPage() {
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      {isPwa && <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 p-6 rounded-xl border border-white/10 bg-white/[0.02]">
           <div className="flex items-center justify-between mb-6">
             <div><h2 className="text-lg font-semibold text-white">Andamento Ricavi</h2><p className="text-sm text-white/40">Ultimi 12 mesi</p></div>
@@ -152,7 +154,7 @@ export default function DashboardPage() {
             </>
           ) : <div className="flex items-center justify-center h-[200px] text-white/40">Nessun preventivo</div>}
         </div>
-      </div>
+      </div>}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="p-6 rounded-xl border border-white/10 bg-white/[0.02]">
@@ -196,7 +198,7 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        <div className="p-6 rounded-xl border border-white/10 bg-white/[0.02]">
+        {isPwa && <div className="p-6 rounded-xl border border-white/10 bg-white/[0.02]">
           <h2 className="text-lg font-semibold text-white mb-4">Azioni Rapide</h2>
           <div className="space-y-3">
             {[
@@ -214,7 +216,7 @@ export default function DashboardPage() {
               </Link>
             ))}
           </div>
-        </div>
+        </div>}
       </div>
     </div>
   )
