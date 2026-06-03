@@ -18,7 +18,7 @@ import Image from "next/image"
 import {
   Building2, Store, ChevronRight, ChevronLeft, Check, Upload,
   CheckCircle2, ArrowRight, FileText, Wrench, Globe, Briefcase,
-  Sparkles, Package, Loader2, Camera, Factory
+  Sparkles, Package, Loader2, Camera, Factory, Monitor
 } from "lucide-react"
 
 type AccountType = "manufacturer" | "reseller" | null
@@ -49,6 +49,7 @@ const STEPS = [
   { num: 6, title: "Contatti", icon: Globe },
   { num: 7, title: "Descrizione", icon: FileText },
   { num: 8, title: "Riepilogo", icon: CheckCircle2 },
+  { num: 9, title: "Anteprima", icon: Monitor },
 ]
 
 const SPECIALIZATIONS = [
@@ -169,10 +170,10 @@ export default function OnboardingSetupPage() {
     finally { setUploadingLogo(false) }
   }
 
-  const handleNext = async () => {
-    await handleSaveStep(currentStep)
-    setCurrentStep(prev => Math.min(prev + 1, 8))
-  }
+   const handleNext = async () => {
+     await handleSaveStep(currentStep)
+     setCurrentStep(prev => Math.min(prev + 1, 9))
+   }
 
   const handlePrev = () => setCurrentStep(prev => Math.max(prev - 1, 1))
 
@@ -208,7 +209,7 @@ export default function OnboardingSetupPage() {
     }))
   }
 
-  const progress = ((currentStep - 1) / 7) * 100
+   const progress = ((currentStep - 1) / 8) * 100
 
   const stepIcon = (num: number) => {
     const s = STEPS.find(st => st.num === num)
@@ -648,44 +649,44 @@ export default function OnboardingSetupPage() {
             )}
           </div>
 
-          {/* Navigation */}
-          <div className="flex items-center justify-between mt-6">
-            <Button
-              onClick={handlePrev}
-              disabled={currentStep === 1}
-              variant="outline"
-              className="border-white/10"
-            >
-              <ChevronLeft className="w-4 h-4 mr-2" /> Indietro
-            </Button>
+           {/* Navigation */}
+           <div className="flex items-center justify-between mt-6">
+             <Button
+               onClick={handlePrev}
+               disabled={currentStep === 1}
+               variant="outline"
+               className="border-white/10"
+             >
+               <ChevronLeft className="w-4 h-4 mr-2" /> Indietro
+             </Button>
 
-            <div className="flex items-center gap-3">
-              {currentStep < 8 && (
-                <Button
-                  onClick={handleNext}
-                  disabled={
-                    (currentStep === 1 && !formData.accountType) ||
-                    (currentStep === 2 && !formData.companyName.trim()) ||
-                    saving
-                  }
-                  className="bg-kranely-accent text-kranely-app-bg hover:brightness-110"
-                >
-                  {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
-                  Avanti <ChevronRight className="w-4 h-4 ml-2" />
-                </Button>
-              )}
-              {currentStep === 8 && (
-                <Button
-                  onClick={handleComplete}
-                  disabled={completing || !formData.accountType || !formData.companyName.trim() || !formData.country}
-                  className="bg-green-500 text-white hover:bg-green-600"
-                >
-                  {completing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <ArrowRight className="w-4 h-4 mr-2" />}
-                  Completa
-                </Button>
-              )}
-            </div>
-          </div>
+             <div className="flex items-center gap-3">
+               {currentStep < 9 && (
+                 <Button
+                   onClick={handleNext}
+                   disabled={
+                     (currentStep === 1 && !formData.accountType) ||
+                     (currentStep === 2 && !formData.companyName.trim()) ||
+                     saving
+                   }
+                   className="bg-kranely-accent text-kranely-app-bg hover:brightness-110"
+                 >
+                   {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+                   Avanti <ChevronRight className="w-4 h-4 ml-2" />
+                 </Button>
+               )}
+               {currentStep === 9 && (
+                 <Button
+                   onClick={handleComplete}
+                   disabled={completing || !formData.accountType || !formData.companyName.trim() || !formData.country}
+                   className="bg-green-500 text-white hover:bg-green-600"
+                 >
+                   {completing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <ArrowRight className="w-4 h-4 mr-2" />}
+                   Completa
+                 </Button>
+               )}
+             </div>
+           </div>
         </div>
       </div>
     </div>
