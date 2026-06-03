@@ -49,9 +49,13 @@ export default function NetworkPage() {
   const [filterHardware, setFilterHardware] = useState<string[]>([])
   const [showFilters, setShowFilters] = useState(false)
 
+  const isAdminUser = user?.role === "admin" || user?.role === "superadmin"
+  const userAccountType = user?.accountType
+
   const results = useQuery(
     api.network.searchNetwork,
     {
+      userEmail: user?.email || undefined,
       searchQuery: searchQuery || undefined,
       accountType: (filterAccountType as "manufacturer" | "reseller") || undefined,
       country: filterCountry || undefined,
@@ -66,7 +70,7 @@ export default function NetworkPage() {
 
   const clearFilters = () => {
     setFilterAccountType(""); setFilterCountry("")
-    setFilterSpecializations([]); setFilterMaterials([]); setFilterHardware([])
+    filterSpecializations.length = 0; filterMaterials.length = 0; filterHardware.length = 0
   }
 
   const toggleArrayFilter = (
@@ -128,11 +132,19 @@ export default function NetworkPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div>
               <Label>Tipo</Label>
-              <Select value={filterAccountType} onChange={e => setFilterAccountType(e.target.value)} className="mt-1">
-                <option value="">Tutti</option>
-                <option value="manufacturer">Produttori</option>
-                <option value="reseller">Rivenditori</option>
-              </Select>
+              {isAdminUser && userAccountType ? (
+                <div className="mt-1 text-sm text-white/60 bg-white/5 px-3 py-2 rounded-lg border border-white/10">
+                  {userAccountType === "manufacturer"
+                    ? "Mostra solo Rivenditori (profilo Fabbricante)"
+                    : "Mostra solo Produttori (profilo Rivenditore)"}
+                </div>
+              ) : (
+                <Select value={filterAccountType} onChange={e => setFilterAccountType(e.target.value)} className="mt-1">
+                  <option value="">Tutti</option>
+                  <option value="manufacturer">Produttori</option>
+                  <option value="reseller">Rivenditori</option>
+                </Select>
+              )}
             </div>
             <div>
               <Label>Paese</Label>

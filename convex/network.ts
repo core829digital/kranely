@@ -3,6 +3,7 @@ import { query } from "./_generated/server"
 
 export const searchNetwork = query({
   args: {
+    userEmail: v.optional(v.string()),
     accountType: v.optional(v.union(v.literal("manufacturer"), v.literal("reseller"))),
     country: v.optional(v.string()),
     city: v.optional(v.string()),
@@ -12,11 +13,34 @@ export const searchNetwork = query({
     searchQuery: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    // Determine search restriction based on user role and org accountType
+    let restrictTo: "manufacturer" | "reseller" | null = null
+    if (args.userEmail) {
+      const user = await ctx.db
+        .query("users")
+        .withIndex("by_email", (q) => q.eq("email", args.userEmail!.toLowerCase().trim()))
+        .first()
+      if (user) {
+        const isAdmin = user.role === "admin" || user.role === "superadmin"
+        if (isAdmin && user.organizationId) {
+          const org = await ctx.db.get(user.organizationId)
+          if (org?.accountType === "manufacturer") {
+            restrictTo = "reseller"
+          } else if (org?.accountType === "reseller") {
+            restrictTo = "manufacturer"
+          }
+        }
+      }
+    }
+
+    // If user is admin with accountType restriction, override explicit accountType filter
+    const effectiveType = restrictTo || args.accountType
+
     let orgs
-    if (args.accountType) {
+    if (effectiveType) {
       orgs = await ctx.db
         .query("organizations")
-        .withIndex("by_accountType", (q) => q.eq("accountType", args.accountType!))
+        .withIndex("by_accountType", (q) => q.eq("accountType", effectiveType))
         .collect()
     } else {
       orgs = await ctx.db.query("organizations").collect()
