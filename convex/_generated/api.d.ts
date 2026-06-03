@@ -36,6 +36,7 @@ import type * as internalMessages from "../internalMessages.js";
 import type * as jobTitles from "../jobTitles.js";
 import type * as lib_helpers from "../lib/helpers.js";
 import type * as notifications from "../notifications.js";
+import type * as onboarding from "../onboarding.js";
 import type * as orgProvision from "../orgProvision.js";
 import type * as organizations from "../organizations.js";
 import type * as paymentSettings from "../paymentSettings.js";
@@ -90,6 +91,7 @@ declare const fullApi: ApiFromModules<{
   jobTitles: typeof jobTitles;
   "lib/helpers": typeof lib_helpers;
   notifications: typeof notifications;
+  onboarding: typeof onboarding;
   orgProvision: typeof orgProvision;
   organizations: typeof organizations;
   paymentSettings: typeof paymentSettings;
