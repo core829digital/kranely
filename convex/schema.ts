@@ -45,77 +45,98 @@ export default defineSchema({
     .index("by_accountType", ["accountType"])
     .index("by_country_accountType", ["country", "accountType"]),
 
-  whiteLabelSettings: defineTable({
-    organizationId: v.id("organizations"),
-    logoUrl: v.optional(v.string()),
-    faviconUrl: v.optional(v.string()),
-    primaryColor: v.optional(v.string()),
-    secondaryColor: v.optional(v.string()),
-    accentColor: v.optional(v.string()),
-    fontFamily: v.optional(v.string()),
-    appName: v.optional(v.string()),
-    tagline: v.optional(v.string()),
-    supportEmail: v.optional(v.string()),
-    supportPhone: v.optional(v.string()),
-    websiteUrl: v.optional(v.string()),
-    features: v.optional(v.any()),
-    customCss: v.optional(v.string()),
-    updatedById: v.optional(v.id("users")),
-  })
-    .index("by_organization", ["organizationId"]),
+    whiteLabelSettings: defineTable({
+      organizationId: v.id("organizations"),
+      appName: v.optional(v.string()),
+      tagline: v.optional(v.string()),
+      logoUrl: v.optional(v.string()),
+      faviconUrl: v.optional(v.string()),
+      primaryColor: v.optional(v.string()),
+      secondaryColor: v.optional(v.string()),
+      accentColor: v.optional(v.string()),
+      fontFamily: v.optional(v.string()),
+      supportEmail: v.optional(v.string()),
+      supportPhone: v.optional(v.string()),
+      websiteUrl: v.optional(v.string()),
+      customCss: v.optional(v.string()),
+    })
+      .index("by_organization", ["organizationId"]),
 
-  // ═══════════════════════════════════════════════════════
-  // USERS & AUTH
-  // ═══════════════════════════════════════════════════════
+    // ═══════════════════════════════════════════════════════
+    // CLIENTS
+    // ══════════════════════════════════════════════════════
+    clients: defineTable({
+      organizationId: v.id("organizations"),
+      fullName: v.string(),
+      email: v.string(),
+      phone: v.optional(v.string()),
+      address: v.optional(v.string()),
+      fiscalCode: v.optional(v.string()),
+      companyName: v.optional(v.string()),
+      vatNumber: v.optional(v.string()),
+      clientType: v.union(v.literal("b2b"), v.literal("b2c")),
+      status: v.union(v.literal("lead"), v.literal("active"), v.literal("archived")),
+      notes: v.optional(v.string()),
+      createdById: v.optional(v.id("users")),
+    })
+      .index("by_organization", ["organizationId"])
+      .index("by_email", ["email"])
+      .index("by_createdBy", ["createdById"]),
 
-  users: defineTable({
-    email: v.string(),
-    fullName: v.optional(v.string()),
-    role: v.union(v.literal("superadmin"), v.literal("admin"), v.literal("supplier"), v.literal("driver"), v.literal("collaborator"), v.literal("client")),
-    subrole: v.optional(v.union(v.literal("serramenti"), v.literal("edilizia"), v.literal("generale"), v.literal("factory"), v.literal("office"), v.literal("construction"))),
-    organizationId: v.optional(v.id("organizations")),
-    isCompany: v.optional(v.boolean()),
-    companyRole: v.optional(v.string()),
-    profileImage: v.optional(v.string()),
-    phone: v.optional(v.string()),
-    onboardingCompleted: v.optional(v.boolean()),
-    workSector: v.optional(v.string()),
-    passwordHash: v.optional(v.string()),
-    blocked: v.optional(v.boolean()),
-    blockedReason: v.optional(v.string()),
-    referralCodeApplied: v.optional(v.id("referralCodes")),
-    referralDiscountPercent: v.optional(v.number()),
-    failedAttempts: v.optional(v.number()),
-    lastLoginAttempt: v.optional(v.number()),
-    passwordResetToken: v.optional(v.string()),
-    passwordResetExpires: v.optional(v.number()),
-  })
-    .index("by_email", ["email"])
-    .index("by_role", ["role"])
-    .index("by_organization", ["organizationId"])
-    .index("by_passwordResetToken", ["passwordResetToken"]),
+    // ═══════════════════════════════════════════════════════
+    // MICRO-ROLES
+    // ═══════════════════════════════════════════════════════
 
-  // ═══════════════════════════════════════════════════════
-  // CLIENTS
-  // ═══════════════════════════════════════════════════════
-
-  clients: defineTable({
-    organizationId: v.id("organizations"),
-    fullName: v.string(),
-    email: v.string(),
-    phone: v.optional(v.string()),
-    address: v.optional(v.string()),
-    fiscalCode: v.optional(v.string()),
-    companyName: v.optional(v.string()),
-    notes: v.optional(v.string()),
-    status: v.union(v.literal("lead"), v.literal("active"), v.literal("archived")),
-    clientType: v.union(v.literal("b2b"), v.literal("b2c")),
-    vatNumber: v.optional(v.string()),
-    createdById: v.optional(v.id("users")),
-  })
-    .index("by_email", ["email"])
-    .index("by_status", ["status"])
-    .index("by_organization", ["organizationId"]),
+    users: defineTable({
+      email: v.string(),
+      fullName: v.optional(v.string()),
+      role: v.union(v.literal("superadmin"), v.literal("admin"), v.literal("supplier"), v.literal("driver"), v.literal("collaborator"), v.literal("client")),
+      subrole: v.optional(v.union(v.literal("serramenti"), v.literal("edilizia"), v.literal("generale"), v.literal("factory"), v.literal("office"), v.literal("construction"))),
+      organizationId: v.optional(v.id("organizations")),
+      isCompany: v.optional(v.boolean()),
+      accountType: v.optional(v.union(v.literal("manufacturer"), v.literal("reseller"))),
+      companyName: v.optional(v.string()),
+      vatNumber: v.optional(v.string()),
+      employeeCount: v.optional(v.number()),
+      address: v.optional(v.string()),
+      city: v.optional(v.string()),
+      country: v.optional(v.string()),
+      phone: v.optional(v.string()),
+      website: v.optional(v.string()),
+      specializations: v.optional(v.array(v.string())),
+      materialsUsed: v.optional(v.array(v.string())),
+      hardwareBrands: v.optional(v.array(v.string())),
+      contactPhone: v.optional(v.string()),
+      profileDescription: v.optional(v.string()),
+      passwordHash: v.optional(v.string()),
+      failedAttempts: v.optional(v.number()),
+      lastLoginAttempt: v.optional(v.number()),
+      onboardingCompleted: v.optional(v.boolean()),
+      blocked: v.optional(v.boolean()),
+      passwordResetToken: v.optional(v.string()),
+      passwordResetExpires: v.optional(v.number()),
+      microRole: v.optional(v.union(
+        v.literal("manufacturer"), 
+        v.literal("reseller"), 
+        v.literal("factory_manager"), 
+        v.literal("procurement_specialist"), 
+        v.literal("quality_control"), 
+        v.literal("logistics_coordinator")
+      )),
+      warnings: v.optional(v.array(v.object({
+        id: v.string(),
+        reason: v.string(),
+        warnedAt: v.number(),
+        warnedBy: v.string()
+      }))),
+      banReason: v.optional(v.string()),
+      bannedAt: v.optional(v.number()),
+      bannedBy: v.optional(v.string()),
+      lastWarnedAt: v.optional(v.number()),
+    })
+      .index("by_email", ["email"])
+      .index("by_organization", ["organizationId"])
+      .index("by_passwordResetToken", ["passwordResetToken"]),
 
   // ═══════════════════════════════════════════════════════
   // APPOINTMENTS

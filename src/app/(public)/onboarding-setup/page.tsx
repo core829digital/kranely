@@ -94,10 +94,10 @@ export default function OnboardingSetupPage() {
      website: "", contactPhone: "", logo: "",
    })
 
-   const onboardingState = useQuery(
-     api.onboarding.getOnboardingState,
-     orgId && formData.accountType ? { organizationId: orgId, userEmail: "" } : "skip"
-   )
+    const onboardingState = useQuery(
+      api.onboarding.getOnboardingState,
+      orgId ? { organizationId: orgId, userEmail: user?.email || "" } : "skip"
+    )
    const saveStep = useMutation(api.onboarding.saveOnboardingStep)
    const completeMutation = useMutation(api.onboarding.completeOnboarding)
    const generateUploadUrl = useMutation(api.upload.generateUploadUrl)

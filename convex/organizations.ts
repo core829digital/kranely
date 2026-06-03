@@ -122,11 +122,11 @@ export const getPublicProfile = query({
   handler: async (ctx, args) => {
     const org = await ctx.db.get(args.orgId)
     if (!org) throw new Error("Not found")
-    if (!org.accountType) throw new Error("Profile not completed")
+    // Ensure we always return a valid accountType, defaulting to empty string if not set
     return {
       _id: org._id,
       _creationTime: org._creationTime,
-      accountType: org.accountType,
+      accountType: org.accountType || "",
       companyName: org.companyName || org.name,
       vatNumber: org.vatNumber,
       country: org.country,

@@ -28,15 +28,15 @@ export default function OnboardingStaffPage() {
     if (password.length < 6) { toast.error("La password deve essere almeno 6 caratteri"); return }
     if (password !== confirmPassword) { toast.error("Le password non coincidono"); return }
 
-    try {
-      const ok = await signUp(email.trim().toLowerCase(), password, fullName.trim(), "collaborator", undefined, phone.trim() || undefined)
-      if (ok) {
-        toast.success("Registrazione completata!")
-        router.push(getDefaultRouteForRole("collaborator"))
-      }
-    } catch (err: any) {
-      toast.error(err.message || "Errore registrazione")
-    }
+     try {
+       const ok = await signUp(email.trim().toLowerCase(), password, fullName.trim(), "collaborator", undefined, undefined, phone.trim() || undefined)
+       if (ok) {
+         toast.success("Registrazione completata!")
+         router.push(getDefaultRouteForRole("collaborator"))
+       }
+     } catch (err: any) {
+       toast.error(err.message || "Errore registrazione")
+     }
   }
 
   return (

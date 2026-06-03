@@ -9,6 +9,7 @@ import { Id } from "../../../convex/_generated/dataModel"
 export type UserRole = "superadmin" | "admin" | "supplier" | "driver" | "collaborator" | "client"
 export type UserSubrole = "serramenti" | "edilizia" | "generale" | "factory" | "office" | "construction" | null
 export type AccountType = "manufacturer" | "reseller" | null
+export type MicroRole = "manufacturer" | "reseller" | "factory_manager" | "procurement_specialist" | "quality_control" | "logistics_coordinator" | null
 
 export interface RegisterCompanyArgs {
   email: string
@@ -41,12 +42,13 @@ interface User {
   _id: Id<"users"> | undefined
   onboardingCompleted?: boolean
   accountType: AccountType
+  microRole: MicroRole
 }
 
 interface AuthContextType {
   user: User | null
   signIn: (email: string, password: string) => Promise<boolean>
-  signUp: (email: string, password: string, fullName: string, role: "supplier" | "collaborator" | "client" | "driver", subrole?: string | null, phone?: string) => Promise<boolean>
+  signUp: (email: string, password: string, fullName: string, role: UserRole, subrole?: string | null, microRole?: MicroRole | null, phone?: string) => Promise<boolean>
   registerCompany: (args: RegisterCompanyArgs) => Promise<boolean>
   signOut: () => void
   isLoading: boolean
@@ -68,12 +70,12 @@ function setSessionCookie(email: string) {
   try { document.cookie = `kranely_session=${encodeURIComponent(email)}; path=/; max-age=${7 * 24 * 60 * 60}; SameSite=Lax${secureFlag()}` } catch {}
 }
 
-function setSessionDataCookie(role: string, organizationId: string, onboardingCompleted?: boolean, accountType?: string) {
-  try {
-    const data = encodeURIComponent(JSON.stringify({ role, organizationId, onboardingCompleted: onboardingCompleted ?? false, accountType }))
-    document.cookie = `${SESSION_DATA_COOKIE}=${data}; path=/; max-age=${7 * 24 * 60 * 60}; SameSite=Lax${secureFlag()}`
-  } catch {}
-}
+function setSessionDataCookie(role: string, organizationId: string, onboardingCompleted?: boolean, accountType?: string, microRole?: string) {
+   try {
+     const data = encodeURIComponent(JSON.stringify({ role, organizationId, onboardingCompleted: onboardingCompleted ?? false, accountType, microRole }))
+     document.cookie = `${SESSION_DATA_COOKIE}=${data}; path=/; max-age=${7 * 24 * 60 * 60}; SameSite=Lax${secureFlag()}`
+   } catch {}
+ }
 
 function clearSessionCookie() {
   try {
@@ -93,6 +95,7 @@ interface SessionData {
   expires: number
   onboardingCompleted?: boolean
   accountType?: string
+  microRole?: string
 }
 
 function getSession(): SessionData | null {
@@ -132,22 +135,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const trackSession = useMutation(api.analytics.trackSessionEvent)
 
   useEffect(() => {
-    const session = getSession()
-    if (session) {
-      setUser({
-        id: session.userId,
-        email: session.email,
-        fullName: session.fullName,
-        role: session.role,
-        subrole: session.subrole,
-        organizationId: session.organizationId,
-        _id: session.userId as Id<"users"> | undefined,
-        onboardingCompleted: session.onboardingCompleted,
-        accountType: (session.accountType as AccountType) ?? null,
-      })
-      setSessionCookie(session.email)
-      setSessionDataCookie(session.role, session.organizationId, session.onboardingCompleted, session.accountType)
-    }
+     const session = getSession()
+     if (session) {
+       setUser({
+         id: session.userId,
+         email: session.email,
+         fullName: session.fullName,
+         role: session.role,
+         subrole: session.subrole,
+         organizationId: session.organizationId,
+         _id: session.userId as Id<"users"> | undefined,
+         onboardingCompleted: session.onboardingCompleted,
+         accountType: (session.accountType as AccountType) ?? null,
+         microRole: (session.microRole as MicroRole) ?? null,
+       })
+       setSessionCookie(session.email)
+       setSessionDataCookie(session.role, session.organizationId, session.onboardingCompleted, session.accountType, session.microRole)
+     }
     setInitialized(true)
   }, [])
 
@@ -157,18 +161,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const result = await loginMutation({ email: email.toLowerCase().trim(), password })
       if (!result) { setError("Credenziali non valide"); setIsLoading(false); return false }
-      const accountType = (result as any).accountType as AccountType ?? null
-      const u: User = {
-        id: result._id,
-        email: result.email,
-        fullName: result.fullName || "",
-        role: result.role as UserRole,
-        subrole: (result.subrole as UserSubrole) || null,
-        organizationId: result.organizationId,
-        _id: result._id,
-        onboardingCompleted: result.onboardingCompleted,
-        accountType,
-      }
+       const accountType = (result as any).accountType as AccountType ?? null
+       const microRole = (result as any).microRole as MicroRole ?? null
+       const u: User = {
+         id: result._id,
+         email: result.email,
+         fullName: result.fullName || "",
+         role: result.role as UserRole,
+         subrole: (result.subrole as UserSubrole) || null,
+         organizationId: result.organizationId,
+         _id: result._id,
+         onboardingCompleted: result.onboardingCompleted,
+         accountType,
+         microRole,
+       }
       setUser(u)
       const orgIdForCookie = u.organizationId || ""
       const acct = accountType || undefined
@@ -185,39 +191,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [loginMutation])
 
-  const signUp = useCallback(async (
-    email: string,
-    password: string,
-    fullName: string,
-    role: UserRole,
-    subrole?: string | null,
-    phone?: string,
-  ): Promise<boolean> => {
-    setIsLoading(true)
-    setError(null)
-    try {
-      const result = await registerMutation({
-        email: email.toLowerCase().trim(),
-        password,
-        fullName,
-        role: role as "supplier" | "collaborator" | "client" | "driver",
-        subrole: subrole as any,
-        organizationId: undefined,
-        phone: phone || undefined,
-      })
-      if (!result) { setError("Errore registrazione"); setIsLoading(false); return false }
-      const loginOk = await signIn(email, password)
-      if (!loginOk) {
-        setError("Account creato ma accesso non riuscito. Effettua il login manualmente.")
-        setIsLoading(false)
-      }
-      return loginOk
-    } catch (e: any) {
-      setError(e.message || "Errore registrazione")
-      setIsLoading(false)
-      return false
-    }
-  }, [signIn, registerMutation])
+   const signUp = useCallback(async (
+     email: string,
+     password: string,
+     fullName: string,
+     role: UserRole,
+     subrole?: string | null,
+     microRole?: MicroRole | null,
+     phone?: string,
+   ): Promise<boolean> => {
+     setIsLoading(true)
+     setError(null)
+     try {
+       const result = await registerMutation({
+         email: email.toLowerCase().trim(),
+         password,
+         fullName,
+         role: role as "supplier" | "collaborator" | "client" | "driver",
+         subrole: subrole as any,
+         organizationId: undefined,
+         phone: phone || undefined,
+         microRole: microRole || undefined,
+       })
+       if (!result) { setError("Errore registrazione"); setIsLoading(false); return false }
+       const loginOk = await signIn(email, password)
+       if (!loginOk) {
+         setError("Account creato ma accesso non riuscito. Effettua il login manualmente.")
+         setIsLoading(false)
+       }
+       return loginOk
+     } catch (e: any) {
+       setError(e.message || "Errore registrazione")
+       setIsLoading(false)
+       return false
+     }
+   }, [signIn, registerMutation])
 
   const registerCompanyFn = useCallback(async (args: RegisterCompanyArgs): Promise<boolean> => {
     setIsLoading(true)

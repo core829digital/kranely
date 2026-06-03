@@ -35,7 +35,7 @@ export default function SignUpPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    const success = await signUp(email, password, fullName, role as "supplier" | "collaborator" | "client" | "driver", subrole, phone)
+    const success = await signUp(email, password, fullName, role as "supplier" | "collaborator" | "client" | "driver", subrole, undefined, phone)
     if (success) {
       toast.success("Account creato con successo")
       router.replace(getDefaultRouteForRole(role))

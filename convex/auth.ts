@@ -106,15 +106,23 @@ export const getUserRole = query({
 })
 
 export const register = mutation({
-  args: {
-    email: v.string(),
-    password: v.string(),
-    fullName: v.string(),
-    role: v.union(v.literal("supplier"), v.literal("collaborator"), v.literal("client"), v.literal("driver")),
-    subrole: v.optional(v.union(v.literal("serramenti"), v.literal("edilizia"), v.literal("generale"), v.literal("factory"), v.literal("office"), v.literal("construction"))),
-    organizationId: v.optional(v.id("organizations")),
-    phone: v.optional(v.string()),
-  },
+   args: {
+     email: v.string(),
+     password: v.string(),
+     fullName: v.string(),
+     role: v.union(v.literal("supplier"), v.literal("collaborator"), v.literal("client"), v.literal("driver")),
+     subrole: v.optional(v.union(v.literal("serramenti"), v.literal("edilizia"), v.literal("generale"), v.literal("factory"), v.literal("office"), v.literal("construction"))),
+     organizationId: v.optional(v.id("organizations")),
+     phone: v.optional(v.string()),
+     microRole: v.optional(v.union(
+       v.literal("manufacturer"), 
+       v.literal("reseller"), 
+       v.literal("factory_manager"), 
+       v.literal("procurement_specialist"), 
+       v.literal("quality_control"), 
+       v.literal("logistics_coordinator")
+     )),
+   },
   handler: async (ctx, args) => {
     const normalizedEmail = args.email.toLowerCase().trim()
     const existing = await ctx.db
@@ -140,15 +148,16 @@ export const register = mutation({
       })
     }
 
-    const id = await ctx.db.insert("users", {
-      email: normalizedEmail,
-      fullName: args.fullName,
-      role: args.role,
-      subrole: args.subrole,
-      organizationId: orgId,
-      phone: args.phone,
-      passwordHash,
-    })
+     const id = await ctx.db.insert("users", {
+       email: normalizedEmail,
+       fullName: args.fullName,
+       role: args.role,
+       subrole: args.subrole,
+       organizationId: orgId,
+       phone: args.phone,
+       passwordHash,
+       microRole: args.microRole,
+     })
 
     await ctx.scheduler.runAfter(0, internal.lib.helpers.logActivity, {
       organizationId: orgId,
@@ -160,16 +169,16 @@ export const register = mutation({
       details: `Utente ${args.fullName} registrato come ${args.role}`,
     })
 
-    if (args.role === "client") {
-      await ctx.db.insert("clients", {
-        organizationId: orgId,
-        fullName: args.fullName,
-        email: normalizedEmail,
-        phone: args.phone,
-        status: "lead",
-        clientType: "b2c",
-      })
-    }
+     if (args.role === "client") {
+       await ctx.db.insert("clients", {
+         organizationId: orgId,
+         fullName: args.fullName,
+         email: normalizedEmail,
+         phone: args.phone,
+         status: "lead",
+         clientType: "b2c", // Default to B2C for individual registrations
+       })
+     }
 
     const org = await ctx.db.get(orgId)
     await ctx.scheduler.runAfter(0, internal.email.sendOnboarding, {
@@ -456,16 +465,265 @@ export function assertAdmin(email: string | null | undefined): void {
 }
 
 export async function assertAdminAsync(
-  ctx: QueryCtx | MutationCtx,
-  email: string | null | undefined,
+   ctx: QueryCtx | MutationCtx,
+   email: string | null | undefined,
 ): Promise<void> {
-  assertAdmin(email)
-  if (!email) return
-  const user = await ctx.db
-    .query("users")
-    .withIndex("by_email", (q: any) => q.eq("email", email.toLowerCase().trim()))
-    .first()
-  if (user && user.role !== "superadmin" && user.role !== "admin") {
-    throw new Error("Accesso negato — ruolo non autorizzato")
-  }
+   assertAdmin(email)
+   if (!email) return
+   const user = await ctx.db
+     .query("users")
+     .withIndex("by_email", (q: any) => q.eq("email", email.toLowerCase().trim()))
+     .first()
+   if (user && user.role !== "superadmin" && user.role !== "admin") {
+     throw new Error("Accesso negato — ruolo non autorizzato")
+   }
 }
+
+// MICRO-ROLE MANAGEMENT
+export const getUserMicroRole = query({
+   args: { email: v.string() },
+   handler: async (ctx, args) => {
+     const user = await ctx.db
+       .query("users")
+       .withIndex("by_email", (q) => q.eq("email", args.email.toLowerCase().trim()))
+       .first()
+     
+     if (!user) {
+       throw new Error("Utente non trovato")
+     }
+     
+     return { microRole: user.microRole ?? null }
+   },
+})
+
+export const assignMicroRole = mutation({
+   args: { 
+     email: v.string(), 
+     microRole: v.union(
+       v.literal("manufacturer"), 
+       v.literal("reseller"), 
+       v.literal("factory_manager"), 
+       v.literal("procurement_specialist"), 
+       v.literal("quality_control"), 
+       v.literal("logistics_coordinator")
+     )
+   },
+   handler: async (ctx, args) => {
+     // Only superadmin can assign micro-roles
+     assertAdmin(args.email.toLowerCase().trim())
+     
+     const user = await ctx.db
+       .query("users")
+       .withIndex("by_email", (q) => q.eq("email", args.email.toLowerCase().trim()))
+       .first()
+     
+     if (!user) {
+       throw new Error("Utente non trovato")
+     }
+     
+     await ctx.db.patch(user._id, { microRole: args.microRole })
+     
+     await ctx.scheduler.runAfter(0, internal.lib.helpers.logActivity, {
+       organizationId: user.organizationId!,
+       userEmail: args.email,
+       action: "micro_role_assigned",
+       entityType: "user",
+       entityId: user._id,
+       entityName: user.fullName,
+       details: `Micro-ruolo assegnato: ${args.microRole}`,
+     })
+     
+     return { success: true }
+   },
+})
+
+export const removeMicroRole = mutation({
+   args: { email: v.string() },
+   handler: async (ctx, args) => {
+     // Only superadmin can remove micro-roles
+     assertAdmin(args.email.toLowerCase().trim())
+     
+     const user = await ctx.db
+       .query("users")
+       .withIndex("by_email", (q) => q.eq("email", args.email.toLowerCase().trim()))
+       .first()
+     
+     if (!user) {
+       throw new Error("Utente non trovato")
+     }
+     
+     await ctx.db.patch(user._id, { microRole: undefined })
+     
+     await ctx.scheduler.runAfter(0, internal.lib.helpers.logActivity, {
+       organizationId: user.organizationId!,
+       userEmail: args.email,
+       action: "micro_role_removed",
+       entityType: "user",
+       entityId: user._id,
+       entityName: user.fullName,
+       details: "Micro-ruolo rimosso",
+     })
+     
+     return { success: true }
+   },
+})
+
+// SUPERADMIN USER MANAGEMENT
+export const banUser = mutation({
+   args: { email: v.string(), reason: v.optional(v.string()) },
+   handler: async (ctx, args) => {
+     // Only superadmin can ban users
+     assertAdmin(args.email.toLowerCase().trim())
+     
+     const user = await ctx.db
+       .query("users")
+       .withIndex("by_email", (q) => q.eq("email", args.email.toLowerCase().trim()))
+       .first()
+     
+     if (!user) {
+       throw new Error("Utente non trovato")
+     }
+     
+     // Prevent banning superadmins
+     if (user.role === "superadmin") {
+       throw new Error("Non è possibile bannare un superadmin")
+     }
+     
+      await ctx.db.patch(user._id, { 
+        blocked: true,
+        banReason: args.reason ?? "Nessuna ragione specificata",
+        bannedAt: Date.now(),
+        bannedBy: args.email
+      })
+     
+     await ctx.scheduler.runAfter(0, internal.lib.helpers.logActivity, {
+       organizationId: user.organizationId!,
+       userEmail: args.email,
+       action: "user_banned",
+       entityType: "user",
+       entityId: user._id,
+       entityName: user.fullName,
+       details: `Utente bannato. Ragione: ${args.reason ?? "Nessuna ragione specificata"}`,
+     })
+     
+     return { success: true }
+   },
+})
+
+export const unbanUser = mutation({
+   args: { email: v.string() },
+   handler: async (ctx, args) => {
+     // Only superadmin can unban users
+     assertAdmin(args.email.toLowerCase().trim())
+     
+     const user = await ctx.db
+       .query("users")
+       .withIndex("by_email", (q) => q.eq("email", args.email.toLowerCase().trim()))
+       .first()
+     
+     if (!user) {
+       throw new Error("Utente non trovato")
+     }
+     
+     await ctx.db.patch(user._id, { 
+       blocked: false,
+       banReason: undefined,
+       bannedAt: undefined,
+       bannedBy: undefined
+     })
+     
+     await ctx.scheduler.runAfter(0, internal.lib.helpers.logActivity, {
+       organizationId: user.organizationId!,
+       userEmail: args.email,
+       action: "user_unbanned",
+       entityType: "user",
+       entityId: user._id,
+       entityName: user.fullName,
+       details: "Utente sbannato",
+     })
+     
+     return { success: true }
+   },
+})
+
+export const deleteUser = mutation({
+   args: { email: v.string() },
+   handler: async (ctx, args) => {
+     // Only superadmin can delete users
+     assertAdmin(args.email.toLowerCase().trim())
+     
+     const user = await ctx.db
+       .query("users")
+       .withIndex("by_email", (q) => q.eq("email", args.email.toLowerCase().trim()))
+       .first()
+     
+     if (!user) {
+       throw new Error("Utente non trovato")
+     }
+     
+     // Prevent deleting superadmins
+     if (user.role === "superadmin") {
+       throw new Error("Non è possibile eliminare un superadmin")
+     }
+     
+     const organizationId = user.organizationId
+     
+     // Delete user
+     await ctx.db.delete(user._id)
+     
+     await ctx.scheduler.runAfter(0, internal.lib.helpers.logActivity, {
+       organizationId: organizationId!,
+       userEmail: args.email,
+       action: "user_deleted",
+       entityType: "user",
+       entityId: user._id,
+       entityName: user.fullName,
+       details: "Utente eliminato definitivamente",
+     })
+     
+     return { success: true }
+   },
+})
+
+export const warnUser = mutation({
+   args: { email: v.string(), reason: v.string() },
+   handler: async (ctx, args) => {
+     // Only superadmin can warn users
+     assertAdmin(args.email.toLowerCase().trim())
+     
+     const user = await ctx.db
+       .query("users")
+       .withIndex("by_email", (q) => q.eq("email", args.email.toLowerCase().trim()))
+       .first()
+     
+     if (!user) {
+       throw new Error("Utente non trovato")
+     }
+     
+      // Increment warning count or add to warnings array
+      const warnings = user.warnings ?? []
+      const newWarning = {
+        id: crypto.randomUUID(),
+        reason: args.reason,
+        warnedAt: Date.now(),
+        warnedBy: args.email
+      }
+     
+     await ctx.db.patch(user._id, { 
+       warnings: [...warnings, newWarning],
+       lastWarnedAt: Date.now()
+     })
+     
+     await ctx.scheduler.runAfter(0, internal.lib.helpers.logActivity, {
+       organizationId: user.organizationId!,
+       userEmail: args.email,
+       action: "user_warned",
+       entityType: "user",
+       entityId: user._id,
+       entityName: user.fullName,
+       details: `Utente avvertito. Ragione: ${args.reason}`,
+     })
+     
+     return { success: true }
+   },
+})
