@@ -78,28 +78,28 @@ export default function OnboardingSetupPage() {
   const orgId = useOrgId()
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const [currentStep, setCurrentStep] = useState(1)
-  const [saving, setSaving] = useState(false)
-  const [uploadingLogo, setUploadingLogo] = useState(false)
-  const [completing, setCompleting] = useState(false)
-  const [loaded, setLoaded] = useState(false)
-  const [otherMaterial, setOtherMaterial] = useState("")
-  const [otherHardware, setOtherHardware] = useState("")
+   const [currentStep, setCurrentStep] = useState(1)
+   const [saving, setSaving] = useState(false)
+   const [uploadingLogo, setUploadingLogo] = useState(false)
+   const [completing, setCompleting] = useState(false)
+   const [loaded, setLoaded] = useState(false)
+   const [otherMaterial, setOtherMaterial] = useState("")
+   const [otherHardware, setOtherHardware] = useState("")
 
-  const onboardingState = useQuery(
-    api.onboarding.getOnboardingState,
-    orgId && user?.email ? { organizationId: orgId, userEmail: user.email } : "skip"
-  )
-  const saveStep = useMutation(api.onboarding.saveOnboardingStep)
-  const completeMutation = useMutation(api.onboarding.completeOnboarding)
-  const generateUploadUrl = useMutation(api.upload.generateUploadUrl)
+   const [formData, setFormData] = useState<FormData>({
+     accountType: null, companyName: "", vatNumber: "", employeeCount: null,
+     country: "", city: "", address: "", specializations: [],
+     materialsUsed: [], hardwareBrands: [], profileDescription: "",
+     website: "", contactPhone: "", logo: "",
+   })
 
-  const [formData, setFormData] = useState<FormData>({
-    accountType: null, companyName: "", vatNumber: "", employeeCount: null,
-    country: "", city: "", address: "", specializations: [],
-    materialsUsed: [], hardwareBrands: [], profileDescription: "",
-    website: "", contactPhone: "", logo: "",
-  })
+   const onboardingState = useQuery(
+     api.onboarding.getOnboardingState,
+     orgId && formData.accountType ? { organizationId: orgId, userEmail: "" } : "skip"
+   )
+   const saveStep = useMutation(api.onboarding.saveOnboardingStep)
+   const completeMutation = useMutation(api.onboarding.completeOnboarding)
+   const generateUploadUrl = useMutation(api.upload.generateUploadUrl)
 
   useEffect(() => {
     if (onboardingState && !loaded && onboardingState.data) {
@@ -178,25 +178,25 @@ export default function OnboardingSetupPage() {
 
   const handleComplete = async () => {
     if (!orgId || !user?.email || !formData.accountType) return
-    setCompleting(true)
-    try {
-      await completeMutation({
-        organizationId: orgId, userEmail: user.email, accountType: formData.accountType,
-        companyName: formData.companyName,
-        vatNumber: formData.vatNumber || undefined,
-        employeeCount: formData.employeeCount ?? undefined,
-        country: formData.country, city: formData.city || undefined, address: formData.address || undefined,
-        specializations: formData.specializations.length ? formData.specializations : undefined,
-        materialsUsed: [...formData.materialsUsed, ...(otherMaterial ? [`Altro: ${otherMaterial}`] : [])],
-        hardwareBrands: [...formData.hardwareBrands, ...(otherHardware ? [`Altro: ${otherHardware}`] : [])],
-        profileDescription: formData.profileDescription || undefined,
-        website: formData.website || undefined, logo: formData.logo || undefined,
-        contactPhone: formData.contactPhone || undefined,
-      })
-      const secure = window.location.protocol === "https:" ? "; Secure" : ""
-      document.cookie = `kranely_session_data=${encodeURIComponent(JSON.stringify({ role: user.role, organizationId: orgId, onboardingCompleted: true, accountType: formData.accountType }))}; path=/; max-age=${7 * 24 * 60 * 60}; SameSite=Lax${secure}`
-      toast.success("Onboarding completato!")
-      router.push(getDefaultRouteForRole(user?.role as any || "admin"))
+     setCompleting(true)
+     try {
+       await completeMutation({
+         organizationId: orgId, userEmail: user?.email || "", accountType: formData.accountType,
+         companyName: formData.companyName,
+         vatNumber: formData.vatNumber || undefined,
+         employeeCount: formData.employeeCount ?? undefined,
+         country: formData.country, city: formData.city || undefined, address: formData.address || undefined,
+         specializations: formData.specializations.length ? formData.specializations : undefined,
+         materialsUsed: [...formData.materialsUsed, ...(otherMaterial ? [`Altro: ${otherMaterial}`] : [])],
+         hardwareBrands: [...formData.hardwareBrands, ...(otherHardware ? [`Altro: ${otherHardware}`] : [])],
+         profileDescription: formData.profileDescription || undefined,
+         website: formData.website || undefined, logo: formData.logo || undefined,
+         contactPhone: formData.contactPhone || undefined,
+       })
+       const secure = window.location.protocol === "https:" ? "; Secure" : ""
+       document.cookie = `kranely_session_data=${encodeURIComponent(JSON.stringify({ role: user?.role || "admin", organizationId: orgId, onboardingCompleted: true, accountType: formData.accountType }))}; path=/; max-age=${7 * 24 * 60 * 60}; SameSite=Lax${secure}`
+       toast.success("Onboarding completato!")
+       router.push(getDefaultRouteForRole(user?.role as any || "admin"))
     } catch (e: any) { toast.error(e.message || "Errore nel completamento") }
     finally { setCompleting(false) }
   }
