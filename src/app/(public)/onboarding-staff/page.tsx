@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
+import { getDefaultRouteForRole } from "@/lib/auth/rbac"
 import { Logo } from "@/components/Logo"
 import { useAuth } from "@/lib/auth/auth-context"
 import { Button } from "@/components/ui/button"
@@ -31,7 +32,7 @@ export default function OnboardingStaffPage() {
       const ok = await signUp(email.trim().toLowerCase(), password, fullName.trim(), "collaborator", undefined, phone.trim() || undefined)
       if (ok) {
         toast.success("Registrazione completata!")
-        router.push("/dashboard")
+        router.push(getDefaultRouteForRole("collaborator"))
       }
     } catch (err: any) {
       toast.error(err.message || "Errore registrazione")

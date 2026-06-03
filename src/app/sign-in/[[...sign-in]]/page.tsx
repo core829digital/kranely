@@ -4,11 +4,12 @@ import { useState, Suspense, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { useAuth } from "@/lib/auth/auth-context"
+import { getDefaultRouteForRole } from "@/lib/auth/rbac"
 import { Button } from "@/components/ui/button"
 import { Logo } from "@/components/Logo"
 
 function SignInForm() {
-  const { signIn, isLoading } = useAuth()
+  const { signIn, isLoading, user } = useAuth()
   const router = useRouter()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
@@ -23,7 +24,7 @@ function SignInForm() {
     setError("")
     const success = await signIn(email, password)
     if (success) {
-      router.replace("/dashboard")
+      router.replace(getDefaultRouteForRole(user?.role || "admin"))
       router.refresh()
     } else {
       setError("Email o password non corretti")

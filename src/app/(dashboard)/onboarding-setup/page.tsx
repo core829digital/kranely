@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react"
 import { useQuery, useMutation } from "convex/react"
 import { api } from "../../../../convex/_generated/api"
 import { useRouter } from "next/navigation"
+import { getDefaultRouteForRole } from "@/lib/auth/rbac"
 import { Button } from "@/components/ui/button"
 import { Input, Textarea, Label } from "@/components/ui/input"
 import { Select } from "@/components/ui/select"
@@ -129,7 +130,7 @@ export default function OnboardingSetupPage() {
 
   if (!orgId || !onboardingState) return <PageSkeleton />
   if (loaded && !onboardingState.needsOnboarding) {
-    router.push("/dashboard")
+    router.push(getDefaultRouteForRole(user?.role as any || "admin"))
     return null
   }
 
@@ -195,7 +196,7 @@ export default function OnboardingSetupPage() {
       const secure = window.location.protocol === "https:" ? "; Secure" : ""
       document.cookie = `kranely_session_data=${encodeURIComponent(JSON.stringify({ role: user.role, organizationId: orgId, onboardingCompleted: true, accountType: formData.accountType }))}; path=/; max-age=${7 * 24 * 60 * 60}; SameSite=Lax${secure}`
       toast.success("Onboarding completato!")
-      router.push("/dashboard")
+      router.push(getDefaultRouteForRole(user?.role as any || "admin"))
     } catch (e: any) { toast.error(e.message || "Errore nel completamento") }
     finally { setCompleting(false) }
   }

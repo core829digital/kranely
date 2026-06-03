@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Logo } from "@/components/Logo"
 import { useAuth, type UserRole, type UserSubrole } from "@/lib/auth/auth-context"
+import { getDefaultRouteForRole } from "@/lib/auth/rbac"
 import { Button } from "@/components/ui/button"
 import { toast } from "sonner"
 
@@ -37,7 +38,7 @@ export default function SignUpPage() {
     const success = await signUp(email, password, fullName, role as "supplier" | "collaborator" | "client" | "driver", subrole, phone)
     if (success) {
       toast.success("Account creato con successo")
-      router.replace("/dashboard")
+      router.replace(getDefaultRouteForRole(role))
       router.refresh()
     } else {
       toast.error(error || "Errore nella registrazione")

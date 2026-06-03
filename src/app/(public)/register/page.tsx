@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Logo } from "@/components/Logo"
 import { useAuth } from "@/lib/auth/auth-context"
+import { getDefaultRouteForRole } from "@/lib/auth/rbac"
 import { Button } from "@/components/ui/button"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
@@ -237,7 +238,7 @@ export default function RegisterPage() {
       if (ok) {
         localStorage.removeItem(STORAGE_KEY)
         toast.success("Account creato con successo!")
-        router.replace("/dashboard")
+        router.replace(getDefaultRouteForRole("admin"))
         router.refresh()
       } else {
         toast.error(authError || "Errore durante la registrazione")
