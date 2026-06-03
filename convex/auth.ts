@@ -111,7 +111,7 @@ export const register = mutation({
     password: v.string(),
     fullName: v.string(),
     role: v.union(v.literal("supplier"), v.literal("collaborator"), v.literal("client"), v.literal("driver")),
-    subrole: v.optional(v.union(v.literal("serramenti"), v.literal("edilizia"), v.literal("generale"))),
+    subrole: v.optional(v.union(v.literal("serramenti"), v.literal("edilizia"), v.literal("generale"), v.literal("factory"), v.literal("office"), v.literal("construction"))),
     organizationId: v.optional(v.id("organizations")),
     phone: v.optional(v.string()),
   },
@@ -217,6 +217,8 @@ export const login = mutation({
 
     await ctx.db.patch(user._id, { failedAttempts: 0, lastLoginAttempt: undefined })
 
+    const org = user.organizationId ? await ctx.db.get(user.organizationId) : null
+
     return {
       email: user.email,
       fullName: user.fullName,
@@ -224,6 +226,7 @@ export const login = mutation({
       subrole: user.subrole,
       organizationId: user.organizationId,
       _id: user._id,
+      onboardingCompleted: org?.onboardingCompleted ?? user.onboardingCompleted ?? true,
     }
   },
 })

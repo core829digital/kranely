@@ -15,10 +15,34 @@ export default defineSchema({
     domain: v.optional(v.string()),
     stripeCustomerId: v.optional(v.string()),
     createdById: v.optional(v.id("users")),
+    // Onboarding / Account Type
+    accountType: v.optional(v.union(v.literal("manufacturer"), v.literal("reseller"))),
+    onboardingCompleted: v.optional(v.boolean()),
+    // Company profile (public)
+    companyName: v.optional(v.string()),
+    vatNumber: v.optional(v.string()),
+    employeeCount: v.optional(v.number()),
+    country: v.optional(v.string()),
+    city: v.optional(v.string()),
+    address: v.optional(v.string()),
+    specializations: v.optional(v.array(v.string())),
+    materialsUsed: v.optional(v.array(v.string())),
+    hardwareBrands: v.optional(v.array(v.string())),
+    profileDescription: v.optional(v.string()),
+    website: v.optional(v.string()),
+    logo: v.optional(v.string()),
+    contactPhone: v.optional(v.string()),
+    metrics: v.optional(v.object({
+      completedOrders: v.number(),
+      totalClients: v.number(),
+      memberSince: v.number(),
+    })),
   })
     .index("by_slug", ["slug"])
     .index("by_owner", ["ownerEmail"])
-    .index("by_status", ["status"]),
+    .index("by_status", ["status"])
+    .index("by_accountType", ["accountType"])
+    .index("by_country_accountType", ["country", "accountType"]),
 
   whiteLabelSettings: defineTable({
     organizationId: v.id("organizations"),
@@ -47,12 +71,13 @@ export default defineSchema({
     email: v.string(),
     fullName: v.optional(v.string()),
     role: v.union(v.literal("superadmin"), v.literal("admin"), v.literal("supplier"), v.literal("driver"), v.literal("collaborator"), v.literal("client")),
-    subrole: v.optional(v.union(v.literal("serramenti"), v.literal("edilizia"), v.literal("generale"))),
+    subrole: v.optional(v.union(v.literal("serramenti"), v.literal("edilizia"), v.literal("generale"), v.literal("factory"), v.literal("office"), v.literal("construction"))),
     organizationId: v.optional(v.id("organizations")),
     isCompany: v.optional(v.boolean()),
     companyRole: v.optional(v.string()),
     profileImage: v.optional(v.string()),
     phone: v.optional(v.string()),
+    onboardingCompleted: v.optional(v.boolean()),
     workSector: v.optional(v.string()),
     passwordHash: v.optional(v.string()),
     blocked: v.optional(v.boolean()),

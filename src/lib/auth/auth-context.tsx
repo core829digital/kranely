@@ -7,7 +7,7 @@ import { api } from "../../../convex/_generated/api"
 import { Id } from "../../../convex/_generated/dataModel"
 
 export type UserRole = "superadmin" | "admin" | "supplier" | "driver" | "collaborator" | "client"
-export type UserSubrole = "serramenti" | "edilizia" | "generale" | null
+export type UserSubrole = "serramenti" | "edilizia" | "generale" | "factory" | "office" | "construction" | null
 
 interface User {
   id: string
@@ -17,12 +17,13 @@ interface User {
   subrole: UserSubrole
   organizationId: string | undefined
   _id: Id<"users"> | undefined
+  onboardingCompleted?: boolean
 }
 
 interface AuthContextType {
   user: User | null
   signIn: (email: string, password: string) => Promise<boolean>
-  signUp: (email: string, password: string, fullName: string, role: "supplier" | "collaborator" | "client" | "driver", subrole?: UserSubrole, phone?: string) => Promise<boolean>
+  signUp: (email: string, password: string, fullName: string, role: "supplier" | "collaborator" | "client" | "driver", subrole?: string | null, phone?: string) => Promise<boolean>
   signOut: () => void
   isLoading: boolean
   error: string | null
@@ -43,9 +44,9 @@ function setSessionCookie(email: string) {
   try { document.cookie = `kranely_session=${encodeURIComponent(email)}; path=/; max-age=${7 * 24 * 60 * 60}; SameSite=Lax${secureFlag()}` } catch {}
 }
 
-function setSessionDataCookie(role: string, organizationId: string) {
+function setSessionDataCookie(role: string, organizationId: string, onboardingCompleted?: boolean) {
   try {
-    const data = encodeURIComponent(JSON.stringify({ role, organizationId }))
+    const data = encodeURIComponent(JSON.stringify({ role, organizationId, onboardingCompleted: onboardingCompleted ?? false }))
     document.cookie = `${SESSION_DATA_COOKIE}=${data}; path=/; max-age=${7 * 24 * 60 * 60}; SameSite=Lax${secureFlag()}`
   } catch {}
 }
@@ -66,6 +67,7 @@ interface SessionData {
   organizationId: string
   userId: string
   expires: number
+  onboardingCompleted?: boolean
 }
 
 function getSession(): SessionData | null {
@@ -114,9 +116,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         subrole: session.subrole,
         organizationId: session.organizationId,
         _id: session.userId as Id<"users"> | undefined,
+        onboardingCompleted: session.onboardingCompleted,
       })
       setSessionCookie(session.email)
-      setSessionDataCookie(session.role, session.organizationId)
+      setSessionDataCookie(session.role, session.organizationId, session.onboardingCompleted)
     }
     setInitialized(true)
   }, [])
@@ -135,12 +138,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         subrole: (result.subrole as UserSubrole) || null,
         organizationId: result.organizationId,
         _id: result._id,
+        onboardingCompleted: result.onboardingCompleted,
       }
       setUser(u)
       const orgIdForCookie = u.organizationId || ""
-      setSession({ email: u.email, fullName: u.fullName, role: u.role, subrole: u.subrole, organizationId: orgIdForCookie, userId: u.id })
+      setSession({ email: u.email, fullName: u.fullName, role: u.role, subrole: u.subrole, organizationId: orgIdForCookie, userId: u.id, onboardingCompleted: u.onboardingCompleted })
       setSessionCookie(u.email)
-      setSessionDataCookie(u.role, orgIdForCookie)
+      setSessionDataCookie(u.role, orgIdForCookie, u.onboardingCompleted)
       trackSession({ userEmail: u.email, sessionId: crypto.randomUUID(), event: "sign_in", userAgent: navigator.userAgent })
       setIsLoading(false)
       return true
@@ -156,7 +160,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     password: string,
     fullName: string,
     role: UserRole,
-    subrole?: UserSubrole,
+    subrole?: string | null,
     phone?: string,
   ): Promise<boolean> => {
     setIsLoading(true)
@@ -167,7 +171,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         password,
         fullName,
         role: role as "supplier" | "collaborator" | "client" | "driver",
-        subrole: subrole || undefined,
+        subrole: subrole as any,
         organizationId: undefined,
         phone: phone || undefined,
       })

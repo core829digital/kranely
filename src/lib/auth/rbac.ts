@@ -43,6 +43,7 @@ export const SIDEBAR_ITEMS: Record<string, UserRole[]> = {
 }
 
 const ROUTE_ACCESS_MAP: Record<string, UserRole[]> = {
+  "/onboarding-setup": ["admin", "superadmin", "supplier", "collaborator", "client", "driver"],
   "/dashboard": ["admin", "client", "supplier", "collaborator"],
   "/client-dashboard": ["client"],
   "/collaborator-dashboard": ["collaborator"],

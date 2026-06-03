@@ -15,6 +15,15 @@ export const seed = mutation({
       ownerEmail: "admin@kranely.app",
       plan: "pro",
       status: "active",
+      accountType: "manufacturer",
+      onboardingCompleted: true,
+      companyName: "Kranely Demo Srl",
+      country: "Italia",
+      city: "Milano",
+      specializations: ["PVC", "Alluminio"],
+      materialsUsed: ["Rehau", "Aluplast"],
+      hardwareBrands: ["Maco", "Roto"],
+      profileDescription: "Azienda demo per test della piattaforma Kranely",
     })
 
     const adminHash = await hashPassword("admin123")
@@ -24,6 +33,7 @@ export const seed = mutation({
       role: "admin",
       organizationId: orgId,
       passwordHash: adminHash,
+      onboardingCompleted: true,
     })
 
     const supplierHash = await hashPassword("supplier123")

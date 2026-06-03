@@ -11,17 +11,27 @@ const PUBLIC_PATHS = [
   "/api", "/_next",
 ]
 
+const ONBOARDING_PATH = "/onboarding-setup"
+
 function isPublicPath(pathname: string): boolean {
   return PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(p + "/"))
 }
 
-function getSessionRole(request: NextRequest): string | null {
+function isOnboardingPath(pathname: string): boolean {
+  return pathname === ONBOARDING_PATH
+}
+
+function getSessionData(request: NextRequest): { role: string | null; onboardingCompleted: boolean } {
   try {
     const data = request.cookies.get("kranely_session_data")
-    if (!data?.value) return null
-    return JSON.parse(decodeURIComponent(data.value)).role ?? null
+    if (!data?.value) return { role: null, onboardingCompleted: false }
+    const parsed = JSON.parse(decodeURIComponent(data.value))
+    return {
+      role: parsed.role ?? null,
+      onboardingCompleted: parsed.onboardingCompleted ?? false,
+    }
   } catch {
-    return null
+    return { role: null, onboardingCompleted: false }
   }
 }
 
@@ -44,11 +54,24 @@ export function proxy(request: NextRequest) {
     return NextResponse.redirect(signInUrl)
   }
 
-  const role = getSessionRole(request)
+  const { role, onboardingCompleted } = getSessionData(request)
   if (!role) {
     const signInUrl = new URL("/sign-in", request.url)
     signInUrl.searchParams.set("redirect", pathname)
     return NextResponse.redirect(signInUrl)
+  }
+
+  if (isOnboardingPath(pathname)) {
+    if (onboardingCompleted) {
+      const redirectUrl = new URL(getDefaultRoute(role), request.url)
+      return NextResponse.redirect(redirectUrl)
+    }
+    return NextResponse.next()
+  }
+
+  if (!onboardingCompleted && (role === "admin" || role === "superadmin")) {
+    const onboardingUrl = new URL(ONBOARDING_PATH, request.url)
+    return NextResponse.redirect(onboardingUrl)
   }
 
   if (!canAccessRoute(role, pathname)) {
