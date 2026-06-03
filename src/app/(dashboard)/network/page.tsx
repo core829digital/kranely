@@ -10,7 +10,7 @@ import { useAuth } from "@/lib/auth/auth-context"
 import { useOrgId } from "@/hooks/useOrgId"
 import { PageSkeleton } from "@/components/Skeletons"
 import { cn } from "@/lib/utils"
-import Image from "next/image"
+import Link from "next/link"
 import {
   Search, SlidersHorizontal, X, Building2, Store, MapPin,
   Briefcase, Package, Wrench, Globe, Users, ChevronDown, Filter,
@@ -225,9 +225,10 @@ export default function NetworkPage() {
           </p>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {results.map(org => (
-              <div
+              <Link
                 key={org._id}
-                className="p-5 rounded-xl border border-white/10 bg-white/[0.02] hover:bg-white/[0.04] transition-colors group"
+                href={`/network/${org._id}`}
+                className="p-5 rounded-xl border border-white/10 bg-white/[0.02] hover:bg-white/[0.04] transition-colors group block"
               >
                 <div className="flex items-start gap-4">
                   <div className="w-14 h-14 rounded-xl bg-white/10 border border-white/10 flex items-center justify-center overflow-hidden shrink-0">
@@ -290,7 +291,7 @@ export default function NetworkPage() {
                     {org.website.replace(/^https?:\/\//, "").replace(/\/$/, "")}
                   </a>
                 )}
-              </div>
+              </Link>
             ))}
           </div>
         </>
