@@ -45,6 +45,7 @@ interface NavItem {
   label: string
   icon: any
   roles?: string[]
+  accountType?: ("manufacturer" | "reseller")[]
 }
 
 interface NavSection {
@@ -67,6 +68,7 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
   const whitelabel = useQuery(api.whitelabel.get, orgId ? { organizationId: orgId, userEmail: user?.email } : "skip")
 
   const role = user?.role || "client"
+  const accountType = user?.accountType || null
   const isAdmin = role === "admin" || role === "superadmin"
 
   const sections: NavSection[] = [
@@ -86,7 +88,7 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
         { href: "/collaborators", label: "Collaboratori", icon: UserCog },
         { href: "/quotes", label: "Preventivi", icon: FileText },
         { href: "/cantieri", label: "Cantieri", icon: Building2 },
-        { href: "/workflow", label: "Flusso Lavoro", icon: Workflow },
+        { href: "/workflow", label: "Flusso Lavoro", icon: Workflow, accountType: ["manufacturer"] },
         { href: "/supplier-dashboard", label: "Dashboard Fornitore", icon: HardHat, roles: ["superadmin", "admin", "supplier"] },
         { href: "/driver-dashboard", label: "Dashboard Autista", icon: Truck, roles: ["superadmin", "admin", "driver"] },
       ],
@@ -125,8 +127,9 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
     .map((section) => ({
       ...section,
       items: section.items.filter((item) => {
-        if (!item.roles) return true
-        return item.roles.includes(role)
+        if (item.roles && !item.roles.includes(role)) return false
+        if (item.accountType && !item.accountType.includes(accountType as any)) return false
+        return true
       }),
     }))
     .filter((section) => section.items.length > 0)

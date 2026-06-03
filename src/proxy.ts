@@ -21,17 +21,18 @@ function isOnboardingPath(pathname: string): boolean {
   return pathname === ONBOARDING_PATH
 }
 
-function getSessionData(request: NextRequest): { role: string | null; onboardingCompleted: boolean } {
+function getSessionData(request: NextRequest): { role: string | null; onboardingCompleted: boolean; accountType: string | null } {
   try {
     const data = request.cookies.get("kranely_session_data")
-    if (!data?.value) return { role: null, onboardingCompleted: false }
+    if (!data?.value) return { role: null, onboardingCompleted: false, accountType: null }
     const parsed = JSON.parse(decodeURIComponent(data.value))
     return {
       role: parsed.role ?? null,
       onboardingCompleted: parsed.onboardingCompleted ?? false,
+      accountType: parsed.accountType ?? null,
     }
   } catch {
-    return { role: null, onboardingCompleted: false }
+    return { role: null, onboardingCompleted: false, accountType: null }
   }
 }
 
@@ -54,7 +55,7 @@ export function proxy(request: NextRequest) {
     return NextResponse.redirect(signInUrl)
   }
 
-  const { role, onboardingCompleted } = getSessionData(request)
+  const { role, onboardingCompleted, accountType } = getSessionData(request)
   if (!role) {
     const signInUrl = new URL("/sign-in", request.url)
     signInUrl.searchParams.set("redirect", pathname)
@@ -74,7 +75,7 @@ export function proxy(request: NextRequest) {
     return NextResponse.redirect(onboardingUrl)
   }
 
-  if (!canAccessRoute(role, pathname)) {
+  if (!canAccessRoute(role, pathname, accountType)) {
     const redirectUrl = new URL(getDefaultRoute(role), request.url)
     return NextResponse.redirect(redirectUrl)
   }

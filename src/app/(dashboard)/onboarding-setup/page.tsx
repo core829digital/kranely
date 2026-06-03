@@ -193,7 +193,7 @@ export default function OnboardingSetupPage() {
         contactPhone: formData.contactPhone || undefined,
       })
       const secure = window.location.protocol === "https:" ? "; Secure" : ""
-      document.cookie = `kranely_session_data=${encodeURIComponent(JSON.stringify({ role: user.role, organizationId: orgId, onboardingCompleted: true }))}; path=/; max-age=${7 * 24 * 60 * 60}; SameSite=Lax${secure}`
+      document.cookie = `kranely_session_data=${encodeURIComponent(JSON.stringify({ role: user.role, organizationId: orgId, onboardingCompleted: true, accountType: formData.accountType }))}; path=/; max-age=${7 * 24 * 60 * 60}; SameSite=Lax${secure}`
       toast.success("Onboarding completato!")
       router.push("/dashboard")
     } catch (e: any) { toast.error(e.message || "Errore nel completamento") }

@@ -1,4 +1,5 @@
 export type UserRole = "superadmin" | "admin" | "supplier" | "driver" | "collaborator" | "client"
+export type AccountType = "manufacturer" | "reseller"
 
 export const PERMISSION_MAP: Record<string, UserRole[]> = {
   "dashboard:view": ["admin", "client", "supplier", "collaborator"],
@@ -93,11 +94,19 @@ export function canViewSidebarItem(role: string, itemName: string): boolean {
   return allowed?.includes(role as UserRole) ?? false
 }
 
-export function canAccessRoute(role: string, pathname: string): boolean {
+const ACCOUNT_TYPE_MAP: Record<string, AccountType[]> = {
+  "/workflow": ["manufacturer"],
+}
+
+export function canAccessRoute(role: string, pathname: string, accountType?: string | null): boolean {
   if (role === "superadmin") return true
   const allowed = ROUTE_ACCESS_MAP[pathname]
-  if (!allowed) return true
-  return allowed.includes(role as UserRole)
+  if (allowed && !allowed.includes(role as UserRole)) return false
+  if (accountType) {
+    const typeAllowed = ACCOUNT_TYPE_MAP[pathname]
+    if (typeAllowed && !typeAllowed.includes(accountType as AccountType)) return false
+  }
+  return true
 }
 
 export function getDefaultRouteForRole(role: UserRole): string {

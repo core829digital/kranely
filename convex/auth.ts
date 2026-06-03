@@ -227,6 +227,7 @@ export const login = mutation({
       organizationId: user.organizationId,
       _id: user._id,
       onboardingCompleted: org?.onboardingCompleted ?? user.onboardingCompleted ?? true,
+      accountType: org?.accountType ?? null,
     }
   },
 })

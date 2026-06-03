@@ -8,6 +8,7 @@ import { Id } from "../../../convex/_generated/dataModel"
 
 export type UserRole = "superadmin" | "admin" | "supplier" | "driver" | "collaborator" | "client"
 export type UserSubrole = "serramenti" | "edilizia" | "generale" | "factory" | "office" | "construction" | null
+export type AccountType = "manufacturer" | "reseller" | null
 
 interface User {
   id: string
@@ -18,6 +19,7 @@ interface User {
   organizationId: string | undefined
   _id: Id<"users"> | undefined
   onboardingCompleted?: boolean
+  accountType: AccountType
 }
 
 interface AuthContextType {
@@ -44,9 +46,9 @@ function setSessionCookie(email: string) {
   try { document.cookie = `kranely_session=${encodeURIComponent(email)}; path=/; max-age=${7 * 24 * 60 * 60}; SameSite=Lax${secureFlag()}` } catch {}
 }
 
-function setSessionDataCookie(role: string, organizationId: string, onboardingCompleted?: boolean) {
+function setSessionDataCookie(role: string, organizationId: string, onboardingCompleted?: boolean, accountType?: string) {
   try {
-    const data = encodeURIComponent(JSON.stringify({ role, organizationId, onboardingCompleted: onboardingCompleted ?? false }))
+    const data = encodeURIComponent(JSON.stringify({ role, organizationId, onboardingCompleted: onboardingCompleted ?? false, accountType }))
     document.cookie = `${SESSION_DATA_COOKIE}=${data}; path=/; max-age=${7 * 24 * 60 * 60}; SameSite=Lax${secureFlag()}`
   } catch {}
 }
@@ -68,6 +70,7 @@ interface SessionData {
   userId: string
   expires: number
   onboardingCompleted?: boolean
+  accountType?: string
 }
 
 function getSession(): SessionData | null {
@@ -117,9 +120,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         organizationId: session.organizationId,
         _id: session.userId as Id<"users"> | undefined,
         onboardingCompleted: session.onboardingCompleted,
+        accountType: (session.accountType as AccountType) ?? null,
       })
       setSessionCookie(session.email)
-      setSessionDataCookie(session.role, session.organizationId, session.onboardingCompleted)
+      setSessionDataCookie(session.role, session.organizationId, session.onboardingCompleted, session.accountType)
     }
     setInitialized(true)
   }, [])
@@ -130,6 +134,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const result = await loginMutation({ email: email.toLowerCase().trim(), password })
       if (!result) { setError("Credenziali non valide"); setIsLoading(false); return false }
+      const accountType = (result as any).accountType as AccountType ?? null
       const u: User = {
         id: result._id,
         email: result.email,
@@ -139,12 +144,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         organizationId: result.organizationId,
         _id: result._id,
         onboardingCompleted: result.onboardingCompleted,
+        accountType,
       }
       setUser(u)
       const orgIdForCookie = u.organizationId || ""
-      setSession({ email: u.email, fullName: u.fullName, role: u.role, subrole: u.subrole, organizationId: orgIdForCookie, userId: u.id, onboardingCompleted: u.onboardingCompleted })
+      const acct = accountType || undefined
+      setSession({ email: u.email, fullName: u.fullName, role: u.role, subrole: u.subrole, organizationId: orgIdForCookie, userId: u.id, onboardingCompleted: u.onboardingCompleted, accountType: acct })
       setSessionCookie(u.email)
-      setSessionDataCookie(u.role, orgIdForCookie, u.onboardingCompleted)
+      setSessionDataCookie(u.role, orgIdForCookie, u.onboardingCompleted, acct)
       trackSession({ userEmail: u.email, sessionId: crypto.randomUUID(), event: "sign_in", userAgent: navigator.userAgent })
       setIsLoading(false)
       return true
