@@ -2,12 +2,13 @@
 
 import { useState } from "react"
 import { useAuth } from "@/lib/auth/auth-context"
-import { useQuery } from "convex/react"
+import { useQuery, useMutation } from "convex/react"
 import { api } from "../../../../convex/_generated/api"
+import { toast } from "sonner"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Logo } from "@/components/Logo"
-import { Search, Users, Eye, MousePointerClick, Activity, Clock, ShieldOff, TrendingUp, BarChart3, LogIn, Euro, ArrowUpCircle, ArrowDownCircle, AlertTriangle, PieChart as PieChartIcon } from "lucide-react"
+import { Search, Users, Eye, MousePointerClick, Activity, Clock, ShieldOff, TrendingUp, BarChart3, LogIn, Euro, ArrowUpCircle, ArrowDownCircle, AlertTriangle, PieChart as PieChartIcon, Star, ThumbsUp, Trash2 } from "lucide-react"
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   LineChart, Line, PieChart, Pie, Cell,
@@ -35,8 +36,13 @@ function AdminDashboard() {
   const adminData = useQuery(api.analytics.getAdminDashboard, user?.email ? { adminEmail: user.email } : "skip")
   const adminUsers = useQuery(api.analytics.getAdminUsers, user?.email ? { adminEmail: user.email } : "skip")
   const recentActivity = useQuery(api.analytics.getAdminRecentActivity, user?.email ? { adminEmail: user.email, limit: 30 } : "skip")
+  const reviewsData = useQuery(api.reviews.adminListAll, user?.email ? { adminEmail: user.email } : "skip")
+  const reviewsStats = useQuery(api.reviews.adminStats, user?.email ? { adminEmail: user.email } : "skip")
+  const approveReview = useMutation(api.reviews.approve)
+  const removeReview = useMutation(api.reviews.remove)
 
   const [userSearch, setUserSearch] = useState("")
+  const [reviewFilter, setReviewFilter] = useState<"all" | "pending" | "approved">("pending")
 
   if (!adminData) {
     return (
@@ -363,6 +369,79 @@ function AdminDashboard() {
           ))}
           {(!recentActivity || recentActivity.length === 0) && (
             <p className="text-sm text-white/40 text-center py-4">Nessuna attività recente</p>
+          )}
+        </div>
+      </div>
+
+      {/* Reviews Management */}
+      <div className="p-6 rounded-xl border border-white/10 bg-white/[0.02]">
+        <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2"><Star className="w-5 h-5 text-yellow-400" />Recensioni</h2>
+
+        {reviewsStats && (
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+            <div className="p-3 rounded-lg bg-white/[0.02] border border-white/10">
+              <p className="text-xs text-white/40">Totale</p>
+              <p className="text-xl font-bold text-white">{reviewsStats.total}</p>
+            </div>
+            <div className="p-3 rounded-lg bg-white/[0.02] border border-white/10">
+              <p className="text-xs text-white/40">Approvate</p>
+              <p className="text-xl font-bold text-green-400">{reviewsStats.approved}</p>
+            </div>
+            <div className="p-3 rounded-lg bg-white/[0.02] border border-white/10">
+              <p className="text-xs text-white/40">In attesa</p>
+              <p className="text-xl font-bold text-yellow-400">{reviewsStats.pending}</p>
+            </div>
+            <div className="p-3 rounded-lg bg-white/[0.02] border border-white/10">
+              <p className="text-xs text-white/40">Media voto</p>
+              <p className="text-xl font-bold text-kranely-accent">{reviewsStats.averageRating}</p>
+            </div>
+          </div>
+        )}
+
+        <div className="flex gap-2 mb-4">
+          {(["pending", "approved", "all"] as const).map((f) => (
+            <button key={f} onClick={() => setReviewFilter(f)}
+              className={`px-3 py-1.5 text-xs rounded-lg transition-colors ${
+                reviewFilter === f ? "bg-kranely-accent text-kranely-app-bg font-semibold" : "bg-white/5 text-white/60 hover:bg-white/10"
+              }`}>
+              {f === "pending" ? "In attesa" : f === "approved" ? "Approvate" : "Tutte"}
+            </button>
+          ))}
+        </div>
+
+        <div className="space-y-2">
+          {reviewsData && reviewsData.length > 0 ? reviewsData
+            .filter((r) => reviewFilter === "all" || (reviewFilter === "pending" && !r.approved) || (reviewFilter === "approved" && r.approved))
+            .map((r) => (
+              <div key={r._id} className="flex items-start justify-between p-3 rounded-lg bg-white/[0.02] border border-white/5">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-sm font-medium text-white">{r.name}</span>
+                    <span className="text-xs text-white/40">{r.company}</span>
+                    <div className="flex items-center gap-0.5 ml-auto">
+                      {Array.from({ length: 5 }).map((_, i) => (
+                        <Star key={i} className={`w-3 h-3 ${i < r.rating ? "text-yellow-400 fill-yellow-400" : "text-white/20"}`} />
+                      ))}
+                    </div>
+                  </div>
+                  <p className="text-sm text-white/60 line-clamp-2">{r.text}</p>
+                  <p className="text-xs text-white/30 mt-1">{new Date(r.createdAt).toLocaleDateString("it-IT")} {r.email && `— ${r.email}`}</p>
+                </div>
+                <div className="flex items-center gap-2 shrink-0 ml-3">
+                  {!r.approved && (
+                    <button onClick={async () => { try { await approveReview({ id: r._id, organizationId: r.organizationId, userEmail: user?.email }); toast.success("Recensione approvata") } catch (e: any) { toast.error(e.message) } }}
+                      className="p-2 rounded-lg bg-green-500/10 text-green-400 hover:bg-green-500/20 transition-colors" title="Approva" aria-label="Approva recensione">
+                      <ThumbsUp className="w-4 h-4" />
+                    </button>
+                  )}
+                  <button onClick={async () => { try { await removeReview({ id: r._id, organizationId: r.organizationId, userEmail: user?.email }); toast.success("Recensione rimossa") } catch (e: any) { toast.error(e.message) } }}
+                    className="p-2 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors" title="Rimuovi" aria-label="Rimuovi recensione">
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            )) : (
+            <p className="text-sm text-white/40 text-center py-4">Nessuna recensione</p>
           )}
         </div>
       </div>

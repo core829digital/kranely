@@ -160,6 +160,17 @@ export const register = mutation({
       details: `Utente ${args.fullName} registrato come ${args.role}`,
     })
 
+    if (args.role === "client") {
+      await ctx.db.insert("clients", {
+        organizationId: orgId,
+        fullName: args.fullName,
+        email: normalizedEmail,
+        phone: args.phone,
+        status: "lead",
+        clientType: "b2c",
+      })
+    }
+
     const org = await ctx.db.get(orgId)
     await ctx.scheduler.runAfter(0, internal.email.sendOnboarding, {
       email: args.email,

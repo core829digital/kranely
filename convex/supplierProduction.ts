@@ -131,6 +131,10 @@ export const update = mutation({
     }
     await ctx.db.patch(id, data as any)
 
+    if (data.status === "completed" && record.orderId) {
+      await ctx.db.patch(record.orderId, { status: "ready" })
+    }
+
     await ctx.db.insert("activityLog", {
       organizationId: args.organizationId,
       userEmail: args.userEmail || "system",

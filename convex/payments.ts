@@ -224,6 +224,46 @@ export const markAsPaid = mutation({
   },
 })
 
+export const submitProof = mutation({
+  args: {
+    id: v.id("payments"),
+    organizationId: v.id("organizations"),
+    proofDocId: v.id("documents"),
+    userEmail: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
+    if (user.role !== "client") throw new Error("Not authorized: solo i clienti possono inviare prova di pagamento")
+    const payment = await ctx.db.get(args.id)
+    if (!payment || payment.organizationId !== args.organizationId) throw new Error("Pagamento non trovato")
+    if (payment.status === "pagato") throw new Error("Pagamento già saldato")
+    if (payment.type !== "client") throw new Error("Questo pagamento non è di tipo cliente")
+
+    if (payment.clientId) {
+      const clientDoc = await ctx.db.get(payment.clientId)
+      if (!clientDoc || clientDoc.email !== user.email) throw new Error("Accesso negato: pagamento non associato al tuo account")
+    }
+
+    await ctx.db.patch(args.id, {
+      proofDocId: args.proofDocId,
+      status: "in_verifica",
+      senderRole: "client",
+    })
+
+    await ctx.db.insert("activityLog", {
+      organizationId: args.organizationId,
+      userEmail: user.email,
+      action: "proof_submitted",
+      entityType: "payment",
+      entityId: args.id,
+      entityName: payment.description,
+      details: `Cliente ha caricato prova di pagamento per "${payment.description}"`,
+    })
+
+    return args.id
+  },
+})
+
 export const remove = mutation({
   args: { id: v.id("payments"), organizationId: v.id("organizations"), userEmail: v.optional(v.string()) },
   handler: async (ctx, args) => {

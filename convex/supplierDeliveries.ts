@@ -169,9 +169,19 @@ export const update = mutation({
       const statusLabels: Record<string, string> = {
         pending: "In attesa", partito: "Partito", in_transito: "In transito", consegnato: "Consegnato",
       }
+
+      let clientEmail: string | null = null
+      if (prev.cantiereId) {
+        const cantiere = await ctx.db.get(prev.cantiereId)
+        if (cantiere?.clientId) {
+          const clientDoc = await ctx.db.get(cantiere.clientId)
+          if (clientDoc) clientEmail = clientDoc.email
+        }
+      }
+      const notifTarget = clientEmail || (await resolveNotifTarget(ctx, prev.organizationId))
       await ctx.scheduler.runAfter(0, internal.notifications.createNotification, {
         organizationId: prev.organizationId,
-        userEmail: await resolveNotifTarget(ctx, prev.organizationId, userEmail),
+        userEmail: notifTarget,
         title: `Consegna ${statusLabels[data.status] || data.status}`,
         message: `La consegna "${prev.description}" è ora "${statusLabels[data.status] || data.status}"`,
         type: "delivery_status_change",
@@ -320,6 +330,16 @@ export const confirmByClient = mutation({
       entityId: args.deliveryId,
       entityName: delivery.description,
       details: `Consegna "${delivery.description}" confermata dal cliente`,
+    })
+
+    await ctx.scheduler.runAfter(0, internal.notifications.createNotification, {
+      organizationId: args.organizationId,
+      userEmail: await resolveNotifTarget(ctx, args.organizationId),
+      title: "Consegna confermata dal cliente",
+      message: `Il cliente ha confermato la ricezione della consegna "${delivery.description}"`,
+      type: "delivery_client_confirmed",
+      priority: "high",
+      link: "/driver-dashboard",
     })
 
     return args.deliveryId

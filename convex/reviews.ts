@@ -71,6 +71,39 @@ export const remove = mutation({
   },
 })
 
+export const adminListAll = query({
+  args: { adminEmail: v.optional(v.string()) },
+  handler: async (ctx, args) => {
+    if (args.adminEmail) {
+      const user = await ctx.db.query("users").withIndex("by_email", (q: any) => q.eq("email", args.adminEmail!)).first()
+      if (!user || (user.role !== "superadmin" && user.role !== "admin")) throw new Error("Not authorized")
+    }
+    const items = await ctx.db.query("reviews").collect()
+    return items.sort((a, b) => b.createdAt - a.createdAt)
+  },
+})
+
+export const adminStats = query({
+  args: { adminEmail: v.optional(v.string()) },
+  handler: async (ctx, args) => {
+    if (args.adminEmail) {
+      const user = await ctx.db.query("users").withIndex("by_email", (q: any) => q.eq("email", args.adminEmail!)).first()
+      if (!user || (user.role !== "superadmin" && user.role !== "admin")) throw new Error("Not authorized")
+    }
+    const all = await ctx.db.query("reviews").collect()
+    const approved = all.filter((r) => r.approved)
+    const avgRating = approved.length > 0
+      ? Math.round((approved.reduce((s, r) => s + r.rating, 0) / approved.length) * 10) / 10
+      : 0
+    return {
+      total: all.length,
+      approved: approved.length,
+      pending: all.filter((r) => !r.approved).length,
+      averageRating: avgRating,
+    }
+  },
+})
+
 export const stats = query({
   args: { organizationId: v.id("organizations"), userEmail: v.optional(v.string()) },
   handler: async (ctx, args) => {

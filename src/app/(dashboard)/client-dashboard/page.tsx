@@ -1,8 +1,8 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useRef } from "react"
 import { useAuth } from "@/lib/auth/auth-context"
-import { FileText, Building2, CreditCard, CheckCircle2, Clock, AlertCircle, MessageSquare, Eye, Euro, TrendingUp, AlertTriangle, Package, Truck, Factory, ChevronDown, ChevronRight } from "lucide-react"
+import { FileText, Building2, CreditCard, CheckCircle2, Clock, AlertCircle, MessageSquare, Eye, Euro, TrendingUp, AlertTriangle, Package, Truck, Factory, ChevronDown, ChevronRight, Upload, FileCheck2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -37,6 +37,12 @@ export default function ClientDashboardPage() {
   const [confirmDelivery, setConfirmDelivery] = useState<any>(null)
   const [expandedOrders, setExpandedOrders] = useState<Set<string>>(new Set())
   const confirmDeliveryMut = useMutation(api.supplierDeliveries.confirmByClient)
+  const generateUploadUrl = useMutation(api.upload.generateUploadUrl)
+  const saveFile = useMutation(api.upload.saveFile)
+  const submitProof = useMutation(api.payments.submitProof)
+  const [uploadingPaymentId, setUploadingPaymentId] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [selectedPaymentUpload, setSelectedPaymentUpload] = useState<string | null>(null)
 
   const clientData = useQuery(
     api.clientDashboard.getClientDashboard,
@@ -84,6 +90,32 @@ export default function ClientDashboardPage() {
     }
     return map
   }, [supplierTracking?.production])
+
+  const handleFileUpload = async (paymentId: string) => {
+    const file = fileInputRef.current?.files?.[0]
+    if (!file) { toast.error("Seleziona un file"); return }
+    if (file.size > 50 * 1024 * 1024) { toast.error("File troppo grande (max 50MB)"); return }
+    setUploadingPaymentId(paymentId)
+    try {
+      const uploadUrl = await generateUploadUrl({ organizationId: orgId, userEmail: user?.email || "" })
+      const result = await fetch(uploadUrl, { method: "POST", body: file })
+      const { storageId } = await result.json()
+      const docId = await saveFile({
+        organizationId: orgId,
+        storageId,
+        fileName: file.name,
+        type: "other",
+        fileSize: file.size,
+        clientId: clientData?.client?._id,
+        userEmail: user?.email,
+      })
+      await submitProof({ id: paymentId as any, organizationId: orgId, proofDocId: docId, userEmail: user?.email })
+      toast.success("Prova di pagamento caricata! In attesa di verifica.")
+      setSelectedPaymentUpload(null)
+      if (fileInputRef.current) fileInputRef.current.value = ""
+    } catch (e: any) { toast.error(e.message || "Errore nel caricamento") }
+    finally { setUploadingPaymentId(null) }
+  }
 
   const handleConfirmDelivery = async () => {
     if (!confirmDelivery) return
@@ -212,19 +244,33 @@ export default function ClientDashboardPage() {
                       <p className="text-sm text-white">{p.description}</p>
                       <p className="text-xs text-white/40">{p.dueDate ? `Scadenza: ${p.dueDate}` : ""}</p>
                     </div>
-                    <div className="text-right">
+                    <div className="text-right flex items-center gap-2">
                       <p className="text-sm font-medium text-white">EUR{p.amount.toLocaleString("it-IT")}</p>
-                      <Badge className={
-                        p.status === "pagato" ? "bg-green-500/20 text-green-400 text-[10px]" :
-                        p.status === "in_ritardo" ? "bg-red-500/20 text-red-400 text-[10px]" :
-                        p.status === "in_verifica" ? "bg-blue-500/20 text-blue-400 text-[10px]" :
-                        "bg-yellow-500/20 text-yellow-400 text-[10px]"
-                      }>
-                        {p.status === "pagato" ? "Pagato" :
-                         p.status === "in_attesa" ? "In attesa" :
-                         p.status === "in_ritardo" ? "Scaduto" :
-                         p.status === "in_verifica" ? "In verifica" : p.status}
-                      </Badge>
+                      <div className="flex items-center gap-1">
+                        <Badge className={
+                          p.status === "pagato" ? "bg-green-500/20 text-green-400 text-[10px]" :
+                          p.status === "in_ritardo" ? "bg-red-500/20 text-red-400 text-[10px]" :
+                          p.status === "in_verifica" ? "bg-blue-500/20 text-blue-400 text-[10px]" :
+                          "bg-yellow-500/20 text-yellow-400 text-[10px]"
+                        }>
+                          {p.status === "pagato" ? "Pagato" :
+                           p.status === "in_attesa" ? "In attesa" :
+                           p.status === "in_ritardo" ? "Scaduto" :
+                           p.status === "in_verifica" ? "In verifica" : p.status}
+                        </Badge>
+                        {p.status !== "pagato" && p.status !== "in_verifica" && (
+                          <Button size="sm" variant="outline" className="border-white/10 h-7 text-xs"
+                            onClick={() => setSelectedPaymentUpload(p._id)}>
+                            {p.proofDocId ? <FileCheck2 className="w-3 h-3 mr-1" /> : <Upload className="w-3 h-3 mr-1" />}
+                            Allega Bonifico
+                          </Button>
+                        )}
+                        {p.status === "in_verifica" && (
+                          <Badge className="bg-blue-500/20 text-blue-400 text-[10px]">
+                            <Clock className="w-3 h-3 mr-1" />In verifica
+                          </Badge>
+                        )}
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -445,6 +491,24 @@ export default function ClientDashboardPage() {
           </Button>
         </Link>
       </div>
+
+      <Dialog open={!!selectedPaymentUpload} onOpenChange={(open) => { if (!open) { setSelectedPaymentUpload(null); if (fileInputRef.current) fileInputRef.current.value = "" } }}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Allega Prova di Bonifico</DialogTitle></DialogHeader>
+          <div className="py-4 space-y-4">
+            <p className="text-white/80 text-sm">
+              Carica la ricevuta del bonifico effettuato per questo pagamento. Il documento verrà verificato dall&apos;amministrazione.
+            </p>
+            <input ref={fileInputRef} type="file" accept="image/*,.pdf" className="w-full text-sm text-white/60 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-kranely-accent file:text-kranely-app-bg hover:file:opacity-90" />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setSelectedPaymentUpload(null); if (fileInputRef.current) fileInputRef.current.value = "" }} className="border-white/10">Annulla</Button>
+            <Button onClick={() => selectedPaymentUpload && handleFileUpload(selectedPaymentUpload)} disabled={uploadingPaymentId !== null} className="bg-kranely-accent text-kranely-app-bg">
+              {uploadingPaymentId ? "Caricamento..." : <><Upload className="w-4 h-4 mr-2" />Carica</>}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={!!confirmDelivery} onOpenChange={(open) => !open && setConfirmDelivery(null)}>
         <DialogContent>
