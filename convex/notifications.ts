@@ -1,6 +1,7 @@
 import { internalMutation, mutation, query } from "./_generated/server"
 import { v } from "convex/values"
 import { Id } from "./_generated/dataModel"
+import { internal } from "./_generated/api"
 import { assertOrgAccess } from "./auth"
 
 async function getAdminEmails(ctx: { db: any }, organizationId: Id<"organizations">): Promise<string[]> {
@@ -130,10 +131,30 @@ export const createNotification = internalMutation({
     link: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    return await ctx.db.insert("notifications", {
+    const id = await ctx.db.insert("notifications", {
       ...args,
       isRead: false,
     })
+
+    if (args.priority === "high" || args.priority === "urgent") {
+      await ctx.scheduler.runAfter(0, internal.email.sendNotification, {
+        email: args.userEmail,
+        subject: `[Kranely] ${args.title}`,
+        htmlBody: `
+          <div style="font-family:Arial,sans-serif;max-width:480px;margin:0 auto;padding:24px;background:#1C1A18;color:#fff;border-radius:12px;">
+            <div style="text-align:center;margin-bottom:24px;">
+              <div style="width:40px;height:40px;background:#FFC703;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;font-weight:bold;font-size:20px;color:#1C1A18;">K</div>
+            </div>
+            <h1 style="font-size:18px;margin:0 0 12px;">${args.title}</h1>
+            <p style="color:#aaa;margin:0 0 20px;line-height:1.5;">${args.message}</p>
+            ${args.link ? `<a href="${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}${args.link}" style="display:inline-block;padding:12px 24px;background:#FFC703;color:#1C1A18;text-decoration:none;font-weight:600;border-radius:8px;">Visualizza</a>` : ""}
+            <p style="color:#666;font-size:12px;margin-top:20px;">Questa è una notifica automatica da Kranely.</p>
+          </div>
+        `,
+      })
+    }
+
+    return id
   },
 })
 
