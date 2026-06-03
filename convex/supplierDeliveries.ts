@@ -71,6 +71,8 @@ export const create = mutation({
     driverLicensePlate: v.optional(v.string()),
     documents: v.optional(v.array(v.string())),
     loadManifest: v.optional(v.any()),
+    ddtNumber: v.optional(v.string()),
+    ddtDate: v.optional(v.string()),
     notes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
@@ -126,6 +128,11 @@ export const update = mutation({
     driverLicensePlate: v.optional(v.string()),
     documents: v.optional(v.array(v.string())),
     loadManifest: v.optional(v.any()),
+    ddtNumber: v.optional(v.string()),
+    ddtDate: v.optional(v.string()),
+    signatureDataUrl: v.optional(v.string()),
+    signatureName: v.optional(v.string()),
+    signatureDate: v.optional(v.string()),
     notes: v.optional(v.string()),
     confirmedArrival: v.optional(v.string()),
     userEmail: v.optional(v.string()),
@@ -255,6 +262,8 @@ export const confirmByClient = mutation({
     deliveryId: v.id("supplierDeliveries"),
     organizationId: v.id("organizations"),
     userEmail: v.optional(v.string()),
+    signatureDataUrl: v.optional(v.string()),
+    signatureName: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const user = await assertOrgAccess(ctx, args.userEmail, args.organizationId)
@@ -274,11 +283,17 @@ export const confirmByClient = mutation({
       }
     }
 
-    await ctx.db.patch(args.deliveryId, {
+    const patchData: Record<string, any> = {
       status: "consegnato",
       deliveryDate: new Date().toISOString().split("T")[0],
       confirmedArrival: user.email,
-    })
+    }
+    if (args.signatureDataUrl) {
+      patchData.signatureDataUrl = args.signatureDataUrl
+      patchData.signatureName = args.signatureName || user.fullName || user.email
+      patchData.signatureDate = new Date().toISOString()
+    }
+    await ctx.db.patch(args.deliveryId, patchData)
 
     if (delivery.orderId) {
       await ctx.db.patch(delivery.orderId, { status: "delivered" })
