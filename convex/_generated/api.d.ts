@@ -35,6 +35,7 @@ import type * as idGenerator from "../idGenerator.js";
 import type * as internalMessages from "../internalMessages.js";
 import type * as jobTitles from "../jobTitles.js";
 import type * as lib_helpers from "../lib/helpers.js";
+import type * as network from "../network.js";
 import type * as notifications from "../notifications.js";
 import type * as onboarding from "../onboarding.js";
 import type * as orgProvision from "../orgProvision.js";
@@ -54,6 +55,7 @@ import type * as supplierRequests from "../supplierRequests.js";
 import type * as suppliers from "../suppliers.js";
 import type * as tasks from "../tasks.js";
 import type * as upload from "../upload.js";
+import type * as warehouse from "../warehouse.js";
 import type * as whitelabel from "../whitelabel.js";
 
 import type {
@@ -90,6 +92,7 @@ declare const fullApi: ApiFromModules<{
   internalMessages: typeof internalMessages;
   jobTitles: typeof jobTitles;
   "lib/helpers": typeof lib_helpers;
+  network: typeof network;
   notifications: typeof notifications;
   onboarding: typeof onboarding;
   orgProvision: typeof orgProvision;
@@ -109,6 +112,7 @@ declare const fullApi: ApiFromModules<{
   suppliers: typeof suppliers;
   tasks: typeof tasks;
   upload: typeof upload;
+  warehouse: typeof warehouse;
   whitelabel: typeof whitelabel;
 }>;
 

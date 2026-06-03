@@ -1,8 +1,8 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import { useAuth } from "@/lib/auth/auth-context"
-import { FileText, Building2, CreditCard, CheckCircle2, Clock, AlertCircle, MessageSquare, Eye, Euro, TrendingUp, AlertTriangle, Package, Truck, Factory } from "lucide-react"
+import { FileText, Building2, CreditCard, CheckCircle2, Clock, AlertCircle, MessageSquare, Eye, Euro, TrendingUp, AlertTriangle, Package, Truck, Factory, ChevronDown, ChevronRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -14,10 +14,28 @@ import { PageSkeleton } from "@/components/Skeletons"
 import { toast } from "sonner"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 
+const PHASE_LABELS: Record<string, string> = {
+  materiali_ricevuti: "Materiali Ricevuti",
+  taglio: "Taglio",
+  assemblaggio: "Assemblaggio",
+  controllo_qualita: "Controllo Qualità",
+  pronto: "Pronto",
+}
+
+const PHASE_ORDER = ["materiali_ricevuti", "taglio", "assemblaggio", "controllo_qualita", "pronto"]
+
+const phaseColor = (phase: string) => {
+  const idx = PHASE_ORDER.indexOf(phase)
+  if (idx === -1) return "bg-white/20"
+  const colors = ["bg-amber-500", "bg-blue-500", "bg-purple-500", "bg-cyan-500", "bg-green-500"]
+  return colors[idx] || "bg-white/20"
+}
+
 export default function ClientDashboardPage() {
   const { user } = useAuth()
   const orgId = useOrgId()
   const [confirmDelivery, setConfirmDelivery] = useState<any>(null)
+  const [expandedOrders, setExpandedOrders] = useState<Set<string>>(new Set())
   const confirmDeliveryMut = useMutation(api.supplierDeliveries.confirmByClient)
 
   const clientData = useQuery(
@@ -46,6 +64,26 @@ export default function ClientDashboardPage() {
   }
 
   const { client, cantieri, payments, quotes, documents, budget, supplierTracking } = clientData
+
+  const toggleOrder = (id: string) => {
+    setExpandedOrders((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id); else next.add(id)
+      return next
+    })
+  }
+
+  const productionByOrder = useMemo(() => {
+    const map = new Map<string, any[]>()
+    for (const p of supplierTracking?.production || []) {
+      const oid = p.orderId
+      if (oid) {
+        if (!map.has(oid)) map.set(oid, [])
+        map.get(oid)!.push(p)
+      }
+    }
+    return map
+  }, [supplierTracking?.production])
 
   const handleConfirmDelivery = async () => {
     if (!confirmDelivery) return
@@ -255,57 +293,143 @@ export default function ClientDashboardPage() {
         <div className="rounded-xl border border-white/10 bg-white/[0.02] p-6">
           <div className="flex items-center gap-3 mb-4">
             <Package className="w-5 h-5 text-violet-400" />
-            <h3 className="text-white font-semibold">Stato Fornitori</h3>
+            <h3 className="text-white font-semibold">Stato Ordini e Produzione</h3>
           </div>
 
-          {supplierTracking.orders.map((o: any) => (
-            <div key={o._id} className="flex items-center justify-between py-2 border-b border-white/5 last:border-0">
-              <div className="flex-1">
-                <p className="text-sm text-white font-medium">{o.description || o.orderNumber || "Ordine"}</p>
-                <p className="text-xs text-white/40">{o.expectedDelivery ? `Prevista: ${o.expectedDelivery}` : ""}</p>
-              </div>
-              <Badge className={
-                o.status === "delivered" ? "bg-green-500/20 text-green-400" :
-                o.status === "shipped" ? "bg-cyan-500/20 text-cyan-400" :
-                o.status === "in_production" ? "bg-purple-500/20 text-purple-400" :
-                o.status === "confirmed" ? "bg-blue-500/20 text-blue-400" :
-                "bg-yellow-500/20 text-yellow-400"
-              }>
-                {o.status === "delivered" ? "Consegnato" : o.status === "shipped" ? "Spedito" : o.status === "in_production" ? "In Produzione" : o.status === "confirmed" ? "Confermato" : "In Attesa"}
-              </Badge>
-            </div>
-          ))}
+          {supplierTracking.orders.map((o: any) => {
+            const prods = productionByOrder.get(o._id) || []
+            const isExpanded = expandedOrders.has(o._id)
+            const totalProgress = prods.length > 0
+              ? Math.round(prods.reduce((s: number, p: any) => s + (p.progressPercentage || 0), 0) / prods.length)
+              : o.status === "delivered" ? 100 : o.status === "shipped" ? 85 : o.status === "in_production" ? 40 : o.status === "confirmed" ? 10 : 0
 
-          {supplierTracking.deliveries.map((d: any) => (
-            <div key={d._id} className="flex items-center justify-between py-2 border-b border-white/5 last:border-0">
-              <div className="flex-1">
-                <p className="text-sm text-white font-medium">{d.description || "Consegna"}</p>
-                <p className="text-xs text-white/40">
-                  {d.expectedDate ? new Date(d.expectedDate).toLocaleDateString("it-IT") : ""}
-                  {d.deliveryDate ? ` — Effettuata: ${new Date(d.deliveryDate).toLocaleDateString("it-IT")}` : ""}
-                </p>
-              </div>
-              <div className="flex items-center gap-2">
-                <Badge className={
-                  d.status === "consegnato" ? "bg-green-500/20 text-green-400" :
-                  d.status === "in_transito" ? "bg-blue-500/20 text-blue-400" :
-                  d.status === "partito" ? "bg-cyan-500/20 text-cyan-400" :
-                  "bg-yellow-500/20 text-yellow-400"
-                }>
-                  {d.status === "consegnato" ? "Consegnato" : d.status === "in_transito" ? "In Transito" : d.status === "partito" ? "Partito" : "Pianificato"}
-                </Badge>
-                {d.status !== "consegnato" && (
-                  <Button
-                    size="sm"
-                    className="bg-green-600 hover:bg-green-700 text-white h-7 text-xs"
-                    onClick={() => setConfirmDelivery(d)}
-                  >
-                    <CheckCircle2 className="w-3 h-3 mr-1" />Conferma
-                  </Button>
+            return (
+              <div key={o._id} className="border-b border-white/5 last:border-0">
+                <div
+                  className="flex items-center justify-between py-3 cursor-pointer hover:bg-white/[0.02] -mx-2 px-2 rounded transition-colors"
+                  onClick={() => prods.length > 0 && toggleOrder(o._id)}
+                >
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      {prods.length > 0 && (
+                        <span className="text-white/30 shrink-0">{isExpanded ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}</span>
+                      )}
+                      <p className="text-sm text-white font-medium truncate">{o.description || o.orderNumber || "Ordine"}</p>
+                    </div>
+                    <div className="flex items-center gap-3 mt-1">
+                      <div className="flex-1 max-w-[200px] h-1.5 bg-white/10 rounded-full overflow-hidden">
+                        <div className={`h-full rounded-full transition-all ${
+                          totalProgress >= 100 ? "bg-green-500" : totalProgress >= 50 ? "bg-violet-500" : "bg-amber-500"
+                        }`} style={{ width: `${totalProgress}%` }} />
+                      </div>
+                      <span className="text-xs text-white/40">{totalProgress}%</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0 ml-3">
+                    {o.expectedDelivery && (
+                      <span className="text-xs text-white/40 hidden sm:block">Prev: {o.expectedDelivery}</span>
+                    )}
+                    <Badge className={
+                      o.status === "delivered" ? "bg-green-500/20 text-green-400" :
+                      o.status === "shipped" ? "bg-cyan-500/20 text-cyan-400" :
+                      o.status === "in_production" ? "bg-purple-500/20 text-purple-400" :
+                      o.status === "confirmed" ? "bg-blue-500/20 text-blue-400" :
+                      "bg-yellow-500/20 text-yellow-400"
+                    }>
+                      {o.status === "delivered" ? "Consegnato" : o.status === "shipped" ? "Spedito" : o.status === "in_production" ? "In Produzione" : o.status === "confirmed" ? "Confermato" : "In Attesa"}
+                    </Badge>
+                  </div>
+                </div>
+
+                {isExpanded && prods.length > 0 && (
+                  <div className="ml-5 pb-3 space-y-2">
+                    {prods.map((p: any) => {
+                      const phaseIdx = PHASE_ORDER.indexOf(p.phase)
+                      return (
+                        <div key={p._id} className="p-3 rounded-lg bg-white/[0.03] border border-white/5">
+                          <div className="flex items-center justify-between mb-2">
+                            <p className="text-sm text-white font-medium">{p.description || "Produzione"}</p>
+                            <Badge className={
+                              p.status === "completed" ? "bg-green-500/20 text-green-400" :
+                              p.status === "in_progress" ? "bg-blue-500/20 text-blue-400" :
+                              "bg-yellow-500/20 text-yellow-400"
+                            }>
+                              {p.status === "completed" ? "Completato" : p.status === "in_progress" ? "In Corso" : "In Attesa"}
+                            </Badge>
+                          </div>
+
+                          <div className="flex items-center gap-1 mb-2">
+                            {PHASE_ORDER.map((ph, i) => {
+                              const isActive = phaseIdx >= i
+                              const isCurrent = phaseIdx === i && p.status === "in_progress"
+                              return (
+                                <div key={ph} className="flex-1 flex flex-col items-center gap-1">
+                                  <div className={`w-full h-1.5 rounded-full transition-all ${
+                                    isActive && p.status === "completed" ? "bg-green-500" :
+                                    isCurrent ? "bg-violet-500 animate-pulse" :
+                                    isActive ? phaseColor(ph) : "bg-white/10"
+                                  }`} />
+                                  <span className={`text-[9px] leading-tight text-center ${
+                                    isCurrent ? "text-violet-300 font-medium" :
+                                    isActive ? "text-white/60" : "text-white/20"
+                                  }`}>{PHASE_LABELS[ph]}</span>
+                                </div>
+                              )
+                            })}
+                          </div>
+
+                          <div className="flex items-center justify-between text-xs text-white/40">
+                            {p.quantity != null && <span>Q.tà: {p.completed ?? 0}/{p.quantity}</span>}
+                            {p.estimatedCompletion && <span>Fine prevista: {p.estimatedCompletion}</span>}
+                            {p.progressPercentage != null && <span>{p.progressPercentage}%</span>}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
                 )}
               </div>
-            </div>
-          ))}
+            )
+          })}
+
+          {supplierTracking.deliveries.length > 0 && (
+            <>
+              <div className="flex items-center gap-2 mt-4 mb-2 pt-3 border-t border-white/5">
+                <Truck className="w-4 h-4 text-cyan-400" />
+                <h4 className="text-sm text-white/70 font-medium">Consegne</h4>
+              </div>
+              {supplierTracking.deliveries.map((d: any) => (
+                <div key={d._id} className="flex items-center justify-between py-2 border-b border-white/5 last:border-0">
+                  <div className="flex-1">
+                    <p className="text-sm text-white font-medium">{d.description || "Consegna"}</p>
+                    <p className="text-xs text-white/40">
+                      {d.expectedDate ? new Date(d.expectedDate).toLocaleDateString("it-IT") : ""}
+                      {d.deliveryDate ? ` — Effettuata: ${new Date(d.deliveryDate).toLocaleDateString("it-IT")}` : ""}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Badge className={
+                      d.status === "consegnato" ? "bg-green-500/20 text-green-400" :
+                      d.status === "in_transito" ? "bg-blue-500/20 text-blue-400" :
+                      d.status === "partito" ? "bg-cyan-500/20 text-cyan-400" :
+                      "bg-yellow-500/20 text-yellow-400"
+                    }>
+                      {d.status === "consegnato" ? "Consegnato" : d.status === "in_transito" ? "In Transito" : d.status === "partito" ? "Partito" : "Pianificato"}
+                    </Badge>
+                    {d.status !== "consegnato" && (
+                      <Button
+                        size="sm"
+                        className="bg-green-600 hover:bg-green-700 text-white h-7 text-xs"
+                        onClick={() => setConfirmDelivery(d)}
+                      >
+                        <CheckCircle2 className="w-3 h-3 mr-1" />Conferma
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </>
+          )}
         </div>
       )}
 
