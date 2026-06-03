@@ -62,6 +62,7 @@ const ROUTE_ACCESS_MAP: Record<string, UserRole[]> = {
   "/my-appointments": ["client", "supplier", "collaborator", "driver"],
   "/certificates": ["admin", "collaborator"],
   "/messages": ["admin", "client", "collaborator", "driver"],
+  "/network": ["admin", "superadmin"],
   "/tasks": ["admin", "collaborator"],
   "/blog": ["admin"],
   "/blog-admin": ["admin"],
